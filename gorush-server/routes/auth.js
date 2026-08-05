@@ -1,12 +1,22 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { requireAuth } = require('../middleware/auth');
+
+function signToken(user) {
+    return jwt.sign(
+        { userId: user._id, email: user.email },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+}
 
 router.post('/register', async (req, res) => {
     try {
         const {
-            email, password, username,
+            email, password,
             houseunitno, jalan, kampong, simpang, district, postalcode,
             phonenum, addphonenum,
             receivername, dateofbirth, icnum, passportnum, bruhimsnum, patientphcnum, patientjpmcnum,
@@ -14,7 +24,7 @@ router.post('/register', async (req, res) => {
         } = req.body;
 
         // 1. Basic text fields checks
-        if (!email || !password || !username || !houseunitno || !jalan || !kampong || !district || !postalcode || !phonenum || !receivername || !dateofbirth) {
+        if (!email || !password || !houseunitno || !jalan || !kampong || !district || !postalcode || !phonenum || !receivername || !dateofbirth) {
             return res.status(400).json({ error: "Missing required text fields." });
         }
 
@@ -43,7 +53,6 @@ router.post('/register', async (req, res) => {
         const newUser = new User({
             email,
             password: hashedPassword,
-            username,
             addresses: [{ houseunitno, jalan, kampong, simpang, district, postalcode, isDefault: true }],
             phonenumbers: [{ phonenum, isDefault: true }],
             additionalphonenumbers: addphonenum ? [{ addphonenum }] : [],
@@ -62,15 +71,81 @@ router.post('/register', async (req, res) => {
         });
 
         const savedUser = await newUser.save();
+        const token = signToken(savedUser);
         res.status(201).json({
             message: "Go Rush Account successfully created!",
-            userId: savedUser._id,
-            username: savedUser.username
+            token,
+            user: {
+                userId: savedUser._id,
+                email: savedUser.email
+            }
         });
 
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server registry error." });
+    }
+});
+
+router.post('/login', async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        if (!email || !password) {
+            return res.status(400).json({ error: "Email and password are required." });
+        }
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return res.status(401).json({ error: "Invalid email or password." });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: "Invalid email or password." });
+        }
+
+        const token = signToken(user);
+        res.status(200).json({
+            message: "Logged in successfully.",
+            token,
+            user: {
+                userId: user._id,
+                email: user.email
+            }
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal server login error." });
+    }
+});
+
+router.get('/me', requireAuth, async (req, res) => {
+    try {
+        const user = await User.findById(req.userId);
+        if (!user) {
+            return res.status(404).json({ error: "Account not found." });
+        }
+
+        const address = user.addresses.find(a => a.isDefault) || user.addresses[0] || null;
+        const phone = user.phonenumbers.find(p => p.isDefault) || user.phonenumbers[0] || null;
+        const details = user.userdetails.find(d => d.isDefault) || user.userdetails[0] || null;
+
+        res.status(200).json({
+            email: user.email,
+            receivername: details ? details.receivername : '',
+            phonenum: phone ? phone.phonenum : '',
+            address: address ? {
+                houseunitno: address.houseunitno,
+                jalan: address.jalan,
+                kampong: address.kampong,
+                simpang: address.simpang,
+                district: address.district,
+                postalcode: address.postalcode
+            } : null
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal server profile error." });
     }
 });
 

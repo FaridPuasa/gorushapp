@@ -12,11 +12,6 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
-    username: {
-        type: String,
-        required: true,
-        trim: true,
-    },
     addresses: [{
         houseunitno: { type: String, required: true },
         jalan: { type: String, required: true },
