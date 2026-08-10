@@ -3,13 +3,37 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const Order = require('../models/Order');
-const { optionalAuth } = require('../middleware/auth');
+const User = require('../models/User');
+const PublicHoliday = require('../models/PublicHoliday');
+const { optionalAuth, requireAuth } = require('../middleware/auth');
 const { computeTotalPrice } = require('../lib/pricing');
 const { isChargeCurrentlyAvailable } = require('../lib/availability');
 const { getOrderCreatedAt, getOrderUpdatedAt } = require('../lib/orderDates');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
+const PHARMACY_PRODUCTS = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc'];
 const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
+
+// deliveryTypeCode is abbreviated for storage; the original human-readable charge code
+// (e.g. "Standard", "Self Collect") is kept separately as jobMethod. Anything not in this
+// map (e.g. "Drop off") defaults to STD.
+const DELIVERY_TYPE_CODE_MAP = {
+    'Standard': 'STD',
+    'Express': 'EXP',
+    'Immediate': 'IMM',
+    'Self Collect': 'STD',
+};
+function mapDeliveryTypeCode(code) {
+    return DELIVERY_TYPE_CODE_MAP[code] || 'STD';
+}
+
+// Which clinic/office a pharmacy order's paperwork gets routed to, by appointment district.
+const APPOINTMENT_DISTRICT_TO_SEND_ORDER_TO = {
+    'Brunei': 'OPD',
+    'Temburong': 'OPD',
+    'Tutong': 'PMMH',
+    'Belait': 'SSBH',
+};
 
 function generateCaptchaCode() {
     let code = '';
@@ -36,20 +60,30 @@ router.post('/', optionalAuth, async (req, res) => {
             appointmentDistrict, appointmentPlace, payingPatient,
             ldPickupOrDelivery, itemContains, ldProductType, ldProductWeight, billTo,
             shipmentMethod, parcelTrackingNum, supplierName, items,
-            agreedTerms, captchaToken, captchaAnswer,
+            agreedTerms, captchaToken, captchaAnswer, orderOrigin,
         } = req.body;
 
         if (!product || !PRODUCT_CODES.includes(product)) {
             return res.status(400).json({ error: "A valid product is required." });
         }
-        if (!receiverName || !address?.district || !address?.houseunitno || !address?.jalan || !address?.kampong || !address?.postalcode) {
+        if (!receiverName || !address?.district || !address?.houseunitno || !address?.jalan || !address?.kampong) {
             return res.status(400).json({ error: "Full name and address are required." });
         }
-        if (!receiverEmail || !receiverPhoneNumber) {
-            return res.status(400).json({ error: "Email and phone number are required." });
+        if (!receiverPhoneNumber) {
+            return res.status(400).json({ error: "Phone number is required." });
         }
-        if (!deliveryTypeCode || !paymentMethod) {
-            return res.status(400).json({ error: "Charges and payment method are required." });
+        if (req.userId && !receiverEmail) {
+            return res.status(400).json({ error: "Email is required." });
+        }
+
+        // CBSL Self Collect has no delivery charge to pick — the customer is billed in
+        // person when they collect, not through the order flow.
+        const cbslSelfCollect = product === 'cbsl' && shipmentMethod === 'Self Collect';
+        if (!cbslSelfCollect && !deliveryTypeCode) {
+            return res.status(400).json({ error: "Charges are required." });
+        }
+        if (!paymentMethod) {
+            return res.status(400).json({ error: "Payment method is required." });
         }
         if (agreedTerms !== true) {
             return res.status(400).json({ error: "You must agree to the Terms & Conditions." });
@@ -84,22 +118,40 @@ router.post('/', optionalAuth, async (req, res) => {
                 return res.status(400).json({ error: "Each item must have a description, quantity, total price, and invoice screenshot." });
             }
         }
-        if (['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc'].includes(product)) {
+        if (PHARMACY_PRODUCTS.includes(product)) {
             if (!dateOfBirth || (!icNum && !passport)) {
                 return res.status(400).json({ error: "Date of birth and IC/Passport are required." });
             }
         }
 
         const pricingDistrict = product === 'localdelivery' ? senderAddressDetail?.district : address.district;
-        const totalPriceValue = computeTotalPrice(product, pricingDistrict, deliveryTypeCode, ldProductWeight);
+        const totalPriceValue = cbslSelfCollect ? 0 : await computeTotalPrice(product, pricingDistrict, deliveryTypeCode, ldProductWeight);
         if (totalPriceValue == null) {
             return res.status(400).json({ error: "Selected charges are not valid for this district." });
         }
-        if (!isChargeCurrentlyAvailable(deliveryTypeCode)) {
+        const holidays = await PublicHoliday.find().lean();
+        const holidayDates = holidays.map((h) => h.date);
+        if (!isChargeCurrentlyAvailable(product, deliveryTypeCode, holidayDates)) {
             return res.status(400).json({ error: "The selected charges are not available right now — please choose a different option." });
         }
 
         const now = new Date();
+
+        // Pharmacy products and CBSL don't collect a real parcel weight — fixed at 1kg;
+        // Local Delivery is the only product where the customer actually supplies one.
+        const weightValue = product === 'localdelivery' ? ldProductWeight : '1';
+
+        // Pharmacy products don't collect an items list either — give them one real entry
+        // so items[] is always populated the same way CBSL's is.
+        const itemsForStorage = PHARMACY_PRODUCTS.includes(product)
+            ? [{ description: 'Medicine', weight: '1', quantity: '1' }]
+            : items;
+
+        // CBSL only: total value of all items, for insurance/COD purposes — currency-prefixed
+        // to match the convention the client already displays this same sum with.
+        const cargoPriceValue = product === 'cbsl' && Array.isArray(items)
+            ? `RM ${items.reduce((sum, it) => sum + (Number(it.totalItemPrice) || 0), 0).toFixed(2)}`
+            : undefined;
 
         const newOrder = new Order({
             userId: req.userId || null,
@@ -119,11 +171,15 @@ router.post('/', optionalAuth, async (req, res) => {
             senderPostalCode: senderAddressDetail?.postalcode,
             senderEmail,
             senderPhoneNumber,
-            deliveryTypeCode,
+            deliveryTypeCode: cbslSelfCollect ? 'N/A' : mapDeliveryTypeCode(deliveryTypeCode),
+            jobMethod: cbslSelfCollect ? 'Self Collect' : deliveryTypeCode,
             paymentMethod,
             remarks,
-            totalPrice: `$${totalPriceValue.toFixed(2)}`,
+            totalPrice: totalPriceValue.toFixed(2),
             dateTimeSubmission: now.toISOString(),
+            orderOrigin,
+            weight: weightValue,
+            cargoPrice: cargoPriceValue,
             dateOfBirth,
             icNum,
             passport,
@@ -132,6 +188,7 @@ router.post('/', optionalAuth, async (req, res) => {
             patientNumber,
             appointmentDistrict,
             appointmentPlace,
+            sendOrderTo: APPOINTMENT_DISTRICT_TO_SEND_ORDER_TO[appointmentDistrict],
             payingPatient,
             ldPickupOrDelivery,
             itemContains,
@@ -141,7 +198,7 @@ router.post('/', optionalAuth, async (req, res) => {
             shipmentMethod,
             parcelTrackingNum,
             supplierName,
-            items,
+            items: itemsForStorage,
             agreedTerms,
             currentStatus: "Info Received",
             history: [{ statusHistory: "Info Received", dateUpdated: now.toISOString() }],
@@ -155,6 +212,57 @@ router.post('/', optionalAuth, async (req, res) => {
             orderId: savedOrder._id,
             status: savedOrder.currentStatus,
             totalPrice: savedOrder.totalPrice,
+        });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal server order error." });
+    }
+});
+
+// A logged-in user's own order history, newest first. Matches not just orders placed while
+// logged in (userId), but also any order — including guest orders placed before this
+// account existed, or by the external legacy system — that used the same IC/passport,
+// BruHIMs, or patient number saved on this account. A single $or query returns each
+// matching document at most once, so this can't produce duplicate rows for one order.
+router.get('/mine', requireAuth, async (req, res) => {
+    try {
+        const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
+
+        const user = await User.findById(req.userId).lean();
+        const identityValues = new Set();
+        for (const d of user?.userdetails || []) {
+            [d.icnum, d.passportnum, d.bruhimsnum, d.patientphcnum, d.patientjpmcnum]
+                .filter(Boolean)
+                .forEach((v) => identityValues.add(v));
+        }
+
+        const orConditions = [{ userId: req.userId }];
+        if (identityValues.size > 0) {
+            const values = [...identityValues];
+            orConditions.push({ icPassNum: { $in: values } });
+            orConditions.push({ bruhimsnum: { $in: values } });
+            orConditions.push({ patientNumber: { $in: values } });
+        }
+        const filter = { $or: orConditions };
+
+        const [orders, totalCount] = await Promise.all([
+            Order.find(filter).sort({ _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+            Order.countDocuments(filter),
+        ]);
+
+        res.status(200).json({
+            orders: orders.map((order) => ({
+                orderId: order._id,
+                product: order.product,
+                trackingNumber: (order.doTrackingNumber && order.doTrackingNumber !== 'N/A') ? order.doTrackingNumber : null,
+                status: order.currentStatus,
+                date: getOrderCreatedAt(order),
+                totalPrice: order.totalPrice,
+            })),
+            page,
+            totalPages: Math.max(Math.ceil(totalCount / limit), 1),
+            totalCount,
         });
     } catch (err) {
         console.error(err.message);
@@ -194,13 +302,21 @@ router.get('/track/:trackingNumber', async (req, res) => {
         if (req.params.trackingNumber.toUpperCase() === 'N/A') {
             return res.status(404).json({ error: "No order found with that tracking number." });
         }
-        const order = await Order.findOne({ doTrackingNumber: req.params.trackingNumber }).lean();
+        // CBSL customers often only have the original courier's (e.g. SPX/J&T) tracking
+        // number, not our own — so for that product, match on either.
+        const order = await Order.findOne({
+            $or: [
+                { doTrackingNumber: req.params.trackingNumber },
+                { product: 'cbsl', parcelTrackingNum: req.params.trackingNumber },
+            ],
+        }).lean();
         if (!order) {
             return res.status(404).json({ error: "No order found with that tracking number." });
         }
         res.status(200).json({
             trackingNumber: order.doTrackingNumber,
             status: order.currentStatus,
+            history: order.history || [],
             createdAt: getOrderCreatedAt(order),
             updatedAt: getOrderUpdatedAt(order),
         });

@@ -22,6 +22,23 @@ function requireAuth(req, res, next) {
     }
 }
 
+function requireAdmin(req, res, next) {
+    const token = getTokenFromHeader(req);
+    if (!token) {
+        return res.status(401).json({ error: "Authentication required." });
+    }
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ error: "Admin access required." });
+        }
+        req.userId = decoded.userId;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: "Invalid or expired session. Please log in again." });
+    }
+}
+
 function optionalAuth(req, res, next) {
     const token = getTokenFromHeader(req);
     if (token) {
@@ -35,4 +52,4 @@ function optionalAuth(req, res, next) {
     next();
 }
 
-module.exports = { requireAuth, optionalAuth };
+module.exports = { requireAuth, requireAdmin, optionalAuth };

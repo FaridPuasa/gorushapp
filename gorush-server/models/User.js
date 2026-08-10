@@ -12,6 +12,11 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    role: {
+        type: String,
+        enum: ['customer', 'admin'],
+        default: 'customer',
+    },
     addresses: [{
         houseunitno: { type: String, required: true },
         jalan: { type: String, required: true },
@@ -38,8 +43,12 @@ const UserSchema = new mongoose.Schema({
         icnum: { type: String },
         passportnum: { type: String },
         bruhimsnum: { type: String },
+        appointmentdistrict: { type: String },
         patientphcnum: { type: String },
         patientjpmcnum: { type: String },
+        // Not enum-restricted: optional at the profile level (order.js falls back to manual
+        // entry when blank), and an enum would reject the blank default.
+        payingpatient: { type: String },
         isDefault: { type: Boolean, default: true }
     }],
     Agreepolicy: {

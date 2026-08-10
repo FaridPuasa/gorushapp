@@ -45,11 +45,24 @@ const OrderSchema = new mongoose.Schema({
     senderEmail: { type: String, trim: true, lowercase: true },
     senderPhoneNumber: { type: String },
 
+    // Abbreviated to STD/EXP/IMM at insert time — jobMethod below keeps the original
+    // human-readable charge code (e.g. "Standard", "Self Collect") the client sent.
     deliveryTypeCode: { type: String },
+    jobMethod: { type: String },
     paymentMethod: { type: String, enum: ["Cash", "Bank Transfer BIBD", "Bill Payment Baiduri"] },
     remarks: { type: String },
     totalPrice: { type: String },
     dateTimeSubmission: { type: String },
+
+    // Parcel weight in kg: fixed "1" for pharmacy products and CBSL (neither collects a
+    // real weight), ldProductWeight passed through for Local Delivery.
+    weight: { type: String },
+    // CBSL only: sum of items[].totalItemPrice, formatted with currency (e.g. "RM 49.72").
+    cargoPrice: { type: String },
+
+    // "Website" (submitted via the web build) or "Phone" (native app) — reported by the
+    // client itself, since only it knows which build it's running as.
+    orderOrigin: { type: String },
 
     // MOH / JPMC / PHC
     dateOfBirth: { type: String },
@@ -60,6 +73,8 @@ const OrderSchema = new mongoose.Schema({
     patientNumber: { type: String },
     appointmentDistrict: { type: String },
     appointmentPlace: { type: String },
+    // Derived from appointmentDistrict: Brunei/Temburong -> OPD, Tutong -> PMMH, Belait -> SSBH.
+    sendOrderTo: { type: String },
     // Not enum-restricted: only relevant to MOH/JPMC/PHC, but the client always sends the
     // field (empty string for other products) — enum validation would reject that empty value.
     payingPatient: { type: String },
@@ -76,8 +91,11 @@ const OrderSchema = new mongoose.Schema({
     shipmentMethod: { type: String },
     parcelTrackingNum: { type: String },
     supplierName: { type: String },
+    // Real per-item list for CBSL; a single synthetic "Medicine" entry for pharmacy
+    // products (localdelivery has no items[] at all — it uses itemContains instead).
     items: [{
         description: { type: String },
+        weight: { type: String },
         quantity: { type: String },
         totalItemPrice: { type: String },
         screenshotInvoice: { type: String },
@@ -112,5 +130,14 @@ OrderSchema.index(
     { doTrackingNumber: 1 },
     { unique: true, partialFilterExpression: { doTrackingNumber: { $ne: 'N/A' } } }
 );
+
+// GET /api/orders/mine matches on any of these fields via $or — without indexes, that
+// forces a full scan of the entire (80,000+ document, shared with the legacy system)
+// collection for every lookup, taking tens of seconds. One index per field lets Mongo
+// resolve each $or branch with an index scan instead.
+OrderSchema.index({ userId: 1 });
+OrderSchema.index({ icPassNum: 1 });
+OrderSchema.index({ bruhimsnum: 1 });
+OrderSchema.index({ patientNumber: 1 });
 
 module.exports = mongoose.model('Order', OrderSchema);

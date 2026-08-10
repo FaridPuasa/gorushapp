@@ -7,7 +7,7 @@ const { requireAuth } = require('../middleware/auth');
 
 function signToken(user) {
     return jwt.sign(
-        { userId: user._id, email: user.email },
+        { userId: user._id, email: user.email, role: user.role },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -24,7 +24,7 @@ router.post('/register', async (req, res) => {
         } = req.body;
 
         // 1. Basic text fields checks
-        if (!email || !password || !houseunitno || !jalan || !kampong || !district || !postalcode || !phonenum || !receivername || !dateofbirth) {
+        if (!email || !password || !houseunitno || !jalan || !kampong || !district || !phonenum || !receivername || !dateofbirth) {
             return res.status(400).json({ error: "Missing required text fields." });
         }
 
@@ -77,7 +77,8 @@ router.post('/register', async (req, res) => {
             token,
             user: {
                 userId: savedUser._id,
-                email: savedUser.email
+                email: savedUser.email,
+                role: savedUser.role
             }
         });
 
@@ -110,7 +111,8 @@ router.post('/login', async (req, res) => {
             token,
             user: {
                 userId: user._id,
-                email: user.email
+                email: user.email,
+                role: user.role
             }
         });
     } catch (err) {
@@ -132,6 +134,7 @@ router.get('/me', requireAuth, async (req, res) => {
 
         res.status(200).json({
             email: user.email,
+            role: user.role,
             receivername: details ? details.receivername : '',
             phonenum: phone ? phone.phonenum : '',
             address: address ? {

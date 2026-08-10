@@ -2,6 +2,14 @@ const { getBruneiNow } = require('./bruneiTime');
 
 const DETRACK_JOBS_URL = 'https://app.detrack.com/api/v2/dn/jobs';
 
+const GROUP_NAME_MAP = {
+    localdelivery: 'LD',
+    cbsl: 'CBSL',
+    pharmacymoh: 'MOH',
+    pharmacyjpmc: 'JPMC',
+    pharmacyphc: 'PHC',
+};
+
 function todayBruneiDateString() {
     const d = getBruneiNow();
     const yyyy = d.getUTCFullYear();
@@ -10,8 +18,17 @@ function todayBruneiDateString() {
     return `${yyyy}-${mm}-${dd}`;
 }
 
-// Cross Border Service Limbang carries a real items array; the other 4 products don't,
-// so fall back to a single synthetic line so Detrack always gets at least one item.
+// Detrack's numeric fields want plain numbers, not currency-formatted strings — strips any
+// stray symbols (order.totalPrice is stored as e.g. "4.00") and rounds to 2 decimal places.
+function toNumber(value) {
+    if (value === undefined || value === null || value === '') return undefined;
+    const n = Number(String(value).replace(/[^0-9.-]/g, ''));
+    return Number.isNaN(n) ? undefined : Number(n.toFixed(2));
+}
+
+// items[] is now populated in Mongo for every product (a real list for CBSL, a fixed
+// "Medicine" entry for pharmacy products) — only Local Delivery still has none, since it
+// uses a single free-text "item contains" field instead.
 function buildItems(order) {
     if (Array.isArray(order.items) && order.items.length > 0) {
         return order.items.map((item) => ({
@@ -22,14 +39,34 @@ function buildItems(order) {
     return [{ description: order.itemContains || order.product, quantity: 1 }];
 }
 
+// CBSL's own doTrackingNumber is our internal reference; the more useful "tracking number"
+// for a CBSL job is the original courier's number the customer already has. Every other
+// product only has our own tracking number, so it's used for both fields.
+function buildTrackingNumber(order) {
+    return order.product === 'cbsl' ? order.parcelTrackingNum : order.doTrackingNumber;
+}
+
 function buildJobPayload(order) {
+    const totalPriceNumber = toNumber(order.totalPrice);
     return {
         do_number: order.doTrackingNumber,
+        tracking_number: buildTrackingNumber(order),
         date: todayBruneiDateString(),
+        group_name: GROUP_NAME_MAP[order.product],
+        job_type: order.jobMethod,
         address: order.receiverAddress,
+        postal_code: order.receiverPostalCode,
         deliver_to_collect_from: order.receiverName,
         phone_number: order.receiverPhoneNumber,
+        other_phone_numbers: order.additionalPhoneNumber || undefined,
         instructions: order.remarks || undefined,
+        remarks: order.remarks || undefined,
+        payment_mode: order.paymentMethod,
+        // Not cash -> already paid another way, so there's nothing for the driver to collect.
+        payment_amount: order.paymentMethod === 'Cash' ? totalPriceNumber : 0,
+        total_price: totalPriceNumber,
+        insurance_price: toNumber(order.cargoPrice),
+        weight: toNumber(order.weight),
         items: buildItems(order),
     };
 }
@@ -46,21 +83,22 @@ async function createDetrackJob(order) {
     }
 
     try {
+        // Confirmed against the live account: the job fields must be wrapped in a
+        // top-level "data" key, or Detrack rejects the request with 422 "Data is missing".
         const response = await fetch(DETRACK_JOBS_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-KEY': apiKey,
             },
-            body: JSON.stringify(payload),
+            body: JSON.stringify({ data: payload }),
         });
         const body = await response.json().catch(() => null);
         if (!response.ok) {
             return { ok: false, error: `Detrack responded ${response.status}: ${JSON.stringify(body)}` };
         }
-        // Response envelope unconfirmed against the live account — fall back through the
-        // shapes Detrack's API is known to use (top-level or nested under `data`).
-        const id = body?.id || body?.data?.id || body?.data?.[0]?.id || null;
+        // Confirmed response shape: { data: { id, detrack_number, ... } }.
+        const id = body?.data?.id || null;
         return { ok: true, id };
     } catch (err) {
         return { ok: false, error: err.message };

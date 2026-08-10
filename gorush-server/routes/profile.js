@@ -91,7 +91,7 @@ function validateDetailsFields({ receivername, dateofbirth, icnum, passportnum, 
 
 router.post('/userdetails', async (req, res) => {
     try {
-        const { receivername, dateofbirth, icnum, passportnum, bruhimsnum, patientphcnum, patientjpmcnum } = req.body;
+        const { receivername, dateofbirth, icnum, passportnum, bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, payingpatient } = req.body;
         const validationError = validateDetailsFields(req.body);
         if (validationError) return res.status(400).json({ error: validationError });
 
@@ -101,7 +101,7 @@ router.post('/userdetails', async (req, res) => {
         user.userdetails.push({
             receivername, dateofbirth,
             icnum: icnum || undefined, passportnum: passportnum || undefined,
-            bruhimsnum, patientphcnum, patientjpmcnum,
+            bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, payingpatient,
             isDefault: false,
         });
         await user.save();
@@ -114,7 +114,7 @@ router.post('/userdetails', async (req, res) => {
 
 router.put('/userdetails/:id', async (req, res) => {
     try {
-        const { receivername, dateofbirth, icnum, passportnum, bruhimsnum, patientphcnum, patientjpmcnum } = req.body;
+        const { receivername, dateofbirth, icnum, passportnum, bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, payingpatient } = req.body;
         const validationError = validateDetailsFields(req.body);
         if (validationError) return res.status(400).json({ error: validationError });
 
@@ -129,8 +129,10 @@ router.put('/userdetails/:id', async (req, res) => {
         details.icnum = icnum || undefined;
         details.passportnum = passportnum || undefined;
         details.bruhimsnum = bruhimsnum;
+        details.appointmentdistrict = appointmentdistrict;
         details.patientphcnum = patientphcnum;
         details.patientjpmcnum = patientjpmcnum;
+        details.payingpatient = payingpatient;
 
         await user.save();
         res.status(200).json({ message: "Personal details updated.", userdetails: user.userdetails });
@@ -204,7 +206,7 @@ router.put('/password', async (req, res) => {
 router.post('/addresses', async (req, res) => {
     try {
         const { houseunitno, jalan, kampong, simpang, district, postalcode } = req.body;
-        if (!houseunitno || !jalan || !kampong || !district || !postalcode) {
+        if (!houseunitno || !jalan || !kampong || !district) {
             return res.status(400).json({ error: "Missing required address fields." });
         }
 
@@ -223,7 +225,7 @@ router.post('/addresses', async (req, res) => {
 router.put('/addresses/:id', async (req, res) => {
     try {
         const { houseunitno, jalan, kampong, simpang, district, postalcode } = req.body;
-        if (!houseunitno || !jalan || !kampong || !district || !postalcode) {
+        if (!houseunitno || !jalan || !kampong || !district) {
             return res.status(400).json({ error: "Missing required address fields." });
         }
 
