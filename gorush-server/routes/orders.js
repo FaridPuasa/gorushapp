@@ -8,9 +8,23 @@ const PublicHoliday = require('../models/PublicHoliday');
 const { optionalAuth, requireAuth } = require('../middleware/auth');
 const { computeTotalPrice } = require('../lib/pricing');
 const { isChargeCurrentlyAvailable } = require('../lib/availability');
-const { getOrderCreatedAt, getOrderUpdatedAt } = require('../lib/orderDates');
+const { getOrderCreatedAt, getOrderUpdatedAt, getOrderDeliveryDate } = require('../lib/orderDates');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
+
+// Allow-list for the /mine status filter — the 6 values in the Order schema's own enum,
+// plus 3 more that real shared-collection orders can carry even though they're outside
+// that enum (enum validation only applies to documents Mongoose itself inserts, not ones
+// the external legacy system writes directly) — mirrors the client's own STATUS_ORDER in
+// gorush-client/lib/trackingHistory.js.
+const STATUS_FILTER_VALUES = [
+    'Info Received', 'Custom Clearance', 'On Hold', 'At Warehouse',
+    'Out For Delivery', 'Return to Warehouse', 'Completed', 'Failed',
+];
+
+function escapeRegex(value) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
 const PHARMACY_PRODUCTS = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc'];
 const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 
@@ -244,7 +258,22 @@ router.get('/mine', requireAuth, async (req, res) => {
             orConditions.push({ bruhimsnum: { $in: values } });
             orConditions.push({ patientNumber: { $in: values } });
         }
-        const filter = { $or: orConditions };
+        const identityFilter = { $or: orConditions };
+
+        // Optional filters, AND-combined with the identity match above — a user can only
+        // ever search/filter within their own orders, never anyone else's.
+        const andConditions = [identityFilter];
+        if (req.query.product && PRODUCT_CODES.includes(req.query.product)) {
+            andConditions.push({ product: req.query.product });
+        }
+        if (req.query.status && STATUS_FILTER_VALUES.includes(req.query.status)) {
+            andConditions.push({ currentStatus: req.query.status });
+        }
+        const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
+        if (search) {
+            andConditions.push({ doTrackingNumber: { $regex: escapeRegex(search), $options: 'i' } });
+        }
+        const filter = andConditions.length > 1 ? { $and: andConditions } : identityFilter;
 
         const [orders, totalCount] = await Promise.all([
             Order.find(filter).sort({ _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
@@ -258,6 +287,9 @@ router.get('/mine', requireAuth, async (req, res) => {
                 trackingNumber: (order.doTrackingNumber && order.doTrackingNumber !== 'N/A') ? order.doTrackingNumber : null,
                 status: order.currentStatus,
                 date: getOrderCreatedAt(order),
+                deliveryDate: getOrderDeliveryDate(order),
+                jobMethod: order.jobMethod || null,
+                paymentMethod: order.paymentMethod || null,
                 totalPrice: order.totalPrice,
             })),
             page,

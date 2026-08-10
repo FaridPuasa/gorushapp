@@ -60,4 +60,19 @@ function getOrderUpdatedAt(doc) {
     return parseFlexibleDate(doc.lastUpdateDateTime) || doc.updatedAt || null;
 }
 
-module.exports = { parseFlexibleDate, getOrderCreatedAt, getOrderUpdatedAt };
+// There's no dedicated "delivery date" field anywhere in the schema or the external
+// system's own data — the closest real signal is the history entry marking the order
+// "Completed". Picks the latest such entry (parsed the same flexible way as every other
+// order date) in case of a duplicate/re-synced completion entry; returns null while the
+// order hasn't been completed yet.
+function getOrderDeliveryDate(doc) {
+    const history = Array.isArray(doc.history) ? doc.history : [];
+    const completedDates = history
+        .filter((h) => (h.statusHistory || '').toLowerCase() === 'completed')
+        .map((h) => parseFlexibleDate(h.dateUpdated))
+        .filter(Boolean)
+        .sort((a, b) => b - a);
+    return completedDates[0] || null;
+}
+
+module.exports = { parseFlexibleDate, getOrderCreatedAt, getOrderUpdatedAt, getOrderDeliveryDate };
