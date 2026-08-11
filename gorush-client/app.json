@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "gorush-client",
+    "slug": "gorush-client",
+    "version": "1.0.0",
+    "scheme": "gorushapp",
+    "orientation": "portrait",
+    "icon": "./assets/smallgorushlogo.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/smallgorushlogo.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/smallgorushlogo.png",
+        "backgroundColor": "#ffffff"
+      },
+      "edgeToEdgeEnabled": true
+    },
+    "web": {
+      "favicon": "./assets/smallgorushlogo.png"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "extra": {
+      "apiBaseUrl": "http://192.168.10.35:5000"
+    }
+  }
+}
