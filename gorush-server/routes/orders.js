@@ -13,6 +13,7 @@ const { isPostgresOrderIntakeEnabled } = require('../lib/supabaseFlag');
 const postgresOrders = require('../lib/postgresOrders');
 const { generateTrackingNumber } = require('../lib/trackingNumber');
 const { createDetrackJob } = require('../lib/detrack');
+const { parseGorushDateOnly } = require('../lib/dateHelpers');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
@@ -77,9 +78,18 @@ router.post('/', optionalAuth, async (req, res) => {
             dateOfBirth, icNum, passport, bruhimsnum, patientNumber,
             appointmentDistrict, appointmentPlace, payingPatient,
             ldPickupOrDelivery, itemContains, ldProductType, ldProductWeight, billTo,
+            pickupDate, pickupAddress,
             shipmentMethod, parcelTrackingNum, supplierName, items,
             agreedTerms, captchaToken, captchaAnswer, orderOrigin,
         } = req.body;
+
+        // Pharmacy products and CBSL don't collect a real parcel weight — fixed at 1kg;
+        // Local Delivery is the only product where the customer actually supplies one.
+        // Computed early so both validation and pricing below use this single source -
+        // ldProductWeight is only ever read here, never stored as its own field (it and
+        // weight were always the same value for Local Delivery, so there's no reason to
+        // persist both).
+        const weightValue = product === 'localdelivery' ? ldProductWeight : '1';
 
         if (!product || !PRODUCT_CODES.includes(product)) {
             return res.status(400).json({ error: "A valid product is required." });
@@ -124,8 +134,11 @@ router.post('/', optionalAuth, async (req, res) => {
             if (!senderName || !senderAddressDetail?.district) {
                 return res.status(400).json({ error: "Sender details are required for Local Delivery." });
             }
-            if (!ldPickupOrDelivery || !itemContains || !ldProductType || !ldProductWeight || !billTo) {
+            if (!ldPickupOrDelivery || !itemContains || !ldProductType || !weightValue || !billTo) {
                 return res.status(400).json({ error: "All Local Delivery fields are required." });
+            }
+            if (ldPickupOrDelivery === 'Pickup & Delivery' && (!pickupDate || !pickupAddress)) {
+                return res.status(400).json({ error: "Pickup date and address are required for Pickup & Delivery." });
             }
         }
         if (product === 'cbsl') {
@@ -143,7 +156,7 @@ router.post('/', optionalAuth, async (req, res) => {
         }
 
         const pricingDistrict = product === 'localdelivery' ? senderAddressDetail?.district : address.district;
-        const totalPriceValue = cbslSelfCollect ? 0 : await computeTotalPrice(product, pricingDistrict, deliveryTypeCode, ldProductWeight);
+        const totalPriceValue = cbslSelfCollect ? 0 : await computeTotalPrice(product, pricingDistrict, deliveryTypeCode, weightValue);
         if (totalPriceValue == null) {
             return res.status(400).json({ error: "Selected charges are not valid for this district." });
         }
@@ -155,15 +168,21 @@ router.post('/', optionalAuth, async (req, res) => {
 
         const now = new Date();
 
-        // Pharmacy products and CBSL don't collect a real parcel weight — fixed at 1kg;
-        // Local Delivery is the only product where the customer actually supplies one.
-        const weightValue = product === 'localdelivery' ? ldProductWeight : '1';
-
-        // Pharmacy products don't collect an items list either — give them one real entry
-        // so items[] is always populated the same way CBSL's is.
-        const itemsForStorage = PHARMACY_PRODUCTS.includes(product)
-            ? [{ description: 'Medicine', weight: '1', quantity: '1' }]
-            : items;
+        // Pharmacy and Local Delivery don't collect a real multi-item list the way CBSL
+        // does - both get one synthesized entry so items[] is always populated the same
+        // way across all 5 products. Local Delivery's is built from itemContains/weight
+        // rather than fixed literals, since those are what the customer actually supplied.
+        // ldProductType has no slot in the items[] sub-schema, so it stays a separate
+        // top-level field - deliberately single-entry for now, but this shape is what a
+        // future multi-item Local Delivery UI (mirroring CBSL's) would already expect.
+        let itemsForStorage;
+        if (PHARMACY_PRODUCTS.includes(product)) {
+            itemsForStorage = [{ description: 'Medicine', weight: '1', quantity: '1' }];
+        } else if (product === 'localdelivery') {
+            itemsForStorage = [{ description: itemContains, weight: weightValue, quantity: '1' }];
+        } else {
+            itemsForStorage = items;
+        }
 
         // CBSL only: total value of all items, for insurance/COD purposes — currency-prefixed
         // to match the convention the client already displays this same sum with.
@@ -196,12 +215,21 @@ router.post('/', optionalAuth, async (req, res) => {
             jobMethod: cbslSelfCollect ? 'Self Collect' : deliveryTypeCode,
             paymentMethod,
             remarks,
-            totalPrice: totalPriceValue.toFixed(2),
-            dateTimeSubmission: now.toISOString(),
+            // Real number, not a currency-formatted string - cargoPrice below is the one
+            // deliberate exception, since it's the only price the client itself already
+            // displays with a currency prefix.
+            totalPrice: totalPriceValue,
+            // Real Date, not an ISO string - stores the same instant either way, just as
+            // an actual BSON Date so it sorts/queries correctly.
+            dateTimeSubmission: now,
             orderOrigin,
             weight: weightValue,
             cargoPrice: cargoPriceValue,
-            dateOfBirth,
+            // Parsed once, here, at the write boundary - a UTC calendar date built
+            // directly from the DD.MM.YYYY components, no timezone conversion. Same
+            // parser already used (and reviewed) for the dormant Postgres path, so both
+            // paths agree on the exact same value.
+            dateOfBirth: parseGorushDateOnly(dateOfBirth),
             icNum,
             passport,
             icPassNum: icNum || passport,
@@ -214,7 +242,8 @@ router.post('/', optionalAuth, async (req, res) => {
             ldPickupOrDelivery,
             itemContains,
             ldProductType,
-            ldProductWeight,
+            pickupDate: ldPickupOrDelivery === 'Pickup & Delivery' ? parseGorushDateOnly(pickupDate) : undefined,
+            pickupAddress: ldPickupOrDelivery === 'Pickup & Delivery' ? pickupAddress : undefined,
             billTo,
             shipmentMethod,
             parcelTrackingNum,
@@ -229,7 +258,7 @@ router.post('/', optionalAuth, async (req, res) => {
             const row = postgresOrders.buildPostgresOrderRow(orderData, { trackingNumber, sequence });
             const pgOrder = await postgresOrders.insertOrder(row, {
                 statusHistory: "Info Received",
-                dateUpdated: now.toISOString(),
+                dateUpdated: now,
             });
             const legacyShaped = postgresOrders.toLegacyShape(pgOrder);
 
@@ -255,7 +284,7 @@ router.post('/', optionalAuth, async (req, res) => {
 
         const newOrder = new Order({
             ...orderData,
-            history: [{ statusHistory: "Info Received", dateUpdated: now.toISOString() }],
+            history: [{ statusHistory: "Info Received", dateUpdated: now }],
         });
 
         // doTrackingNumber is intentionally left unset here — an external service watches

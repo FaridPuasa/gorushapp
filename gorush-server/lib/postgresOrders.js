@@ -4,7 +4,7 @@
 // is true - see routes/orders.js for the branch points.
 const prisma = require('./prismaClient');
 const { toNumber } = require('./detrack');
-const { parseGorushDateOfBirth, parseGorushIso } = require('./dateHelpers');
+const { parseGorushIso } = require('./dateHelpers');
 
 // Maps the exact object shape routes/orders.js already builds for the Mongo
 // path (the argument passed to `new Order({...})`) into a Prisma Order
@@ -38,7 +38,9 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         jobMethod: orderData.jobMethod ?? null,
         paymentMethod: orderData.paymentMethod ?? null,
         remarks: orderData.remarks ?? null,
-        totalPrice: orderData.totalPrice != null ? Number(orderData.totalPrice) : null,
+        // orderData.totalPrice is already a real number (routes/orders.js no longer
+        // stringifies it) - passed through as-is.
+        totalPrice: orderData.totalPrice ?? null,
         dateTimeSubmission: parseGorushIso(orderData.dateTimeSubmission),
         // creationDate and lastUpdateDateTime both mirror dateTimeSubmission -
         // same instant, since the order was just created - so gorush-created
@@ -54,7 +56,10 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         // the same way Mongo's untyped String columns silently accept it.
         parcelWeight: toNumber(orderData.weight) ?? null,
         cargoPrice: toNumber(orderData.cargoPrice) ?? null,
-        dateOfBirth: parseGorushDateOfBirth(orderData.dateOfBirth),
+        // orderData.dateOfBirth is already a parsed Date (routes/orders.js parses it
+        // once, at the Mongo-write boundary via parseGorushDateOnly()) - passed
+        // through as-is, not re-parsed.
+        dateOfBirth: orderData.dateOfBirth ?? null,
         icNum: orderData.icNum ?? null,
         passport: orderData.passport ?? null,
         icPassNum: orderData.icPassNum ?? null,
@@ -67,7 +72,10 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         ldPickupOrDelivery: orderData.ldPickupOrDelivery ?? null,
         itemContains: orderData.itemContains ?? null,
         ldProductType: orderData.ldProductType ?? null,
-        ldProductWeight: toNumber(orderData.ldProductWeight) ?? null,
+        // Already a parsed Date (routes/orders.js, via parseGorushDateOnly()) - passed
+        // through as-is, same treatment as dateOfBirth above.
+        pickupDate: orderData.pickupDate ?? null,
+        pickupAddress: orderData.pickupAddress ?? null,
         billTo: orderData.billTo ?? null,
         shipmentMethod: orderData.shipmentMethod ?? null,
         parcelTrackingNum: orderData.parcelTrackingNum ?? null,
@@ -154,7 +162,8 @@ function toLegacyShape(pgOrder) {
         ldPickupOrDelivery: pgOrder.ldPickupOrDelivery,
         itemContains: pgOrder.itemContains,
         ldProductType: pgOrder.ldProductType,
-        ldProductWeight: pgOrder.ldProductWeight != null ? pgOrder.ldProductWeight.toString() : null,
+        pickupDate: pgOrder.pickupDate ? pgOrder.pickupDate.toISOString().slice(0, 10) : null,
+        pickupAddress: pgOrder.pickupAddress,
         billTo: pgOrder.billTo,
         shipmentMethod: pgOrder.shipmentMethod,
         parcelTrackingNum: pgOrder.parcelTrackingNum,

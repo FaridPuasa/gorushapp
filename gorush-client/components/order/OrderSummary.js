@@ -70,6 +70,12 @@ export default function OrderSummary({ form }) {
         <>
           <Card icon="📦" title={t('order.localDeliveryDetails')}>
             <Row label={t('order.summary.pickupOrDelivery')} value={form.ldPickupOrDelivery} />
+            {form.ldPickupOrDelivery === 'Pickup & Delivery' && (
+              <>
+                <Row label={t('order.summary.pickupDate')} value={form.pickupDate} />
+                <Row label={t('order.summary.pickupAddress')} value={form.pickupAddress} />
+              </>
+            )}
             <Row label={t('order.summary.productDescription')} value={form.itemContains} />
             <Row label={t('order.summary.productType')} value={form.ldProductType} />
             <Row label={t('order.summary.productWeight')} value={form.ldProductWeight} />

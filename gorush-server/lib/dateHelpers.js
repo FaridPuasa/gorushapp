@@ -3,16 +3,17 @@
 // parseDateOfBirth(), those are shaped for its legacy Mongo strings, which
 // use different separators/timezone assumptions than this app's own fields.
 
-// gorush-client always sends dateOfBirth as zero-padded, dot-separated
-// DD.MM.YYYY (confirmed: components/order/IdentityFields.js, both the native
-// picker and web <input type="date"> paths - e.g. "28.06.1948"). dateOfBirth
-// maps to a @db.Date column (no time-of-day) - construct the UTC calendar
-// date directly from the Y/M/D components, with no timezone conversion at
-// all. (grfmxstatusupdate hit a real bug doing this via a timezone-aware
-// parser for its own dateOfBirth field - a midnight-local instant shifts to
-// the previous day once only the date part survives into a @db.Date column.
-// Building the UTC date directly here avoids that class of bug entirely.)
-function parseGorushDateOfBirth(value) {
+// gorush-client's date-only picker (components/order/IdentityFields.js's pattern,
+// reused for both dateOfBirth and Local Delivery's pickupDate) always sends
+// zero-padded, dot-separated DD.MM.YYYY - both the native picker and web
+// <input type="date"> paths - e.g. "28.06.1948". These map to date-only
+// columns (no time-of-day) - construct the UTC calendar date directly from
+// the Y/M/D components, with no timezone conversion at all. (grfmxstatusupdate
+// hit a real bug doing this via a timezone-aware parser for its own
+// dateOfBirth field - a midnight-local instant shifts to the previous day
+// once only the date part survives into a @db.Date column. Building the UTC
+// date directly here avoids that class of bug entirely.)
+function parseGorushDateOnly(value) {
     if (value === null || value === undefined || value === '') return null;
     const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(value).trim());
     if (!m) return null;
@@ -34,4 +35,4 @@ function parseGorushIso(value) {
     return Number.isNaN(d.getTime()) ? null : d;
 }
 
-module.exports = { parseGorushDateOfBirth, parseGorushIso };
+module.exports = { parseGorushDateOnly, parseGorushIso };

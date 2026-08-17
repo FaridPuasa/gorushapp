@@ -66,16 +66,13 @@ model Order {
   parcelHeight            Decimal?  @map("parcel_height") @db.Decimal(10, 2)
   parcelLength            Decimal?  @map("parcel_length") @db.Decimal(10, 2)
   parcelWeight            Decimal?  @map("parcel_weight") @db.Decimal(10, 2)
-  qbExpiryDate            DateTime? @map("qb_expiry_date")
   supplierName            String?   @map("supplier_name")
   trackingLink            String?   @map("tracking_link")
   payingPatient           String?   @map("paying_patient")
   paymentAmount           Decimal?  @map("payment_amount") @db.Decimal(12, 2)
   pickupAddress           String?   @map("pickup_address")
-  qbServiceDate           DateTime? @map("qb_service_date")
   receiverEmail           String?   @map("receiver_email")
   senderAddress           String?   @map("sender_address")
-  qbCreationDate          DateTime? @map("qb_creation_date")
   shipmentMethod          String?   @map("shipment_method")
   ldProductWeight         Decimal?  @map("ld_product_weight") @db.Decimal(10, 2)
   parcelTrackingNum       String?   @map("parcel_tracking_num")
@@ -119,6 +116,15 @@ model Order {
   senderPostalCode        String?   @map("sender_postal_code")
   gorushUserId            String?   @map("gorush_user_id")
   detrackJobId            String?   @map("detrack_job_id")
+
+  // Not populated by gorush-server - mirrored here only to keep this file's shape
+  // in sync with grfmxstatusupdate's own Order model (that schema is the source
+  // of truth; see the header comment).
+  detrackCompletedTime    String?   @map("detrack_completed_time")
+  gdexPodConfirmedAt      String?   @map("gdex_pod_confirmed_at")
+  queueStatus             String?   @map("queue_status")
+  queueScheduledTime      String?   @map("queue_scheduled_time")
+  queueNote               String?   @map("queue_note")
 
   podImage1Path           String?   @map("pod_image_1_path")
   podImage2Path           String?   @map("pod_image_2_path")

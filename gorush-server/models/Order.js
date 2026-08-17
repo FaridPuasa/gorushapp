@@ -51,11 +51,16 @@ const OrderSchema = new mongoose.Schema({
     jobMethod: { type: String },
     paymentMethod: { type: String, enum: ["Cash", "Bank Transfer BIBD", "Bill Payment Baiduri"] },
     remarks: { type: String },
-    totalPrice: { type: String },
-    dateTimeSubmission: { type: String },
+    // Real number, not a currency-formatted string - cargoPrice below is the one
+    // deliberate exception (it's the only price the client already displays with a
+    // currency prefix).
+    totalPrice: { type: Number },
+    // Real Date, not an ISO string, so it sorts/queries correctly.
+    dateTimeSubmission: { type: Date },
 
-    // Parcel weight in kg: fixed "1" for pharmacy products and CBSL (neither collects a
-    // real weight), ldProductWeight passed through for Local Delivery.
+    // Parcel weight in kg, for all 5 products: fixed "1" for pharmacy/cbsl, the
+    // customer-supplied value for Local Delivery. (Previously duplicated into a
+    // separate ldProductWeight field - dropped, this is the single source now.)
     weight: { type: String },
     // CBSL only: sum of items[].totalItemPrice, formatted with currency (e.g. "RM 49.72").
     cargoPrice: { type: String },
@@ -64,8 +69,9 @@ const OrderSchema = new mongoose.Schema({
     // client itself, since only it knows which build it's running as.
     orderOrigin: { type: String },
 
-    // MOH / JPMC / PHC
-    dateOfBirth: { type: String },
+    // MOH / JPMC / PHC - parsed at write time (parseGorushDateOfBirth) into a real
+    // calendar date, no timezone conversion.
+    dateOfBirth: { type: Date },
     icNum: { type: String },
     passport: { type: String },
     icPassNum: { type: String },
@@ -81,9 +87,14 @@ const OrderSchema = new mongoose.Schema({
 
     // Local Delivery
     ldPickupOrDelivery: { type: String },
+    // Also carried into items[] as description/weight below (single-entry for now,
+    // shaped to already fit a future multi-item Local Delivery UI, mirroring CBSL's).
     itemContains: { type: String },
+    // No slot in the items[] sub-schema for this - stays a separate field.
     ldProductType: { type: String },
-    ldProductWeight: { type: String },
+    // Only collected/required when ldPickupOrDelivery === 'Pickup & Delivery'.
+    pickupDate: { type: Date },
+    pickupAddress: { type: String },
     // Not enum-restricted: only relevant to Local Delivery, same empty-string reasoning as above.
     billTo: { type: String },
 
@@ -91,8 +102,9 @@ const OrderSchema = new mongoose.Schema({
     shipmentMethod: { type: String },
     parcelTrackingNum: { type: String },
     supplierName: { type: String },
-    // Real per-item list for CBSL; a single synthetic "Medicine" entry for pharmacy
-    // products (localdelivery has no items[] at all — it uses itemContains instead).
+    // Real per-item list for CBSL; a single synthetic entry for pharmacy products
+    // ("Medicine") and Local Delivery (from itemContains/weight) - same shape across
+    // all 5 products, always at least one entry.
     items: [{
         description: { type: String },
         weight: { type: String },
@@ -117,7 +129,7 @@ const OrderSchema = new mongoose.Schema({
     },
     history: [{
         statusHistory: { type: String },
-        dateUpdated: { type: String },
+        dateUpdated: { type: Date },
     }],
 
     createdAt: { type: Date, default: Date.now },
