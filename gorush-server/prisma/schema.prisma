@@ -1,0 +1,167 @@
+// Order/OrderHistory model shape for this shared gr_dms.orders / gr_dms.order_history
+// table is OWNED by grfmxstatusupdate's prisma/schema.prisma — that file is the source
+// of truth. This is a read/write CLIENT ONLY; NEVER run `prisma migrate dev/deploy`
+// from this repo against these tables. Keep this file manually in sync whenever
+// grfmxstatusupdate's schema.prisma changes shape for Order/OrderHistory.
+//
+// Only used for `npx prisma generate` here — schema changes belong in
+// grfmxstatusupdate/prisma/schema.prisma, migrated from there, then mirrored here.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL") // pooled (Supavisor, transaction mode) — used by the app
+  directUrl = env("DIRECT_URL")   // unpooled — used only if `prisma db pull` is ever run here
+  schemas   = ["gr_dms"]
+}
+
+model Order {
+  id       BigInt  @id @default(autoincrement())
+  mongoId  String? @unique @map("mongo_id")
+
+  product                 String?
+  doTrackingNumber        String?   @map("do_tracking_number")
+  jobDate                 DateTime? @map("job_date")
+  receiverName            String?   @map("receiver_name")
+  receiverAddress         String?   @map("receiver_address")
+  area                    String?
+  patientNumber           String?   @map("patient_number")
+  icPassNum               String?   @map("ic_pass_num")
+  appointmentPlace        String?   @map("appointment_place")
+  receiverPhoneNumber     String?   @map("receiver_phone_number")
+  additionalPhoneNumber   String?   @map("additional_phone_number")
+  deliveryTypeCode        String?   @map("delivery_type_code")
+  remarks                 String?
+  paymentMethod           String?   @map("payment_method")
+  dateTimeSubmission      DateTime? @map("date_time_submission")
+  membership              String?
+  icNum                   String?   @map("ic_num")
+  items                   Json?
+  ldCOD                   String?   @map("ld_cod")
+  billTo                  String?   @map("bill_to")
+  currency                String?
+  passport                String?
+  sequence                String?
+  buyerName               String?   @map("buyer_name")
+  startDate               DateTime? @map("start_date")
+  addressLat              Decimal?  @map("address_lat") @db.Decimal(10, 7)
+  cargoPrice              Decimal?  @map("cargo_price") @db.Decimal(12, 2)
+  pickupDate              DateTime? @map("pickup_date")
+  senderName              String?   @map("sender_name")
+  totalPrice              Decimal?  @map("total_price") @db.Decimal(12, 2)
+  addressLong             Decimal?  @map("address_long") @db.Decimal(10, 7)
+  cubicMeters             Decimal?  @map("cubic_meters") @db.Decimal(10, 4)
+  dateOfBirth             DateTime? @map("date_of_birth") @db.Date
+  ldProductType           String?   @map("ld_product_type")
+  ldCODAmount             Decimal?  @map("ld_cod_amount") @db.Decimal(12, 2)
+  parcelWidth             Decimal?  @map("parcel_width") @db.Decimal(10, 2)
+  senderEmail             String?   @map("sender_email")
+  creationDate            DateTime? @map("creation_date")
+  jobType                 String?   @map("job_type")
+  instructions            String?
+  itemContains            String?   @map("item_contains")
+  parcelHeight            Decimal?  @map("parcel_height") @db.Decimal(10, 2)
+  parcelLength            Decimal?  @map("parcel_length") @db.Decimal(10, 2)
+  parcelWeight            Decimal?  @map("parcel_weight") @db.Decimal(10, 2)
+  qbExpiryDate            DateTime? @map("qb_expiry_date")
+  supplierName            String?   @map("supplier_name")
+  trackingLink            String?   @map("tracking_link")
+  payingPatient           String?   @map("paying_patient")
+  paymentAmount           Decimal?  @map("payment_amount") @db.Decimal(12, 2)
+  pickupAddress           String?   @map("pickup_address")
+  qbServiceDate           DateTime? @map("qb_service_date")
+  receiverEmail           String?   @map("receiver_email")
+  senderAddress           String?   @map("sender_address")
+  qbCreationDate          DateTime? @map("qb_creation_date")
+  shipmentMethod          String?   @map("shipment_method")
+  ldProductWeight         Decimal?  @map("ld_product_weight") @db.Decimal(10, 2)
+  parcelTrackingNum       String?   @map("parcel_tracking_num")
+  permitApplication       String?   @map("permit_application")
+  senderPhoneNumber       String?   @map("sender_phone_number")
+  ldPickupOrDelivery      String?   @map("ld_pickup_or_delivery")
+  warehouseReference      String?   @map("warehouse_reference")
+  appointmentDistrict     String?   @map("appointment_district")
+  goRushReceivingCountry  String?   @map("gorush_receiving_country")
+  subscription            String?
+  loyaltyPoints           Int?      @map("loyalty_points")
+  pharmacyFormCreated     Boolean?  @map("pharmacy_form_created")
+  sendOrderTo             String?   @map("send_order_to")
+  itemCommodityType       String?   @map("item_commodity_type")
+  screenshotInvoice       String?   @map("screenshot_invoice")
+  currentStatus           String?   @map("current_status")
+  lastUpdateDateTime      DateTime? @map("last_update_date_time")
+  warehouseEntry          String?   @map("warehouse_entry")
+  warehouseEntryDateTime  DateTime? @map("warehouse_entry_date_time")
+  queuedWarehouse         String?   @map("queued_warehouse")
+  assignedTo              String?   @map("assigned_to")
+  attempt                 Int?
+  flightDate              DateTime? @map("flight_date")
+  mawbNo                  String?   @map("mawb_no")
+  fmxMilestoneStatus      String?   @map("fmx_milestone_status")
+  fmxMilestoneStatusCode  String?   @map("fmx_milestone_status_code")
+  latestReason            String?   @map("latest_reason")
+  latestLocation          String?   @map("latest_location")
+  lastUpdatedBy           String?   @map("last_updated_by")
+  lastAssignedTo          String?   @map("last_assigned_to")
+  receiverPostalCode      String?   @map("receiver_postal_code")
+  jobMethod               String?   @map("job_method")
+  room                    String?
+  rackRowNum              String?   @map("rack_row_num")
+  fridge                  String?
+  grRemark                String?   @map("gr_remark")
+  jpmcRemark              String?   @map("jpmc_remark")
+
+  // Columns this app (gorush-server) actually populates on insert.
+  bruhimsnum              String?   @map("bruhimsnum")
+  senderPostalCode        String?   @map("sender_postal_code")
+  gorushUserId            String?   @map("gorush_user_id")
+  detrackJobId            String?   @map("detrack_job_id")
+
+  podImage1Path           String?   @map("pod_image_1_path")
+  podImage2Path           String?   @map("pod_image_2_path")
+  podImage3Path           String?   @map("pod_image_3_path")
+  podUpdated              DateTime? @map("pod_updated")
+  podSource               String?   @map("pod_source")
+
+  history OrderHistory[]
+
+  @@index([parcelTrackingNum])
+  @@index([mawbNo])
+  @@index([receiverPostalCode])
+  @@index([icPassNum])
+  @@index([patientNumber])
+  @@index([bruhimsnum])
+  @@index([gorushUserId])
+  @@index([jobMethod])
+  @@index([product])
+  @@index([assignedTo])
+  @@index([area])
+  @@index([currentStatus])
+  @@index([latestReason])
+  @@index([paymentMethod])
+  @@index([latestLocation])
+  @@index([jobDate])
+  @@index([creationDate])
+  @@index([product, lastUpdateDateTime])
+  @@map("orders")
+  @@schema("gr_dms")
+}
+
+model OrderHistory {
+  id             BigInt    @id @default(autoincrement())
+  orderId        BigInt    @map("order_id")
+  order          Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  statusHistory  String?   @map("status_history")
+  dateUpdated    DateTime? @map("date_updated")
+  updatedBy      String?   @map("updated_by")
+  lastAssignedTo String?   @map("last_assigned_to")
+  reason         String?
+  lastLocation   String?   @map("last_location")
+
+  @@index([statusHistory, dateUpdated])
+  @@map("order_history")
+  @@schema("gr_dms")
+}

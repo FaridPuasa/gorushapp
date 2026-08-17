@@ -74,15 +74,19 @@ function buildJobPayload(order) {
 // Reads uncontrolled downstream state (an external system's Mongo document) and talks to
 // a third-party API — never throw here; the watcher decides what to do with a failure.
 async function createDetrackJob(order) {
-    const payload = buildJobPayload(order);
-    const apiKey = process.env.DETRACK_API_KEY;
-
-    if (!apiKey) {
-        console.log(`[detrack] DRY RUN — would create job for ${order.doTrackingNumber}:`, JSON.stringify(payload));
-        return { ok: true, id: 'dry-run' };
-    }
-
+    // buildJobPayload() must live inside this try too - it reads uncontrolled
+    // downstream data (e.g. order.items could contain a malformed entry) and
+    // a throw here must degrade to a normal { ok: false } result like any
+    // other failure, not bypass this function's own "never throw" contract.
     try {
+        const payload = buildJobPayload(order);
+        const apiKey = process.env.DETRACK_API_KEY;
+
+        if (!apiKey) {
+            console.log(`[detrack] DRY RUN — would create job for ${order.doTrackingNumber}:`, JSON.stringify(payload));
+            return { ok: true, id: 'dry-run' };
+        }
+
         // Confirmed against the live account: the job fields must be wrapped in a
         // top-level "data" key, or Detrack rejects the request with 422 "Data is missing".
         const response = await fetch(DETRACK_JOBS_URL, {
@@ -105,4 +109,4 @@ async function createDetrackJob(order) {
     }
 }
 
-module.exports = { createDetrackJob, buildJobPayload };
+module.exports = { createDetrackJob, buildJobPayload, toNumber };

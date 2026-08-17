@@ -9,6 +9,10 @@ const { optionalAuth, requireAuth } = require('../middleware/auth');
 const { computeTotalPrice } = require('../lib/pricing');
 const { isChargeCurrentlyAvailable } = require('../lib/availability');
 const { getOrderCreatedAt, getOrderUpdatedAt, getOrderDeliveryDate } = require('../lib/orderDates');
+const { isPostgresOrderIntakeEnabled } = require('../lib/supabaseFlag');
+const postgresOrders = require('../lib/postgresOrders');
+const { generateTrackingNumber } = require('../lib/trackingNumber');
+const { createDetrackJob } = require('../lib/detrack');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
@@ -167,7 +171,10 @@ router.post('/', optionalAuth, async (req, res) => {
             ? `RM ${items.reduce((sum, it) => sum + (Number(it.totalItemPrice) || 0), 0).toFixed(2)}`
             : undefined;
 
-        const newOrder = new Order({
+        // Shared shape between both DB paths - pulled out so the Postgres path
+        // (below) can reuse all this same business logic (pricing, delivery-type-
+        // code mapping, sendOrderTo derivation, etc.) instead of re-deriving it.
+        const orderData = {
             userId: req.userId || null,
             product,
             receiverName,
@@ -215,6 +222,39 @@ router.post('/', optionalAuth, async (req, res) => {
             items: itemsForStorage,
             agreedTerms,
             currentStatus: "Info Received",
+        };
+
+        if (isPostgresOrderIntakeEnabled()) {
+            const { trackingNumber, sequence } = await generateTrackingNumber(product);
+            const row = postgresOrders.buildPostgresOrderRow(orderData, { trackingNumber, sequence });
+            const pgOrder = await postgresOrders.insertOrder(row, {
+                statusHistory: "Info Received",
+                dateUpdated: now.toISOString(),
+            });
+            const legacyShaped = postgresOrders.toLegacyShape(pgOrder);
+
+            // Synchronous Detrack job creation replaces the old async change-
+            // stream-watcher trigger - reuses lib/detrack.js completely unchanged.
+            const detrackResult = await createDetrackJob(legacyShaped);
+            if (detrackResult.ok) {
+                await postgresOrders.recordDetrackJobId(pgOrder.id, detrackResult.id);
+            } else {
+                console.error(`[detrack] failed to create job for ${trackingNumber}: ${detrackResult.error}`);
+                // Do not fail the order-creation request over a Detrack failure -
+                // same fire-and-forget tolerance the old watcher had.
+            }
+
+            return res.status(201).json({
+                message: "Order placed successfully!",
+                orderId: legacyShaped._id,
+                trackingNumber,
+                status: legacyShaped.currentStatus,
+                totalPrice: legacyShaped.totalPrice,
+            });
+        }
+
+        const newOrder = new Order({
+            ...orderData,
             history: [{ statusHistory: "Info Received", dateUpdated: now.toISOString() }],
         });
 
@@ -251,34 +291,46 @@ router.get('/mine', requireAuth, async (req, res) => {
                 .forEach((v) => identityValues.add(v));
         }
 
-        const orConditions = [{ userId: req.userId }];
-        if (identityValues.size > 0) {
-            const values = [...identityValues];
-            orConditions.push({ icPassNum: { $in: values } });
-            orConditions.push({ bruhimsnum: { $in: values } });
-            orConditions.push({ patientNumber: { $in: values } });
-        }
-        const identityFilter = { $or: orConditions };
-
-        // Optional filters, AND-combined with the identity match above — a user can only
-        // ever search/filter within their own orders, never anyone else's.
-        const andConditions = [identityFilter];
-        if (req.query.product && PRODUCT_CODES.includes(req.query.product)) {
-            andConditions.push({ product: req.query.product });
-        }
-        if (req.query.status && STATUS_FILTER_VALUES.includes(req.query.status)) {
-            andConditions.push({ currentStatus: req.query.status });
-        }
         const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
-        if (search) {
-            andConditions.push({ doTrackingNumber: { $regex: escapeRegex(search), $options: 'i' } });
-        }
-        const filter = andConditions.length > 1 ? { $and: andConditions } : identityFilter;
+        const product = req.query.product && PRODUCT_CODES.includes(req.query.product) ? req.query.product : null;
+        const status = req.query.status && STATUS_FILTER_VALUES.includes(req.query.status) ? req.query.status : null;
 
-        const [orders, totalCount] = await Promise.all([
-            Order.find(filter).sort({ _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-            Order.countDocuments(filter),
-        ]);
+        let orders, totalCount;
+        if (isPostgresOrderIntakeEnabled()) {
+            ({ orders, totalCount } = await postgresOrders.findMine({
+                userId: req.userId,
+                identityValues: [...identityValues],
+                product,
+                status,
+                search,
+                page,
+                limit,
+            }));
+        } else {
+            const orConditions = [{ userId: req.userId }];
+            if (identityValues.size > 0) {
+                const values = [...identityValues];
+                orConditions.push({ icPassNum: { $in: values } });
+                orConditions.push({ bruhimsnum: { $in: values } });
+                orConditions.push({ patientNumber: { $in: values } });
+            }
+            const identityFilter = { $or: orConditions };
+
+            // Optional filters, AND-combined with the identity match above — a user can only
+            // ever search/filter within their own orders, never anyone else's.
+            const andConditions = [identityFilter];
+            if (product) andConditions.push({ product });
+            if (status) andConditions.push({ currentStatus: status });
+            if (search) {
+                andConditions.push({ doTrackingNumber: { $regex: escapeRegex(search), $options: 'i' } });
+            }
+            const filter = andConditions.length > 1 ? { $and: andConditions } : identityFilter;
+
+            [orders, totalCount] = await Promise.all([
+                Order.find(filter).sort({ _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+                Order.countDocuments(filter),
+            ]);
+        }
 
         res.status(200).json({
             orders: orders.map((order) => ({
@@ -305,10 +357,24 @@ router.get('/mine', requireAuth, async (req, res) => {
 // Polled by the client right after submit, until the external watcher assigns doTrackingNumber.
 router.get('/status/:id', async (req, res) => {
     try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+        const isMongoId = mongoose.Types.ObjectId.isValid(req.params.id);
+        // Postgres bigint id, as a plain digit string - returned by POST / once
+        // isPostgresOrderIntakeEnabled() is on (see above). Gated behind the
+        // same flag here too - otherwise an all-digit, non-ObjectId id would
+        // be accepted by this guard even with the feature off, changing this
+        // route's flag-off behavior (400 -> 404) for that input shape.
+        const isPgId = isPostgresOrderIntakeEnabled() && /^\d+$/.test(req.params.id);
+        if (!isMongoId && !isPgId) {
             return res.status(400).json({ error: "Invalid order id." });
         }
-        const order = await Order.findById(req.params.id).lean();
+
+        // The flag alone decides which DB is authoritative right now - not which
+        // ID shape was passed - so an in-flight poll started just before a flag
+        // flip doesn't 400 on a shape mismatch, it just won't find the order
+        // (matching a real "not found" for an id from the other DB).
+        const order = isPostgresOrderIntakeEnabled()
+            ? (isPgId ? await postgresOrders.findStatusById(req.params.id) : null)
+            : (isMongoId ? await Order.findById(req.params.id).lean() : null);
         if (!order) {
             return res.status(404).json({ error: "Order not found." });
         }
@@ -336,12 +402,14 @@ router.get('/track/:trackingNumber', async (req, res) => {
         }
         // CBSL customers often only have the original courier's (e.g. SPX/J&T) tracking
         // number, not our own — so for that product, match on either.
-        const order = await Order.findOne({
-            $or: [
-                { doTrackingNumber: req.params.trackingNumber },
-                { product: 'cbsl', parcelTrackingNum: req.params.trackingNumber },
-            ],
-        }).lean();
+        const order = isPostgresOrderIntakeEnabled()
+            ? await postgresOrders.findByTrackingNumber(req.params.trackingNumber)
+            : await Order.findOne({
+                $or: [
+                    { doTrackingNumber: req.params.trackingNumber },
+                    { product: 'cbsl', parcelTrackingNum: req.params.trackingNumber },
+                ],
+            }).lean();
         if (!order) {
             return res.status(404).json({ error: "No order found with that tracking number." });
         }
