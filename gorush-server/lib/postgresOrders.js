@@ -83,6 +83,10 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         items: orderData.items ?? null,
         currentStatus: orderData.currentStatus ?? 'Info Received',
         gorushUserId: orderData.userId ? String(orderData.userId) : null,
+        // Detrack's own convention: a freshly created job starts at attempt 1,
+        // not 0 - this column was declared in schema.prisma but never actually
+        // set anywhere, so every order created via this flow left it null.
+        attempt: 1,
     };
 }
 
