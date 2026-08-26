@@ -357,20 +357,30 @@ router.post('/', optionalAuth, async (req, res) => {
                 // same fire-and-forget tolerance the old watcher had.
             }
 
-            const alertReason = getOrderAlertReason(orderData);
-            if (alertReason) {
-                await sendOrderAlert(buildOrderAlertEmail(alertReason, orderData, trackingNumber));
-            }
-
-            await sendWhatsAppMessage(orderData.receiverPhoneNumber, orderData.receiverName, trackingNumber, product);
-
-            // Excel manifest/log row - same fire-and-forget tolerance as Detrack
-            // and the alert email above.
-            if (product === 'pharmacyjpmc') {
-                await appendJpmcGuestOrderRow(orderData, trackingNumber);
-            } else if (product === 'cbsl') {
-                await appendCbslManifestRows(orderData, trackingNumber);
-            }
+            // Notification side effects (email/WhatsApp/Excel) run AFTER the
+            // response below, not awaited here - a CBSL order with several
+            // items needs its own Excel row + screenshot upload + hyperlink
+            // call per item, which chained sequentially blew well past
+            // Heroku's 30s router timeout (H12) even though every step
+            // itself succeeded. None of these affect what the customer sees
+            // (their tracking number), so there's no reason to make them
+            // wait on it.
+            (async () => {
+                try {
+                    const alertReason = getOrderAlertReason(orderData);
+                    if (alertReason) {
+                        await sendOrderAlert(buildOrderAlertEmail(alertReason, orderData, trackingNumber));
+                    }
+                    await sendWhatsAppMessage(orderData.receiverPhoneNumber, orderData.receiverName, trackingNumber, product);
+                    if (product === 'pharmacyjpmc') {
+                        await appendJpmcGuestOrderRow(orderData, trackingNumber);
+                    } else if (product === 'cbsl') {
+                        await appendCbslManifestRows(orderData, trackingNumber);
+                    }
+                } catch (err) {
+                    console.error(`[post-order notifications] failed for ${trackingNumber}:`, err.message);
+                }
+            })();
 
             return res.status(201).json({
                 message: "Order placed successfully!",
