@@ -16,6 +16,7 @@ const { createDetrackJob } = require('../lib/detrack');
 const { parseGorushDateOnly } = require('../lib/dateHelpers');
 const { sendOrderAlert } = require('../lib/mailer');
 const { appendJpmcGuestOrderRow, appendCbslManifestRows } = require('../lib/msGraphExcel');
+const { sendWhatsAppMessage } = require('../lib/whatsapp');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
@@ -355,6 +356,8 @@ router.post('/', optionalAuth, async (req, res) => {
             if (alertReason) {
                 await sendOrderAlert(buildOrderAlertEmail(alertReason, orderData, trackingNumber));
             }
+
+            await sendWhatsAppMessage(orderData.receiverPhoneNumber, orderData.receiverName, trackingNumber, product);
 
             // Excel manifest/log row - same fire-and-forget tolerance as Detrack
             // and the alert email above.
