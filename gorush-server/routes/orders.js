@@ -17,6 +17,7 @@ const { parseGorushDateOnly } = require('../lib/dateHelpers');
 const { sendOrderAlert } = require('../lib/mailer');
 const { appendJpmcGuestOrderRow, appendCbslManifestRows } = require('../lib/msGraphExcel');
 const { sendWhatsAppMessage } = require('../lib/whatsapp');
+const { getAreaFromAddress } = require('../lib/area');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
@@ -278,6 +279,10 @@ router.post('/', optionalAuth, async (req, res) => {
             receiverName,
             address,
             receiverAddress: `${address.houseunitno}, ${address.jalan}, ${address.kampong}${address.simpang ? `, ${address.simpang}` : ''}, ${address.district}`,
+            // Derived from the same string, not stored separately by the client -
+            // matches grfmxstatusupdate's own getAreaFromAddress() so this order's
+            // area/Detrack zone lines up with how every other order gets classified.
+            area: getAreaFromAddress(`${address.houseunitno}, ${address.jalan}, ${address.kampong}${address.simpang ? `, ${address.simpang}` : ''}, ${address.district}`),
             receiverPostalCode: address.postalcode,
             receiverEmail,
             receiverPhoneNumber,

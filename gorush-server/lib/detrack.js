@@ -61,6 +61,7 @@ function buildJobPayload(order) {
         group_name: GROUP_NAME_MAP[order.product],
         job_type: order.jobMethod,
         address: order.receiverAddress,
+        zone: order.area || undefined,
         postal_code: order.receiverPostalCode,
         deliver_to_collect_from: order.receiverName,
         phone_number: order.receiverPhoneNumber,
