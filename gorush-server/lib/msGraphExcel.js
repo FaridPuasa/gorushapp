@@ -66,7 +66,13 @@ async function appendRow({ fileOwner, itemId, sheetName, row, logLabel }) {
 // Sets a clickable hyperlink on a single cell - used for the CBSL manifest's
 // invoice screenshot column, since Graph's workbook API has no way to embed
 // an actual picture into a cell (that's only possible via the in-Excel
-// JavaScript Add-in API, not this server-side REST API). Never throws.
+// JavaScript Add-in API, not this server-side REST API). A plain
+// {hyperlink: url} on the range PATCH silently no-ops - the Range resource
+// doesn't accept it as writable that way (confirmed 2026-08-26: the row
+// landed with literal "View Invoice" as unstyled text, not a real link).
+// Excel's own =HYPERLINK() formula, written via `formulas` (not `values`),
+// is what actually produces a real clickable link with the standard
+// blue/underline styling. Never throws.
 async function setCellHyperlink({ fileOwner, itemId, sheetName, cellAddress, url, logLabel }) {
     try {
         const token = await getAccessToken();
@@ -75,7 +81,7 @@ async function setCellHyperlink({ fileOwner, itemId, sheetName, cellAddress, url
 
         await axios.patch(
             `${base}/workbook/worksheets('${sheetName}')/range(address='${cellAddress}')`,
-            { hyperlink: url, values: [['View Invoice']] },
+            { formulas: [[`=HYPERLINK("${url}","View Invoice")`]] },
             { headers }
         );
         return true;
