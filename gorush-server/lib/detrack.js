@@ -39,18 +39,24 @@ function buildItems(order) {
     return [{ description: order.itemContains || order.product, quantity: 1 }];
 }
 
-// CBSL's own doTrackingNumber is our internal reference; the more useful "tracking number"
-// for a CBSL job is the original courier's number the customer already has. Every other
-// product only has our own tracking number, so it's used for both fields.
-function buildTrackingNumber(order) {
+// CBSL is the one product with two distinct tracking numbers pre-scan: the
+// original courier's number (parcelTrackingNum) and our own generated one
+// (doTrackingNumber). Confirmed against grfmxstatusupdate's
+// processCBSLFirstScan() - at creation, do_number is the ORIGINAL number
+// and tracking_number is OUR number; the two swap at warehouse scan-in
+// (do_number becomes ours, tracking_number becomes the original) so staff
+// scanning the physical parcel's original barcode can still look the job
+// up by do_number before that swap happens. Every other product only has
+// our own tracking number, so it's used for both fields.
+function buildDoNumber(order) {
     return order.product === 'cbsl' ? order.parcelTrackingNum : order.doTrackingNumber;
 }
 
 function buildJobPayload(order) {
     const totalPriceNumber = toNumber(order.totalPrice);
     return {
-        do_number: order.doTrackingNumber,
-        tracking_number: buildTrackingNumber(order),
+        do_number: buildDoNumber(order),
+        tracking_number: order.doTrackingNumber,
         date: todayBruneiDateString(),
         group_name: GROUP_NAME_MAP[order.product],
         job_type: order.jobMethod,
