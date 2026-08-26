@@ -14,6 +14,8 @@ const postgresOrders = require('../lib/postgresOrders');
 const { generateTrackingNumber } = require('../lib/trackingNumber');
 const { createDetrackJob } = require('../lib/detrack');
 const { parseGorushDateOnly } = require('../lib/dateHelpers');
+const { sendOrderAlert } = require('../lib/mailer');
+const { appendJpmcGuestOrderRow, appendCbslManifestRows } = require('../lib/msGraphExcel');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
@@ -31,6 +33,82 @@ function escapeRegex(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 const PHARMACY_PRODUCTS = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc'];
+
+// Which of the 3 old Make.com-driven order alert emails (if any) this order
+// needs, mirroring the old flow's trigger conditions: moh/jpmc's "Immediate"
+// charge code, any phc order, or "Self Collect" regardless of product.
+function getOrderAlertReason(orderData) {
+    if ((orderData.product === 'pharmacymoh' || orderData.product === 'pharmacyjpmc') && orderData.jobMethod === 'Immediate') {
+        return 'immediate';
+    }
+    if (orderData.product === 'pharmacyphc') {
+        return 'phc';
+    }
+    if (orderData.jobMethod === 'Self Collect') {
+        return 'selfCollect';
+    }
+    return null;
+}
+
+// Matches Make.com's own {Product} field output for the subject line -
+// the old flow's Webflow-sourced product label, not gorushapp's internal
+// product code.
+const ORDER_ALERT_PRODUCT_NAME = {
+    pharmacymoh: 'Pharmacy MOH',
+    pharmacyjpmc: 'Pharmacy JPMC',
+    pharmacyphc: 'Pharmacy PHC',
+    localdelivery: 'Local Delivery',
+    cbsl: 'CBSL',
+};
+
+function formatBruneiDateTime(date) {
+    return date ? new Date(date).toLocaleString('en-GB', { timeZone: 'Asia/Brunei' }) : '';
+}
+
+// Mirrors the 3 Make.com "Microsoft 365 Email" modules being replaced -
+// same subject format and same field list/order, confirmed 2026-08-26.
+// "Area" has no direct equivalent in gorushapp's schema (that was a
+// legacy Mongo-only district classification) - using the delivery
+// address's district as the closest match.
+function buildOrderAlertEmail(reason, orderData, trackingNumber) {
+    const productName = ORDER_ALERT_PRODUCT_NAME[orderData.product] || orderData.product;
+    const dateTimeSubmission = formatBruneiDateTime(orderData.dateTimeSubmission);
+    const area = orderData.address?.district || '';
+
+    const withAddressAndArea = `
+        <p>DO Tracking Number: ${trackingNumber}</p>
+        <p>Date Time Submission: ${dateTimeSubmission}</p>
+        <p>Product: ${productName}</p>
+        <p>Receiver Name: ${orderData.receiverName || ''}</p>
+        <p>Receiver Address: ${orderData.receiverAddress || ''}</p>
+        <p>Receiver Phone Number: ${orderData.receiverPhoneNumber || ''}</p>
+        <p>Additional Phone Number: ${orderData.additionalPhoneNumber || ''}</p>
+        <p>Area: ${area}</p>
+        <p>Payment Method: ${orderData.paymentMethod || ''}</p>
+        <p>Remarks: ${orderData.remarks || ''}</p>
+    `;
+
+    if (reason === 'immediate') {
+        return { subject: `Immediate Order from ${productName}`, html: withAddressAndArea };
+    }
+    if (reason === 'phc') {
+        return { subject: `Panaga HC Order from ${productName}`, html: withAddressAndArea };
+    }
+    // selfCollect - no delivery, so no address/area
+    return {
+        subject: `Self Collect Order from ${productName}`,
+        html: `
+            <p>DO Tracking Number: ${trackingNumber}</p>
+            <p>Date Time Submission: ${dateTimeSubmission}</p>
+            <p>Product: ${productName}</p>
+            <p>Receiver Name: ${orderData.receiverName || ''}</p>
+            <p>Receiver Phone Number: ${orderData.receiverPhoneNumber || ''}</p>
+            <p>Additional Phone Number: ${orderData.additionalPhoneNumber || ''}</p>
+            <p>Payment Method: ${orderData.paymentMethod || ''}</p>
+            <p>Remarks: ${orderData.remarks || ''}</p>
+        `,
+    };
+}
 const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 
 // deliveryTypeCode is abbreviated for storage; the original human-readable charge code
@@ -271,6 +349,19 @@ router.post('/', optionalAuth, async (req, res) => {
                 console.error(`[detrack] failed to create job for ${trackingNumber}: ${detrackResult.error}`);
                 // Do not fail the order-creation request over a Detrack failure -
                 // same fire-and-forget tolerance the old watcher had.
+            }
+
+            const alertReason = getOrderAlertReason(orderData);
+            if (alertReason) {
+                await sendOrderAlert(buildOrderAlertEmail(alertReason, orderData, trackingNumber));
+            }
+
+            // Excel manifest/log row - same fire-and-forget tolerance as Detrack
+            // and the alert email above.
+            if (product === 'pharmacyjpmc') {
+                await appendJpmcGuestOrderRow(orderData, trackingNumber);
+            } else if (product === 'cbsl') {
+                await appendCbslManifestRows(orderData, trackingNumber);
             }
 
             return res.status(201).json({
