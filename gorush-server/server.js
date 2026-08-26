@@ -5,8 +5,11 @@ const cors = require('cors');
 const { startDetrackWatcher } = require('./lib/detrackWatcher');
 const { isPostgresOrderIntakeEnabled } = require('./lib/supabaseFlag');
 
+const path = require('path');
+const fs = require('fs');
+
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // Only enforced when the Postgres order-intake flag is on - every environment
 // where this stays dormant (the default) needs zero new required config.
@@ -22,6 +25,11 @@ app.use(cors());
 // that worst case (base64 inflates raw file size by ~33%).
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static('public'));
+// gorush-client's `expo export -p web` output (built by the heroku-postbuild
+// script - see root package.json). Kept separate from ./public, which
+// already holds hand-placed static assets (e.g. terms-and-conditions.pdf)
+// that the export would otherwise wipe out on every build.
+app.use(express.static('webapp'));
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
@@ -58,8 +66,17 @@ mongoose.connect(MONGO_URI)
   })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-app.get('/', (req, res) => {
-  res.send("Go Rush Backend Server is active.");
+// Serves the Expo Router web export's index.html for every non-API route,
+// so client-side routing (e.g. refreshing on /my-orders) resolves instead
+// of 404ing. Falls back to a plain status message when no web build is
+// present (e.g. local dev without ever having run the export).
+app.get(/^(?!\/api).*/, (req, res) => {
+  const indexPath = path.join(__dirname, 'webapp', 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.send("Go Rush Backend Server is active.");
+  }
 });
 
 app.listen(PORT, () => {
