@@ -2,10 +2,10 @@
   "name": "gorushapp",
   "private": true,
   "scripts": {
-    "heroku-postbuild": "npm install --prefix gorush-server && npm install --prefix gorush-client && npx --prefix gorush-client expo export -p web --output-dir ../gorush-server/webapp",
-    "start": "npm start --prefix gorush-server"
+    "heroku-postbuild": "cd gorush-server && npm install && cd ../gorush-client && npm install && npx expo export -p web --output-dir ../gorush-server/webapp",
+    "start": "cd gorush-server && npm start"
   },
   "engines": {
-    "node": ">=20"
+    "node": "24.x"
   }
 }
