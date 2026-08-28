@@ -83,7 +83,10 @@ function buildOrderAlertEmail(reason, orderData, trackingNumber) {
     const area = orderData.address?.district || '';
     // MOH uses bruhimsnum, JPMC/PHC use patientNumber - mutually exclusive
     // per product, so a single combined line covers all 3 pharmacy products.
+    // Not applicable to Local Delivery at all - omitted for that product
+    // rather than shown as an always-empty line.
     const bruhimsOrPatientNumber = orderData.bruhimsnum || orderData.patientNumber || '';
+    const bruhimsLine = orderData.product === 'localdelivery' ? '' : `<p>BruHIMS/Patient No.: ${bruhimsOrPatientNumber}</p>`;
     const amount = orderData.totalPrice != null ? `$${Number(orderData.totalPrice).toFixed(2)}` : '';
 
     const withAddressAndArea = `
@@ -95,7 +98,7 @@ function buildOrderAlertEmail(reason, orderData, trackingNumber) {
         <p>Receiver Phone Number: ${orderData.receiverPhoneNumber || ''}</p>
         <p>Additional Phone Number: ${orderData.additionalPhoneNumber || ''}</p>
         <p>Area: ${area}</p>
-        <p>BruHIMS/Patient No.: ${bruhimsOrPatientNumber}</p>
+        ${bruhimsLine}
         <p>Payment Method: ${orderData.paymentMethod || ''}</p>
         <p>Amount: ${amount}</p>
         <p>Remarks: ${orderData.remarks || ''}</p>
