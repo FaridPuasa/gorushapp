@@ -40,6 +40,7 @@ export default {
     postalCodeHint: '2 letters followed by 4 numbers',
     postalCodePlaceholder: 'e.g. BA1712',
     postalCodeInvalid: 'Must be 2 letters followed by 4 numbers (e.g., BB3515).',
+    selfCollectLocked: 'Address locked to our Self Collect location — switch to another delivery option to enter your own address.',
   },
   contact: {
     fullName: 'Full Name',

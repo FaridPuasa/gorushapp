@@ -42,21 +42,27 @@ const CATEGORIES = [
     },
 ];
 
-function buildOrderCard(title, orderData, trackingNumber) {
+function buildOrderCard(title, orderData, trackingNumber, categoryKey) {
     const productName = PRODUCT_DISPLAY_NAME[orderData.product] || orderData.product;
     const facts = [
         { title: 'Tracking Number', value: trackingNumber || '' },
         { title: 'Date Time Submission', value: formatBruneiDateTime(orderData.dateTimeSubmission) },
         { title: 'Product', value: productName },
         { title: 'Receiver', value: orderData.receiverName || '' },
-        { title: 'Address', value: orderData.receiverAddress || '' },
+    ];
+    // Self Collect always uses the fixed office address now (not the
+    // customer's own), so showing it/its Area is pointless noise - matches
+    // the order alert email's own selfCollect template, which already
+    // omits both for the same reason.
+    if (categoryKey !== 'selfCollect') {
+        facts.push({ title: 'Address', value: orderData.receiverAddress || '' });
         // Matches the order alert email's own "Area" field exactly (same
         // source: the customer's chosen district, e.g. "Brunei"/"Tutong" -
         // not the finer kampong-based classification in orderData.area/
         // Detrack's zone).
-        { title: 'Area', value: orderData.address?.district || '' },
-        { title: 'Phone', value: orderData.receiverPhoneNumber || '' },
-    ];
+        facts.push({ title: 'Area', value: orderData.address?.district || '' });
+    }
+    facts.push({ title: 'Phone', value: orderData.receiverPhoneNumber || '' });
     if (orderData.additionalPhoneNumber) {
         facts.push({ title: 'Additional Phone Number', value: orderData.additionalPhoneNumber });
     }
@@ -109,7 +115,7 @@ async function postToChannel(category, orderData, trackingNumber) {
         return false;
     }
     try {
-        await axios.post(webhookUrl, buildOrderCard(category.title, orderData, trackingNumber));
+        await axios.post(webhookUrl, buildOrderCard(category.title, orderData, trackingNumber, category.key));
         console.log(`✅ Teams ${category.key} notification sent for tracker ${trackingNumber}`);
         return true;
     } catch (err) {

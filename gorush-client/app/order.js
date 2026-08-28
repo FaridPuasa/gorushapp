@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Text, TextInput, View, ActivityIndicator, Platform } from 'react-native';
 import { AnimatedPressable } from '../lib/animations';
 import { api } from '../lib/api';
@@ -39,6 +39,18 @@ function emptyDetails() {
 function emptyCbslItem() {
   return { itemContains: '', quantity: '', totalItemPrice: '', screenshotInvoice: '' };
 }
+
+// Real customer address is irrelevant for Self Collect - the parcel/medicine is picked up
+// here instead of delivered, so this replaces whatever address the customer would otherwise
+// enter (or their saved default, for logged-in users) while Self Collect is selected.
+const SELF_COLLECT_ADDRESS = {
+  houseunitno: 'Unit 7, 1st Floor, Block B',
+  jalan: '-',
+  kampong: 'Kg Kiulap',
+  simpang: '',
+  district: 'Brunei',
+  postalcode: 'BE1518',
+};
 
 function hasErrors(e) {
   const flatKeys = Object.keys(e).filter((k) => k !== 'party' && k !== 'receiver' && k !== 'cbslItems');
@@ -163,6 +175,34 @@ export default function Order() {
 
   const pricingDistrict = product === 'Local Delivery' ? receiver.district : party.district;
   const cbslSelfCollect = product === 'Cross Border Service Limbang' && details.shipmentMethod === 'Self Collect';
+  // Local Delivery has no Self Collect charge option at all - only pharmacy (via chargeCode)
+  // and CBSL (via its own separate shipmentMethod field) ever reach this.
+  const isSelfCollectSelected = details.chargeCode === 'Self Collect' || cbslSelfCollect;
+
+  // Snapshot of party's address fields taken the moment Self Collect gets selected, so a
+  // guest's own typed address can be restored if they switch back to another option -
+  // logged-in users get their real saved default restored instead (see the effect below).
+  const preSelfCollectAddressRef = useRef(null);
+
+  useEffect(() => {
+    if (isSelfCollectSelected) {
+      preSelfCollectAddressRef.current = {
+        houseunitno: party.houseunitno, jalan: party.jalan, kampong: party.kampong,
+        simpang: party.simpang, district: party.district, postalcode: party.postalcode,
+      };
+      setParty((prev) => ({ ...prev, ...SELF_COLLECT_ADDRESS }));
+    } else if (preSelfCollectAddressRef.current) {
+      const restored = isGuest
+        ? preSelfCollectAddressRef.current
+        : {
+            houseunitno: defaultAddress?.houseunitno || '', jalan: defaultAddress?.jalan || '', kampong: defaultAddress?.kampong || '',
+            simpang: defaultAddress?.simpang || '', district: defaultAddress?.district || 'Brunei', postalcode: defaultAddress?.postalcode || '',
+          };
+      setParty((prev) => ({ ...prev, ...restored }));
+      preSelfCollectAddressRef.current = null;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSelfCollectSelected]);
 
   const validateForm = () => {
     const e = { party: {}, receiver: {} };
@@ -405,6 +445,7 @@ export default function Order() {
                 viewOnly={viewOnlyParty}
                 showAdditionalPhone
                 isGuest={isGuest}
+                addressLocked={isSelfCollectSelected}
               />
 
               {product === 'MOH' && (

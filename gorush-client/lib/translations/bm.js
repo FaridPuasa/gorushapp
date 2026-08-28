@@ -40,6 +40,7 @@ export default {
     postalCodeHint: '2 huruf diikuti 4 nombor',
     postalCodePlaceholder: 'cth. BA1712',
     postalCodeInvalid: 'Mestilah 2 huruf diikuti 4 nombor (cth., BB3515).',
+    selfCollectLocked: 'Alamat dikunci ke lokasi Ambil Sendiri kami — tukar ke pilihan penghantaran lain untuk masukkan alamat anda sendiri.',
   },
   contact: {
     fullName: 'Nama Penuh',

@@ -22,7 +22,7 @@ function ViewOnlyRow({ label, value }) {
 
 export default function PartyDetailsForm({
   icon = '📇', title, values, onChange, errors = {}, focusedField, setFocusedField,
-  viewOnly = false, showAdditionalPhone = false, isGuest = false,
+  viewOnly = false, showAdditionalPhone = false, isGuest = false, addressLocked = false,
 }) {
   const router = useRouter();
   const { t } = useLanguage();
@@ -63,25 +63,29 @@ export default function PartyDetailsForm({
         <TextInput accessibilityLabel={t('contact.fullName')} style={inputStyle('fullName')} value={values.fullName} onChangeText={(v) => onChange('fullName', v)} {...focusHandlers('fullName')} />
       </Field>
 
+      {addressLocked && (
+        <Text style={[formStyles.fieldHint, { marginBottom: 10 }]}>{t('address.selfCollectLocked')}</Text>
+      )}
+
       <Field label={t('address.houseUnitNo')} required error={errors.houseunitno}>
-        <TextInput accessibilityLabel={t('address.houseUnitNo')} style={inputStyle('houseunitno')} placeholder={t('address.houseUnitPlaceholder')} placeholderTextColor={colors.textMuted} value={values.houseunitno} onChangeText={(v) => onChange('houseunitno', v)} {...focusHandlers('houseunitno')} />
+        <TextInput accessibilityLabel={t('address.houseUnitNo')} editable={!addressLocked} style={inputStyle('houseunitno')} placeholder={t('address.houseUnitPlaceholder')} placeholderTextColor={colors.textMuted} value={values.houseunitno} onChangeText={(v) => onChange('houseunitno', v)} {...focusHandlers('houseunitno')} />
       </Field>
 
       <Field label={t('address.jalan')} required error={errors.jalan}>
-        <TextInput accessibilityLabel={t('address.jalan')} style={inputStyle('jalan')} value={values.jalan} onChangeText={(v) => onChange('jalan', v)} {...focusHandlers('jalan')} />
+        <TextInput accessibilityLabel={t('address.jalan')} editable={!addressLocked} style={inputStyle('jalan')} value={values.jalan} onChangeText={(v) => onChange('jalan', v)} {...focusHandlers('jalan')} />
       </Field>
 
       <Field label={t('address.kampong')} required error={errors.kampong}>
-        <TextInput accessibilityLabel={t('address.kampong')} style={inputStyle('kampong')} value={values.kampong} onChangeText={(v) => onChange('kampong', v)} {...focusHandlers('kampong')} />
+        <TextInput accessibilityLabel={t('address.kampong')} editable={!addressLocked} style={inputStyle('kampong')} value={values.kampong} onChangeText={(v) => onChange('kampong', v)} {...focusHandlers('kampong')} />
       </Field>
 
       <Field label={t('address.simpang')}>
-        <TextInput accessibilityLabel={t('address.simpang')} style={inputStyle('simpang')} value={values.simpang} onChangeText={(v) => onChange('simpang', v)} {...focusHandlers('simpang')} />
+        <TextInput accessibilityLabel={t('address.simpang')} editable={!addressLocked} style={inputStyle('simpang')} value={values.simpang} onChangeText={(v) => onChange('simpang', v)} {...focusHandlers('simpang')} />
       </Field>
 
       <Field label={t('address.district')} required>
         <View style={formStyles.pickerContainer}>
-          <Picker style={formStyles.pickerControl} selectedValue={values.district} onValueChange={(v) => onChange('district', v)}>
+          <Picker enabled={!addressLocked} style={formStyles.pickerControl} selectedValue={values.district} onValueChange={(v) => onChange('district', v)}>
             {DISTRICT_ITEMS.map((d) => <Picker.Item key={d.value} label={d.label} value={d.value} />)}
           </Picker>
         </View>
@@ -89,6 +93,7 @@ export default function PartyDetailsForm({
 
       <Field label={t('address.postalCode')} error={errors.postalcode} hint={t('address.postalCodeHint')}>
         <TextInput
+          editable={!addressLocked}
           style={inputStyle('postalcode')}
           placeholder={t('address.postalCodePlaceholder')}
           placeholderTextColor={colors.textMuted}
