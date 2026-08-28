@@ -510,7 +510,16 @@ function HolidaysTab({ formStyles, colors, authHeader }) {
   );
 }
 
-const EMPTY_ANNOUNCEMENT = { titleEn: '', bodyEn: '', titleBm: '', bodyBm: '', date: '', bodyAlign: 'center', isVisible: true };
+const EMPTY_ANNOUNCEMENT = { titleEn: '', bodyEn: '', titleBm: '', bodyBm: '', date: '', bodyAlign: 'center', showToGuests: true, showToLoggedIn: true };
+
+function visibilitySuffix(item) {
+  const guestsHidden = item.showToGuests === false;
+  const loggedInHidden = item.showToLoggedIn === false;
+  if (guestsHidden && loggedInHidden) return ' (Hidden from everyone)';
+  if (guestsHidden) return ' (Hidden from guests)';
+  if (loggedInHidden) return ' (Hidden from logged-in users)';
+  return '';
+}
 
 function AnnouncementsTab({ formStyles, colors, authHeader }) {
   const [announcements, setAnnouncements] = useState([]);
@@ -538,7 +547,8 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
       bodyBm: item.bodyBm || '',
       date: item.date,
       bodyAlign: item.bodyAlign || 'center',
-      isVisible: item.isVisible !== false,
+      showToGuests: item.showToGuests !== false,
+      showToLoggedIn: item.showToLoggedIn !== false,
     });
   };
 
@@ -597,13 +607,23 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
         <Field label="Body alignment" hint="Applies to both language versions when displayed">
           <AlignmentPicker value={form.bodyAlign} onChange={(v) => onChange('bodyAlign', v)} colors={colors} />
         </Field>
-        <Field label="Visibility" hint="Hidden announcements are kept but not shown to visitors">
+        <Field label="Visible to guests" hint="Visitors browsing without an account">
           <View style={formStyles.toggleRow}>
-            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.isVisible && formStyles.toggleBtnActive]} onPress={() => onChange('isVisible', true)}>
-              <Text style={form.isVisible ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.showToGuests && formStyles.toggleBtnActive]} onPress={() => onChange('showToGuests', true)}>
+              <Text style={form.showToGuests ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
             </AnimatedPressable>
-            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.isVisible && formStyles.toggleBtnActive]} onPress={() => onChange('isVisible', false)}>
-              <Text style={!form.isVisible ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showToGuests && formStyles.toggleBtnActive]} onPress={() => onChange('showToGuests', false)}>
+              <Text style={!form.showToGuests ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
+            </AnimatedPressable>
+          </View>
+        </Field>
+        <Field label="Visible to logged-in users" hint="Visitors with an account, signed in">
+          <View style={formStyles.toggleRow}>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.showToLoggedIn && formStyles.toggleBtnActive]} onPress={() => onChange('showToLoggedIn', true)}>
+              <Text style={form.showToLoggedIn ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
+            </AnimatedPressable>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showToLoggedIn && formStyles.toggleBtnActive]} onPress={() => onChange('showToLoggedIn', false)}>
+              <Text style={!form.showToLoggedIn ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
             </AnimatedPressable>
           </View>
         </Field>
@@ -627,7 +647,7 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
           <View key={item._id} style={rowStyle(colors)}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 4 }}>{formatAnnouncementDate(item.date)}</Text>
-              <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{item.titleEn}{item.isVisible === false ? ' (Hidden)' : ''}</Text>
+              <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{item.titleEn}{visibilitySuffix(item)}</Text>
               {item.titleBm ? <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>{item.titleBm}</Text> : null}
             </View>
             <View style={{ alignItems: 'flex-end' }}>

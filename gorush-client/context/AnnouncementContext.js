@@ -2,19 +2,27 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NAVBAR_HEIGHT, ANNOUNCEMENT_BAR_HEIGHT } from '../lib/theme';
 import { api } from '../lib/api';
+import { useAuth } from './AuthContext';
 
 const AnnouncementContext = createContext(null);
 
 export function AnnouncementProvider({ children }) {
+  const { token, isGuest, loading: authLoading } = useAuth();
   const [dismissed, setDismissed] = useState(false);
   const [announcement, setAnnouncement] = useState(null);
 
   useEffect(() => {
+    // Wait for auth to resolve first - the server picks announcements by
+    // guest-vs-logged-in audience, so fetching before we know which one this
+    // visitor is would risk showing the wrong list for a moment (or the
+    // wrong one permanently, if this effect didn't also depend on auth
+    // state and re-run once it resolves).
+    if (authLoading) return;
     // Server already sorts by date descending — the first one is the latest.
-    api.get('/api/announcements')
+    api.get('/api/announcements', { headers: !isGuest && token ? { Authorization: `Bearer ${token}` } : {} })
       .then((res) => setAnnouncement(res.data[0] || null))
       .catch(() => setAnnouncement(null));
-  }, []);
+  }, [authLoading, isGuest, token]);
 
   const value = {
     dismissed,
