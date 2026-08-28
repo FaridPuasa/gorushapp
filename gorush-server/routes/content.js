@@ -33,6 +33,12 @@ router.get('/announcements', async (req, res) => {
 router.get('/slides', async (req, res) => {
     try {
         const slides = await HeroSlide.find().sort({ order: 1 }).lean();
+        // Admin-managed content that rarely changes, but still several MB of
+        // base64 image data - without this, every single page load re-fetches
+        // the full payload from scratch. 5 minutes balances not going stale
+        // for too long against actually saving repeat requests within a
+        // browsing session.
+        res.set('Cache-Control', 'public, max-age=300');
         res.status(200).json(slides);
     } catch (err) {
         console.error(err.message);

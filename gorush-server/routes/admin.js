@@ -6,6 +6,7 @@ const Announcement = require('../models/Announcement');
 const HeroSlide = require('../models/HeroSlide');
 const Vacancy = require('../models/Vacancy');
 const PricingRule = require('../models/PricingRule');
+const { compressBase64Image } = require('../lib/imageCompress');
 
 router.use(requireAdmin);
 
@@ -85,7 +86,8 @@ router.delete('/announcements/:id', async (req, res) => {
 router.post('/slides', async (req, res) => {
     try {
         const { image, headline, subtext, linkUrl, order } = req.body;
-        const slide = await HeroSlide.create({ image, headline, subtext, linkUrl, order: order || 0 });
+        const compressedImage = await compressBase64Image(image);
+        const slide = await HeroSlide.create({ image: compressedImage, headline, subtext, linkUrl, order: order || 0 });
         res.status(201).json(slide);
     } catch (err) {
         console.error(err.message);
@@ -96,9 +98,10 @@ router.post('/slides', async (req, res) => {
 router.put('/slides/:id', async (req, res) => {
     try {
         const { image, headline, subtext, linkUrl, order } = req.body;
+        const compressedImage = image ? await compressBase64Image(image) : undefined;
         const slide = await HeroSlide.findByIdAndUpdate(
             req.params.id,
-            { ...(image ? { image } : {}), headline, subtext, linkUrl, order },
+            { ...(compressedImage ? { image: compressedImage } : {}), headline, subtext, linkUrl, order },
             { new: true }
         );
         if (!slide) return res.status(404).json({ error: "Slide not found." });
