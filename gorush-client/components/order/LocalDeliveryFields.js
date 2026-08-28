@@ -133,6 +133,7 @@ export default function LocalDeliveryFields({
         setFocusedField={setFocusedField}
         showAdditionalPhone={false}
         isGuest={isGuest}
+        requireEmail={false}
       />
 
       <Card icon="💳" title={t('order.billTo')}>

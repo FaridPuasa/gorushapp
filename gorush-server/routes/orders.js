@@ -196,7 +196,10 @@ router.post('/', optionalAuth, async (req, res) => {
         if (!receiverPhoneNumber) {
             return res.status(400).json({ error: "Phone number is required." });
         }
-        if (req.userId && !receiverEmail) {
+        // Local Delivery's receiverEmail is the delivery recipient's own email, not
+        // necessarily the logged-in account owner's - optional regardless of login
+        // status, unlike every other product where the account owner IS the receiver.
+        if (req.userId && product !== 'localdelivery' && !receiverEmail) {
             return res.status(400).json({ error: "Email is required." });
         }
 

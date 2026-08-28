@@ -237,8 +237,9 @@ export default function Order() {
       if (!receiver.jalan.trim()) e.receiver.jalan = t('order.validation.required');
       if (!receiver.kampong.trim()) e.receiver.kampong = t('order.validation.required');
       if (receiver.postalcode && !isValidPostalCode(receiver.postalcode)) e.receiver.postalcode = t('order.validation.postalCodeInvalid');
-      if (!isGuest && !receiver.email.trim()) e.receiver.email = t('order.validation.emailRequired');
-      else if (receiver.email.trim() && !isValidEmail(receiver.email)) e.receiver.email = t('order.validation.emailInvalid');
+      // Receiver's email is the delivery recipient's own, not necessarily the
+      // logged-in account owner's - never required, regardless of login status.
+      if (receiver.email.trim() && !isValidEmail(receiver.email)) e.receiver.email = t('order.validation.emailInvalid');
       if (!splitPhoneNumber(receiver.phone).localNumber) e.receiver.phone = t('order.validation.phoneRequired');
       if (!details.ldPickupOrDelivery) e.ldPickupOrDelivery = t('order.validation.required');
       if (!details.itemContains.trim()) e.itemContains = t('order.validation.required');

@@ -22,7 +22,7 @@ function ViewOnlyRow({ label, value }) {
 
 export default function PartyDetailsForm({
   icon = '📇', title, values, onChange, errors = {}, focusedField, setFocusedField,
-  viewOnly = false, showAdditionalPhone = false, isGuest = false, addressLocked = false,
+  viewOnly = false, showAdditionalPhone = false, isGuest = false, addressLocked = false, requireEmail = !isGuest,
 }) {
   const router = useRouter();
   const { t } = useLanguage();
@@ -104,7 +104,7 @@ export default function PartyDetailsForm({
         />
       </Field>
 
-      <Field label={t('contact.email')} required={!isGuest} error={errors.email}>
+      <Field label={t('contact.email')} required={requireEmail} error={errors.email}>
         <TextInput
           accessibilityLabel={t('contact.email')}
           style={inputStyle('email')}
