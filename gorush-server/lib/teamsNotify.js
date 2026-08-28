@@ -17,6 +17,10 @@ const PRODUCT_DISPLAY_NAME = {
     cbsl: 'CBSL',
 };
 
+function formatBruneiDateTime(date) {
+    return date ? new Date(date).toLocaleString('en-GB', { timeZone: 'Asia/Brunei' }) : '';
+}
+
 const CATEGORIES = [
     {
         key: 'immediate',
@@ -42,12 +46,24 @@ function buildOrderCard(title, orderData, trackingNumber) {
     const productName = PRODUCT_DISPLAY_NAME[orderData.product] || orderData.product;
     const facts = [
         { title: 'Tracking Number', value: trackingNumber || '' },
+        { title: 'Date Time Submission', value: formatBruneiDateTime(orderData.dateTimeSubmission) },
         { title: 'Product', value: productName },
         { title: 'Receiver', value: orderData.receiverName || '' },
         { title: 'Address', value: orderData.receiverAddress || '' },
+        // Matches the order alert email's own "Area" field exactly (same
+        // source: the customer's chosen district, e.g. "Brunei"/"Tutong" -
+        // not the finer kampong-based classification in orderData.area/
+        // Detrack's zone).
+        { title: 'Area', value: orderData.address?.district || '' },
         { title: 'Phone', value: orderData.receiverPhoneNumber || '' },
-        { title: 'Payment Method', value: orderData.paymentMethod || '' },
     ];
+    if (orderData.additionalPhoneNumber) {
+        facts.push({ title: 'Additional Phone Number', value: orderData.additionalPhoneNumber });
+    }
+    facts.push({ title: 'Payment Method', value: orderData.paymentMethod || '' });
+    if (orderData.totalPrice != null) {
+        facts.push({ title: 'Amount', value: `$${Number(orderData.totalPrice).toFixed(2)}` });
+    }
     // MOH uses bruhimsnum, JPMC/PHC use patientNumber - mutually exclusive
     // per product, so a single combined fact covers all 3 pharmacy products.
     const bruhimsOrPatientNumber = orderData.bruhimsnum || orderData.patientNumber;
