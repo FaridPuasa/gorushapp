@@ -18,7 +18,7 @@ const { sendOrderAlert } = require('../lib/mailer');
 const { appendJpmcGuestOrderRow, appendCbslManifestRows } = require('../lib/msGraphExcel');
 const { sendWhatsAppMessage } = require('../lib/whatsapp');
 const { getAreaFromAddress } = require('../lib/area');
-const { notifyTeamsImmediateOrder } = require('../lib/teamsNotify');
+const { notifyTeams } = require('../lib/teamsNotify');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
@@ -373,7 +373,7 @@ router.post('/', optionalAuth, async (req, res) => {
                         await sendOrderAlert(buildOrderAlertEmail(alertReason, orderData, trackingNumber));
                     }
                     await sendWhatsAppMessage(orderData.receiverPhoneNumber, orderData.receiverName, trackingNumber, product);
-                    await notifyTeamsImmediateOrder(orderData, trackingNumber);
+                    await notifyTeams(orderData, trackingNumber);
                     if (product === 'pharmacyjpmc') {
                         await appendJpmcGuestOrderRow(orderData, trackingNumber);
                     } else if (product === 'cbsl') {
