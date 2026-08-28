@@ -40,6 +40,12 @@ const CATEGORIES = [
         title: '🏥 PHC Order',
         matches: (orderData) => orderData.product === 'pharmacyphc',
     },
+    {
+        key: 'localdelivery',
+        envVar: 'TEAMS_WEBHOOK_URL_LOCALDELIVERY',
+        title: '🚚 Local Delivery Order',
+        matches: (orderData) => orderData.product === 'localdelivery',
+    },
 ];
 
 function buildOrderCard(title, orderData, trackingNumber, categoryKey) {

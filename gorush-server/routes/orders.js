@@ -37,9 +37,10 @@ function escapeRegex(value) {
 }
 const PHARMACY_PRODUCTS = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc'];
 
-// Which of the 3 old Make.com-driven order alert emails (if any) this order
-// needs, mirroring the old flow's trigger conditions: moh/jpmc's "Immediate"
-// charge code, any phc order, or "Self Collect" regardless of product.
+// Which order alert email (if any) this order needs: moh/jpmc's "Immediate"
+// charge code, any phc order, "Self Collect" regardless of product (the 3
+// original Make.com-driven cases), or any localdelivery order (added
+// 2026-08-28, same recipient list).
 function getOrderAlertReason(orderData) {
     if ((orderData.product === 'pharmacymoh' || orderData.product === 'pharmacyjpmc') && orderData.jobMethod === 'Immediate') {
         return 'immediate';
@@ -49,6 +50,9 @@ function getOrderAlertReason(orderData) {
     }
     if (orderData.jobMethod === 'Self Collect') {
         return 'selfCollect';
+    }
+    if (orderData.product === 'localdelivery') {
+        return 'localdelivery';
     }
     return null;
 }
@@ -102,6 +106,9 @@ function buildOrderAlertEmail(reason, orderData, trackingNumber) {
     }
     if (reason === 'phc') {
         return { subject: `Panaga HC Order from ${productName}`, html: withAddressAndArea };
+    }
+    if (reason === 'localdelivery') {
+        return { subject: `Local Delivery Order from ${productName}`, html: withAddressAndArea };
     }
     // selfCollect - no delivery, so no address/area
     return {
