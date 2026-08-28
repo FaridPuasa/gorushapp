@@ -32,9 +32,9 @@ export default function Navbar() {
   const styles = useMemo(() => makeStyles(colors, scaleFont), [colors, scaleFont]);
 
   const COMPANY_ITEMS = [
-    { label: t('nav.aboutUs'), description: t('nav.aboutUsDesc'), href: '/about', icon: 'information-circle-outline' },
-    { label: t('nav.deliveryPrice'), description: t('nav.deliveryPriceDesc'), href: '/delivery-price', icon: 'cash-outline' },
-    { label: t('nav.calculator'), description: t('nav.calculatorDesc'), href: '/calculator', icon: 'calculator-outline' },
+    { label: t('nav.aboutUs'), description: t('nav.aboutUsDesc'), href: '/about-us', icon: 'information-circle-outline' },
+    { label: t('nav.deliveryPrice'), description: t('nav.deliveryPriceDesc'), href: '/delivery-rates', icon: 'cash-outline' },
+    { label: t('nav.calculator'), description: t('nav.calculatorDesc'), href: '/local-delivery-calculator', icon: 'calculator-outline' },
     { label: t('nav.careers'), description: t('nav.careersDesc'), href: '/careers', icon: 'people-outline' },
     { label: t('nav.contactUs'), description: t('nav.contactUsDesc'), href: '/contact-us', icon: 'call-outline' },
   ];
@@ -43,16 +43,16 @@ export default function Navbar() {
   // Us — that one gets its own bottom-nav icon instead, so Order Now can sit dead-center
   // with two items on each side.
   const INFO_ITEMS = [
-    { label: t('nav.aboutUs'), href: '/about', icon: '🏢' },
-    { label: t('nav.deliveryPrice'), href: '/delivery-price', icon: '🚚' },
-    { label: t('nav.calculator'), href: '/calculator', icon: '🧮' },
+    { label: t('nav.aboutUs'), href: '/about-us', icon: '🏢' },
+    { label: t('nav.deliveryPrice'), href: '/delivery-rates', icon: '🚚' },
+    { label: t('nav.calculator'), href: '/local-delivery-calculator', icon: '🧮' },
     { label: t('nav.careers'), href: '/careers', icon: '💼' },
     { label: t('footer.privacyPolicy'), href: '/privacy-policy', icon: '🔒' },
   ];
 
   const GUEST_MENU_ITEMS = [
     { label: t('nav.logIn'), href: '/login', icon: '🔑' },
-    { label: t('nav.register'), href: '/register', icon: '📝' },
+    { label: t('nav.register'), href: '/sign-up', icon: '📝' },
   ];
 
   const [openMenu, setOpenMenu] = useState(null); // 'company' | 'user' | 'settings' | null
@@ -121,12 +121,12 @@ export default function Navbar() {
                   <Text style={styles.navText}>{t('nav.home')}</Text>
                 </AnimatedPressable>
 
-                <AnimatedPressable scaleTo={1.04} style={styles.orderButton} href="/order" onPress={() => goTo('/order')}>
+                <AnimatedPressable scaleTo={1.04} style={styles.orderButton} href="/order-form" onPress={() => goTo('/order-form')}>
                   <Text style={styles.orderButtonText}>{t('nav.orderNow')}</Text>
                 </AnimatedPressable>
 
                 {isGuest && (
-                  <AnimatedPressable scaleTo={1.04} style={styles.wargaEmasButton} href="/warga-emas" onPress={() => goTo('/warga-emas')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.wargaEmasButton} href="/warga-emas-form" onPress={() => goTo('/warga-emas-form')}>
                     <Text style={styles.wargaEmasButtonText}>{t('nav.wargaEmas')}</Text>
                   </AnimatedPressable>
                 )}
@@ -160,7 +160,7 @@ export default function Navbar() {
                       <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/login" onPress={() => goTo('/login')}>
                         <Text style={styles.navText}>{t('nav.logIn')}</Text>
                       </AnimatedPressable>
-                      <AnimatedPressable scaleTo={1.04} style={styles.registerButton} href="/register" onPress={() => goTo('/register')}>
+                      <AnimatedPressable scaleTo={1.04} style={styles.registerButton} href="/sign-up" onPress={() => goTo('/sign-up')}>
                         <Text style={styles.registerButtonText}>{t('nav.register')}</Text>
                       </AnimatedPressable>
                     </>
@@ -209,7 +209,7 @@ export default function Navbar() {
           >
             <Ionicons name="search" size={scaleFont(24)} color={colors.textPrimary} />
           </AnimatedPressable>
-          <AnimatedPressable scaleTo={1.06} style={styles.bottomNavCenterButton} href="/order" onPress={() => goTo('/order')}>
+          <AnimatedPressable scaleTo={1.06} style={styles.bottomNavCenterButton} href="/order-form" onPress={() => goTo('/order-form')}>
             <Text style={styles.bottomNavCenterText}>{t('nav.orderNow').replace(' ', '\n')}</Text>
           </AnimatedPressable>
           <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} onPress={() => setInfoOpen(true)}>
@@ -238,8 +238,8 @@ export default function Navbar() {
                   <AnimatedPressable
                     scaleTo={1.02}
                     style={[styles.mobileItem, { backgroundColor: '#FFC72C' }]}
-                    href="/warga-emas"
-                    onPress={() => { goTo('/warga-emas'); setInfoOpen(false); }}
+                    href="/warga-emas-form"
+                    onPress={() => { goTo('/warga-emas-form'); setInfoOpen(false); }}
                   >
                     <Text style={[styles.mobileItemText, { color: '#000' }]}>{t('nav.wargaEmas')}</Text>
                   </AnimatedPressable>

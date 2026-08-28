@@ -97,7 +97,7 @@ export default function Calculator() {
         </View>
       </Card>
 
-      <AnimatedPressable style={formStyles.buttonAccent} onPress={() => router.push('/order')} scaleTo={1.04}>
+      <AnimatedPressable style={formStyles.buttonAccent} onPress={() => router.push('/order-form')} scaleTo={1.04}>
         <Text style={formStyles.buttonText}>{t('calculator.goToOrder')}</Text>
       </AnimatedPressable>
     </PageScroll>

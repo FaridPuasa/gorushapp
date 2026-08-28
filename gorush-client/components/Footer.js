@@ -25,8 +25,8 @@ export default function Footer() {
 
   const LINKS = [
     { label: t('nav.home'), href: '/' },
-    { label: t('nav.aboutUs'), href: '/about' },
-    { label: t('nav.deliveryPrice'), href: '/delivery-price' },
+    { label: t('nav.aboutUs'), href: '/about-us' },
+    { label: t('nav.deliveryPrice'), href: '/delivery-rates' },
     { label: t('nav.careers'), href: '/careers' },
     { label: t('nav.contactUs'), href: '/contact-us' },
     { label: t('footer.privacyPolicy'), href: '/privacy-policy' },

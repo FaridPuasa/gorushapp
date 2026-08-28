@@ -23,7 +23,7 @@ export default function AnnouncementBar() {
 
   return (
     <View style={styles.bar}>
-      <AnimatedPressable style={styles.body} onPress={() => router.push('/announcements')} scaleTo={1.05}>
+      <AnimatedPressable style={styles.body} onPress={() => router.push('/latest-update')} scaleTo={1.05}>
         <Text style={styles.text} numberOfLines={1}>📢  {title}</Text>
         <Text style={styles.chevron}>›</Text>
       </AnimatedPressable>

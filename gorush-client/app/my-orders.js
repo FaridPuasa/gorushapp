@@ -177,7 +177,7 @@ export default function MyOrders() {
               <Text style={formStyles.buttonText}>{t('myOrders.clearFilters')}</Text>
             </AnimatedPressable>
           ) : (
-            <AnimatedPressable scaleTo={1.03} style={formStyles.buttonAccent} onPress={() => router.push('/order')}>
+            <AnimatedPressable scaleTo={1.03} style={formStyles.buttonAccent} onPress={() => router.push('/order-form')}>
               <Text style={formStyles.buttonText}>{t('myOrders.emptyCta')}</Text>
             </AnimatedPressable>
           )}

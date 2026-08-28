@@ -332,7 +332,7 @@ export default function DeliveryPrice() {
               <Text style={[formStyles.bodyText, { marginTop: 12, marginBottom: 10 }]}>
                 {t('static.deliveryRates.localDeliveryBody')}
               </Text>
-              <AnimatedPressable style={formStyles.button} onPress={() => router.push('/calculator')} scaleTo={1.04}>
+              <AnimatedPressable style={formStyles.button} onPress={() => router.push('/local-delivery-calculator')} scaleTo={1.04}>
                 <Text style={formStyles.buttonText}>{t('static.deliveryRates.openCalculator')}</Text>
               </AnimatedPressable>
             </>

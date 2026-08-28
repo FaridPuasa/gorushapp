@@ -123,11 +123,11 @@ export default function Login() {
           )}
         </AnimatedPressable>
 
-        <AnimatedPressable scaleTo={1.04} style={{ marginTop: 16, alignItems: 'center' }} onPress={() => router.push('/register')}>
+        <AnimatedPressable scaleTo={1.04} style={{ marginTop: 16, alignItems: 'center' }} onPress={() => router.push('/sign-up')}>
           <Text style={{ color: formStyles.subtitle.color, fontSize: scaleFont(13) }}>{t('auth.login.noAccount')} <Text style={{ color: colors.primary, fontWeight: '700' }}>{t('auth.login.registerLink')}</Text></Text>
         </AnimatedPressable>
 
-        <AnimatedPressable scaleTo={1.04} style={{ marginTop: 10, alignItems: 'center' }} onPress={() => router.push('/order')}>
+        <AnimatedPressable scaleTo={1.04} style={{ marginTop: 10, alignItems: 'center' }} onPress={() => router.push('/order-form')}>
           <Text style={{ color: formStyles.subtitle.color, fontSize: scaleFont(13) }}>{t('auth.login.orContinueAs')} <Text style={{ color: colors.primary, fontWeight: '700' }}>{t('auth.login.guestLink')}</Text></Text>
         </AnimatedPressable>
       </View>

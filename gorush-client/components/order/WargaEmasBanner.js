@@ -12,7 +12,7 @@ export default function WargaEmasBanner() {
   const styles = useMemo(() => makeStyles(scaleFont), [scaleFont]);
 
   return (
-    <AnimatedPressable style={styles.banner} scaleTo={1.03} onPress={() => router.push('/warga-emas')}>
+    <AnimatedPressable style={styles.banner} scaleTo={1.03} onPress={() => router.push('/warga-emas-form')}>
       <Text style={styles.text}>{t('order.wargaEmasBanner')}</Text>
     </AnimatedPressable>
   );
