@@ -37,13 +37,26 @@ router.delete('/holidays/:id', async (req, res) => {
 
 // --- Announcements ---
 
+// Unlike the public GET (content.js), which only returns isVisible ones -
+// admin needs to see and manage hidden announcements too, not just the
+// ones currently shown to visitors.
+router.get('/announcements', async (req, res) => {
+    try {
+        const announcements = await Announcement.find().sort({ date: -1 }).lean();
+        res.status(200).json(announcements);
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: "Internal server error." });
+    }
+});
+
 router.post('/announcements', async (req, res) => {
     try {
-        const { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign } = req.body;
+        const { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, isVisible } = req.body;
         if (!titleEn || !bodyEn || !date) {
             return res.status(400).json({ error: "English title, body, and a date are required." });
         }
-        const announcement = await Announcement.create({ titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign });
+        const announcement = await Announcement.create({ titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, isVisible: isVisible !== false });
         res.status(201).json(announcement);
     } catch (err) {
         console.error(err.message);
@@ -53,13 +66,13 @@ router.post('/announcements', async (req, res) => {
 
 router.put('/announcements/:id', async (req, res) => {
     try {
-        const { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign } = req.body;
+        const { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, isVisible } = req.body;
         if (!titleEn || !bodyEn || !date) {
             return res.status(400).json({ error: "English title, body, and a date are required." });
         }
         const announcement = await Announcement.findByIdAndUpdate(
             req.params.id,
-            { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign },
+            { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, isVisible },
             { new: true }
         );
         if (!announcement) return res.status(404).json({ error: "Announcement not found." });

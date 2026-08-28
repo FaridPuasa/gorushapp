@@ -510,7 +510,7 @@ function HolidaysTab({ formStyles, colors, authHeader }) {
   );
 }
 
-const EMPTY_ANNOUNCEMENT = { titleEn: '', bodyEn: '', titleBm: '', bodyBm: '', date: '', bodyAlign: 'center' };
+const EMPTY_ANNOUNCEMENT = { titleEn: '', bodyEn: '', titleBm: '', bodyBm: '', date: '', bodyAlign: 'center', isVisible: true };
 
 function AnnouncementsTab({ formStyles, colors, authHeader }) {
   const [announcements, setAnnouncements] = useState([]);
@@ -521,8 +521,10 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
-    api.get('/api/announcements').then((res) => setAnnouncements(res.data)).catch(() => {});
-  }, []);
+    // Admin's own endpoint (not the public /api/announcements) - returns
+    // hidden announcements too, so they can still be found and re-shown.
+    api.get('/api/admin/announcements', { headers: authHeader }).then((res) => setAnnouncements(res.data)).catch(() => {});
+  }, [authHeader]);
   useEffect(() => { load(); }, [load]);
 
   const onChange = (field, value) => setForm((f) => ({ ...f, [field]: value }));
@@ -536,6 +538,7 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
       bodyBm: item.bodyBm || '',
       date: item.date,
       bodyAlign: item.bodyAlign || 'center',
+      isVisible: item.isVisible !== false,
     });
   };
 
@@ -594,6 +597,16 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
         <Field label="Body alignment" hint="Applies to both language versions when displayed">
           <AlignmentPicker value={form.bodyAlign} onChange={(v) => onChange('bodyAlign', v)} colors={colors} />
         </Field>
+        <Field label="Visibility" hint="Hidden announcements are kept but not shown to visitors">
+          <View style={formStyles.toggleRow}>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.isVisible && formStyles.toggleBtnActive]} onPress={() => onChange('isVisible', true)}>
+              <Text style={form.isVisible ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
+            </AnimatedPressable>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.isVisible && formStyles.toggleBtnActive]} onPress={() => onChange('isVisible', false)}>
+              <Text style={!form.isVisible ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
+            </AnimatedPressable>
+          </View>
+        </Field>
         {error ? <Text style={formStyles.fieldError}>{error}</Text> : null}
         <View style={{ flexDirection: 'row' }}>
           <AnimatedPressable scaleTo={1.03} style={[formStyles.button, { flex: 1 }, saving && formStyles.buttonDisabled]} onPress={save} disabled={saving}>
@@ -614,7 +627,7 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
           <View key={item._id} style={rowStyle(colors)}>
             <View style={{ flex: 1, marginRight: 12 }}>
               <Text style={{ fontSize: 11, fontWeight: '700', color: colors.primary, marginBottom: 4 }}>{formatAnnouncementDate(item.date)}</Text>
-              <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{item.titleEn}</Text>
+              <Text style={{ fontWeight: '700', color: colors.textPrimary }}>{item.titleEn}{item.isVisible === false ? ' (Hidden)' : ''}</Text>
               {item.titleBm ? <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>{item.titleBm}</Text> : null}
             </View>
             <View style={{ alignItems: 'flex-end' }}>

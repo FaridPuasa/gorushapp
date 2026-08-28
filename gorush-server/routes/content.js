@@ -22,7 +22,9 @@ router.get('/holidays', async (req, res) => {
 
 router.get('/announcements', async (req, res) => {
     try {
-        const announcements = await Announcement.find().sort({ date: -1 }).lean();
+        // $ne: false (not isVisible: true) so announcements created before this
+        // field existed - which have no isVisible at all - stay visible by default.
+        const announcements = await Announcement.find({ isVisible: { $ne: false } }).sort({ date: -1 }).lean();
         res.status(200).json(announcements);
     } catch (err) {
         console.error(err.message);

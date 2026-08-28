@@ -12,6 +12,10 @@ const AnnouncementSchema = new mongoose.Schema({
     // Body text carries **bold** / _italic_ markers, parsed client-side on display —
     // avoids storing/rendering real HTML for a couple of inline styles.
     bodyAlign: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
+    // Lets admin create/keep an announcement without it showing publicly yet
+    // (or anymore) - the public GET treats a missing value as visible too, so
+    // announcements created before this field existed are unaffected.
+    isVisible: { type: Boolean, default: true },
 }, { collection: 'announcements' });
 
 module.exports = mongoose.model('Announcement', AnnouncementSchema);
