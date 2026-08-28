@@ -14,6 +14,37 @@ const axios = require('axios');
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
+// Date/timestamp values (orderData.dateOfBirth, orderData.dateTimeSubmission)
+// are real JS Date objects - written into a row's `values` array as-is, they
+// get JSON-serialized to a raw ISO string ("1993-05-13T00:00:00.000Z") and
+// Excel just displays that literally instead of a real date. Format both as
+// plain readable strings before they ever reach a row.
+function formatDateOnly(date) {
+    if (!date) return null;
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return null;
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+    return `${day}/${month}/${d.getUTCFullYear()}`;
+}
+
+function formatBruneiDateTime(date) {
+    if (!date) return null;
+    const d = new Date(date);
+    if (Number.isNaN(d.getTime())) return null;
+    // Brunei has no DST, fixed UTC+8 - shift the epoch and read UTC fields
+    // back off the shifted instant to get Brunei wall-clock time without a
+    // timezone library (same technique as lib/bruneiTime.js).
+    const brunei = new Date(d.getTime() + 8 * 60 * 60 * 1000);
+    const day = String(brunei.getUTCDate()).padStart(2, '0');
+    const month = String(brunei.getUTCMonth() + 1).padStart(2, '0');
+    const minutes = String(brunei.getUTCMinutes()).padStart(2, '0');
+    let hours = brunei.getUTCHours();
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12 || 12;
+    return `${day}-${month}-${brunei.getUTCFullYear()} ${hours}:${minutes} ${ampm}`;
+}
+
 let cachedToken = null;
 let cachedTokenExpiresAt = 0;
 
@@ -145,10 +176,10 @@ function buildJpmcGuestOrderRow(orderData, trackingNumber) {
         '-',
         orderData.icNum || null,
         orderData.passport || 'IC Number',
-        orderData.dateOfBirth || null,
+        formatDateOnly(orderData.dateOfBirth),
         orderData.additionalPhoneNumber || null,
         orderData.receiverPhoneNumber || null,
-        orderData.dateTimeSubmission || null,
+        formatBruneiDateTime(orderData.dateTimeSubmission),
         orderData.paymentMethod || null,
         orderData.jobMethod || null,
         orderData.receiverName || null,
@@ -189,7 +220,7 @@ function buildCbslManifestRow(orderData, trackingNumber, item) {
         '-',
         orderData.parcelTrackingNum || null,
         trackingNumber || null,
-        orderData.dateTimeSubmission || null,
+        formatBruneiDateTime(orderData.dateTimeSubmission),
         orderData.receiverName || null,
         item.description || null,
         item.quantity || null,
