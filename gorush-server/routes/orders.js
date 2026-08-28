@@ -233,8 +233,8 @@ router.post('/', optionalAuth, async (req, res) => {
             if (!ldPickupOrDelivery || !itemContains || !ldProductType || !weightValue || !billTo) {
                 return res.status(400).json({ error: "All Local Delivery fields are required." });
             }
-            if (ldPickupOrDelivery === 'Pickup & Delivery' && (!pickupDate || !pickupAddress)) {
-                return res.status(400).json({ error: "Pickup date and address are required for Pickup & Delivery." });
+            if (ldPickupOrDelivery === 'Pickup and Delivery' && (!pickupDate || !pickupAddress)) {
+                return res.status(400).json({ error: "Pickup date and address are required for Pickup and Delivery." });
             }
         }
         if (product === 'cbsl') {
@@ -342,8 +342,8 @@ router.post('/', optionalAuth, async (req, res) => {
             ldPickupOrDelivery,
             itemContains,
             ldProductType,
-            pickupDate: ldPickupOrDelivery === 'Pickup & Delivery' ? parseGorushDateOnly(pickupDate) : undefined,
-            pickupAddress: ldPickupOrDelivery === 'Pickup & Delivery' ? pickupAddress : undefined,
+            pickupDate: ldPickupOrDelivery === 'Pickup and Delivery' ? parseGorushDateOnly(pickupDate) : undefined,
+            pickupAddress: ldPickupOrDelivery === 'Pickup and Delivery' ? pickupAddress : undefined,
             billTo,
             shipmentMethod,
             parcelTrackingNum,

@@ -349,8 +349,8 @@ export default {
     pjsc: 'PJSC',
     localDeliveryDetails: 'Local Delivery Details',
     pickupOrDelivery: 'Pickup or Delivery?',
-    pickup: 'Pickup',
-    pickupAndDelivery: 'Pickup & Delivery',
+    pickup: 'Delivery Only',
+    pickupAndDelivery: 'Pickup and Delivery',
     productDescription: 'Product Description',
     productDescriptionPlaceholder: 'e.g. Small box of documents',
     productType: 'Product Type',
@@ -441,6 +441,7 @@ export default {
       uploadRequired: 'Please upload the invoice/screenshot.',
       selectChargesRequired: 'Please select charges.',
       selectPaymentRequired: 'Please select a payment method.',
+      pickupDateNoSunday: 'Pickup is not available on Sundays - please choose another day.',
     },
     summary: {
       product: 'Product',

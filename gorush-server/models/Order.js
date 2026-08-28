@@ -92,7 +92,7 @@ const OrderSchema = new mongoose.Schema({
     itemContains: { type: String },
     // No slot in the items[] sub-schema for this - stays a separate field.
     ldProductType: { type: String },
-    // Only collected/required when ldPickupOrDelivery === 'Pickup & Delivery'.
+    // Only collected/required when ldPickupOrDelivery === 'Pickup and Delivery'.
     pickupDate: { type: Date },
     pickupAddress: { type: String },
     // Not enum-restricted: only relevant to Local Delivery, same empty-string reasoning as above.

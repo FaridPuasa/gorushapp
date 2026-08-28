@@ -349,8 +349,8 @@ export default {
     pjsc: 'PJSC',
     localDeliveryDetails: 'Butiran Penghantaran Tempatan',
     pickupOrDelivery: 'Pengambilan atau Penghantaran?',
-    pickup: 'Pengambilan',
-    pickupAndDelivery: 'Pengambilan & Penghantaran',
+    pickup: 'Hanya Penghantaran',
+    pickupAndDelivery: 'Pengambilan dan Penghantaran',
     productDescription: 'Penerangan Produk',
     productDescriptionPlaceholder: 'cth. Kotak kecil dokumen',
     productType: 'Jenis Produk',
@@ -441,6 +441,7 @@ export default {
       uploadRequired: 'Sila muat naik invois/tangkapan skrin.',
       selectChargesRequired: 'Sila pilih caj.',
       selectPaymentRequired: 'Sila pilih kaedah pembayaran.',
+      pickupDateNoSunday: 'Pengambilan tidak tersedia pada hari Ahad - sila pilih hari lain.',
     },
     summary: {
       product: 'Produk',

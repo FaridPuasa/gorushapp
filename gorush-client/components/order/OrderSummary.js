@@ -70,7 +70,7 @@ export default function OrderSummary({ form }) {
         <>
           <Card icon="📦" title={t('order.localDeliveryDetails')}>
             <Row label={t('order.summary.pickupOrDelivery')} value={form.ldPickupOrDelivery} />
-            {form.ldPickupOrDelivery === 'Pickup & Delivery' && (
+            {form.ldPickupOrDelivery === 'Pickup and Delivery' && (
               <>
                 <Row label={t('order.summary.pickupDate')} value={form.pickupDate} />
                 <Row label={t('order.summary.pickupAddress')} value={form.pickupAddress} />

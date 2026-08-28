@@ -21,11 +21,17 @@ export default function LocalDeliveryFields({
   const focusHandlers = makeFocusHandlers(setFocusedField);
   const surcharge = computeWeightSurcharge(values.ldProductWeight);
   const [showPickupDatePicker, setShowPickupDatePicker] = useState(false);
-  const isPickupAndDelivery = values.ldPickupOrDelivery === 'Pickup & Delivery';
+  const [pickupDateError, setPickupDateError] = useState(null);
+  const isPickupAndDelivery = values.ldPickupOrDelivery === 'Pickup and Delivery';
 
   const onChangePickupDate = (event, selectedDate) => {
     setShowPickupDatePicker(false);
     if (selectedDate) {
+      if (selectedDate.getDay() === 0) {
+        setPickupDateError(t('order.validation.pickupDateNoSunday'));
+        return;
+      }
+      setPickupDateError(null);
       const day = String(selectedDate.getDate()).padStart(2, '0');
       const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
       const year = selectedDate.getFullYear();
@@ -38,17 +44,17 @@ export default function LocalDeliveryFields({
       <Card icon="📦" title={t('order.localDeliveryDetails')}>
         <Text style={formStyles.fieldLabel}>{t('order.pickupOrDelivery')}<Text style={formStyles.requiredMark}> *</Text></Text>
         <View style={formStyles.toggleRow}>
-          <AnimatedPressable style={[formStyles.toggleBtn, values.ldPickupOrDelivery === 'Pickup' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('ldPickupOrDelivery', 'Pickup')}>
-            <Text style={values.ldPickupOrDelivery === 'Pickup' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.pickup')}</Text>
+          <AnimatedPressable style={[formStyles.toggleBtn, values.ldPickupOrDelivery === 'Delivery Only' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('ldPickupOrDelivery', 'Delivery Only')}>
+            <Text style={values.ldPickupOrDelivery === 'Delivery Only' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.pickup')}</Text>
           </AnimatedPressable>
-          <AnimatedPressable style={[formStyles.toggleBtn, values.ldPickupOrDelivery === 'Pickup & Delivery' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('ldPickupOrDelivery', 'Pickup & Delivery')}>
-            <Text style={values.ldPickupOrDelivery === 'Pickup & Delivery' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.pickupAndDelivery')}</Text>
+          <AnimatedPressable style={[formStyles.toggleBtn, values.ldPickupOrDelivery === 'Pickup and Delivery' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('ldPickupOrDelivery', 'Pickup and Delivery')}>
+            <Text style={values.ldPickupOrDelivery === 'Pickup and Delivery' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.pickupAndDelivery')}</Text>
           </AnimatedPressable>
         </View>
 
         {isPickupAndDelivery && (
           <>
-            <Field label={t('order.pickupDate')} required error={errors.pickupDate}>
+            <Field label={t('order.pickupDate')} required error={pickupDateError || errors.pickupDate}>
               {Platform.OS === 'web' ? (
                 <input
                   type="date"
@@ -58,6 +64,11 @@ export default function LocalDeliveryFields({
                   onChange={(e) => {
                     if (e.target.value) {
                       const [y, m, d] = e.target.value.split('-');
+                      if (new Date(Number(y), Number(m) - 1, Number(d)).getDay() === 0) {
+                        setPickupDateError(t('order.validation.pickupDateNoSunday'));
+                        return;
+                      }
+                      setPickupDateError(null);
                       onChange('pickupDate', `${d}.${m}.${y}`);
                     }
                   }}
