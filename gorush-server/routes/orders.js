@@ -77,6 +77,9 @@ function buildOrderAlertEmail(reason, orderData, trackingNumber) {
     const productName = ORDER_ALERT_PRODUCT_NAME[orderData.product] || orderData.product;
     const dateTimeSubmission = formatBruneiDateTime(orderData.dateTimeSubmission);
     const area = orderData.address?.district || '';
+    // MOH uses bruhimsnum, JPMC/PHC use patientNumber - mutually exclusive
+    // per product, so a single combined line covers all 3 pharmacy products.
+    const bruhimsOrPatientNumber = orderData.bruhimsnum || orderData.patientNumber || '';
 
     const withAddressAndArea = `
         <p>DO Tracking Number: ${trackingNumber}</p>
@@ -87,6 +90,7 @@ function buildOrderAlertEmail(reason, orderData, trackingNumber) {
         <p>Receiver Phone Number: ${orderData.receiverPhoneNumber || ''}</p>
         <p>Additional Phone Number: ${orderData.additionalPhoneNumber || ''}</p>
         <p>Area: ${area}</p>
+        <p>BruHIMS/Patient No.: ${bruhimsOrPatientNumber}</p>
         <p>Payment Method: ${orderData.paymentMethod || ''}</p>
         <p>Remarks: ${orderData.remarks || ''}</p>
     `;
@@ -107,6 +111,7 @@ function buildOrderAlertEmail(reason, orderData, trackingNumber) {
             <p>Receiver Name: ${orderData.receiverName || ''}</p>
             <p>Receiver Phone Number: ${orderData.receiverPhoneNumber || ''}</p>
             <p>Additional Phone Number: ${orderData.additionalPhoneNumber || ''}</p>
+            <p>BruHIMS/Patient No.: ${bruhimsOrPatientNumber}</p>
             <p>Payment Method: ${orderData.paymentMethod || ''}</p>
             <p>Remarks: ${orderData.remarks || ''}</p>
         `,

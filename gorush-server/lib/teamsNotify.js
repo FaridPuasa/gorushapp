@@ -48,6 +48,12 @@ function buildOrderCard(title, orderData, trackingNumber) {
         { title: 'Phone', value: orderData.receiverPhoneNumber || '' },
         { title: 'Payment Method', value: orderData.paymentMethod || '' },
     ];
+    // MOH uses bruhimsnum, JPMC/PHC use patientNumber - mutually exclusive
+    // per product, so a single combined fact covers all 3 pharmacy products.
+    const bruhimsOrPatientNumber = orderData.bruhimsnum || orderData.patientNumber;
+    if (bruhimsOrPatientNumber) {
+        facts.push({ title: 'BruHIMS/Patient No.', value: bruhimsOrPatientNumber });
+    }
     if (orderData.remarks) {
         facts.push({ title: 'Remarks', value: orderData.remarks });
     }
