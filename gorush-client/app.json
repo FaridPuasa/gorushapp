@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "gorush-client",
+    "name": "Go Rush",
     "slug": "gorush-client",
     "version": "1.0.0",
     "scheme": "gorushapp",
