@@ -242,6 +242,10 @@ export default function Order() {
       if (receiver.email.trim() && !isValidEmail(receiver.email)) e.receiver.email = t('order.validation.emailInvalid');
       if (!splitPhoneNumber(receiver.phone).localNumber) e.receiver.phone = t('order.validation.phoneRequired');
       if (!details.ldPickupOrDelivery) e.ldPickupOrDelivery = t('order.validation.required');
+      if (details.ldPickupOrDelivery === 'Pickup and Delivery') {
+        if (!details.pickupDate) e.pickupDate = t('order.validation.required');
+        if (!details.pickupAddress || !details.pickupAddress.trim()) e.pickupAddress = t('order.validation.required');
+      }
       if (!details.itemContains.trim()) e.itemContains = t('order.validation.required');
       if (!details.ldProductType.trim()) e.ldProductType = t('order.validation.required');
       if (!details.ldProductWeight || Number(details.ldProductWeight) <= 0) e.ldProductWeight = t('order.validation.weightInvalid');
@@ -321,6 +325,8 @@ export default function Order() {
         appointmentPlace: details.appointmentPlace,
         payingPatient: details.payingPatient,
         ldPickupOrDelivery: details.ldPickupOrDelivery,
+        pickupDate: details.pickupDate,
+        pickupAddress: details.pickupAddress,
         itemContains: details.itemContains,
         ldProductType: details.ldProductType,
         ldProductWeight: details.ldProductWeight,
