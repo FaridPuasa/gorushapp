@@ -510,15 +510,18 @@ function HolidaysTab({ formStyles, colors, authHeader }) {
   );
 }
 
-const EMPTY_ANNOUNCEMENT = { titleEn: '', bodyEn: '', titleBm: '', bodyBm: '', date: '', bodyAlign: 'center', showToGuests: true, showToLoggedIn: true };
+const EMPTY_ANNOUNCEMENT = { titleEn: '', bodyEn: '', titleBm: '', bodyBm: '', date: '', bodyAlign: 'center', showToGuests: true, showToLoggedIn: true, showOnBanner: true };
 
 function visibilitySuffix(item) {
   const guestsHidden = item.showToGuests === false;
   const loggedInHidden = item.showToLoggedIn === false;
-  if (guestsHidden && loggedInHidden) return ' (Hidden from everyone)';
-  if (guestsHidden) return ' (Hidden from guests)';
-  if (loggedInHidden) return ' (Hidden from logged-in users)';
-  return '';
+  const bannerHidden = item.showOnBanner === false;
+  let suffix = '';
+  if (guestsHidden && loggedInHidden) suffix = ' (Hidden from everyone)';
+  else if (guestsHidden) suffix = ' (Hidden from guests)';
+  else if (loggedInHidden) suffix = ' (Hidden from logged-in users)';
+  if (bannerHidden) suffix += ' (Not shown on top banner)';
+  return suffix;
 }
 
 function AnnouncementsTab({ formStyles, colors, authHeader }) {
@@ -549,6 +552,7 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
       bodyAlign: item.bodyAlign || 'center',
       showToGuests: item.showToGuests !== false,
       showToLoggedIn: item.showToLoggedIn !== false,
+      showOnBanner: item.showOnBanner !== false,
     });
   };
 
@@ -624,6 +628,16 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
             </AnimatedPressable>
             <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showToLoggedIn && formStyles.toggleBtnActive]} onPress={() => onChange('showToLoggedIn', false)}>
               <Text style={!form.showToLoggedIn ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
+            </AnimatedPressable>
+          </View>
+        </Field>
+        <Field label="Top notification bar" hint="This announcement still always appears on the Latest Updates page either way">
+          <View style={formStyles.toggleRow}>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.showOnBanner && formStyles.toggleBtnActive]} onPress={() => onChange('showOnBanner', true)}>
+              <Text style={form.showOnBanner ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
+            </AnimatedPressable>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showOnBanner && formStyles.toggleBtnActive]} onPress={() => onChange('showOnBanner', false)}>
+              <Text style={!form.showOnBanner ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
             </AnimatedPressable>
           </View>
         </Field>

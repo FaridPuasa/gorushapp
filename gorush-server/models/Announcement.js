@@ -19,6 +19,12 @@ const AnnouncementSchema = new mongoose.Schema({
     // created before these fields existed are unaffected.
     showToGuests: { type: Boolean, default: true },
     showToLoggedIn: { type: Boolean, default: true },
+    // Independent of the two audience toggles above - controls only whether
+    // this announcement is eligible to appear in the site-wide top
+    // notification bar. It always still appears on the full /latest-update
+    // list regardless of this flag; same missing-means-visible convention as
+    // showToGuests/showToLoggedIn.
+    showOnBanner: { type: Boolean, default: true },
 }, { collection: 'announcements' });
 
 module.exports = mongoose.model('Announcement', AnnouncementSchema);

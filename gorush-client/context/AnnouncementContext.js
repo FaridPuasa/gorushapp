@@ -18,9 +18,13 @@ export function AnnouncementProvider({ children }) {
     // wrong one permanently, if this effect didn't also depend on auth
     // state and re-run once it resolves).
     if (authLoading) return;
-    // Server already sorts by date descending — the first one is the latest.
+    // Server already sorts by date descending — the first one banner-eligible
+    // (showOnBanner !== false) is the one shown here. This is a separate
+    // concern from the audience toggles above (already applied server-side)
+    // and from the full Latest Updates list, which always shows every
+    // audience-eligible announcement regardless of this flag.
     api.get('/api/announcements', { headers: !isGuest && token ? { Authorization: `Bearer ${token}` } : {} })
-      .then((res) => setAnnouncement(res.data[0] || null))
+      .then((res) => setAnnouncement(res.data.find((a) => a.showOnBanner !== false) || null))
       .catch(() => setAnnouncement(null));
   }, [authLoading, isGuest, token]);
 
