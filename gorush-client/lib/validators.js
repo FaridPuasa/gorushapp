@@ -50,21 +50,40 @@ export function combinePhoneNumber(countryCode, localNumber) {
   return `${countryCode}${localNumber}`;
 }
 
+// A lazy prefix mask: the prefix word (e.g. "Jln") is shown as a
+// placeholder hint, not pre-filled real text, so it is never already
+// "committed" to the value before the user types anything - that was the
+// bug this replaced. As long as what's been typed so far is itself
+// consistent with (a leading fragment of) the prefix word, it's shown
+// exactly as typed with nothing added - so typing "Jln" reads "Jln", not
+// "Jln Jln". The moment typing extends past the prefix word or diverges
+// from it, the canonical "Jln " form is locked in and everything from that
+// point on is the free-text portion, jumping straight past the prefix.
 export function applyPrefix(prefix, text) {
-  let cleanText = text;
-  while (cleanText.startsWith(prefix)) {
-    cleanText = cleanText.slice(prefix.length);
+  if (text.length === 0) return '';
+  const prefixWord = prefix.trimEnd(); // e.g. "Jln"
+  const lowerText = text.toLowerCase();
+  const lowerPrefix = prefixWord.toLowerCase();
+
+  if (text.length <= prefixWord.length && lowerPrefix.startsWith(lowerText)) {
+    // Still mid-way through (re)typing the prefix word itself - don't force
+    // anything yet, let it read exactly as typed.
+    return text;
   }
-  return cleanText.length > 0 ? `${prefix}${cleanText}` : '';
+  if (lowerText.startsWith(lowerPrefix)) {
+    // Typed the full prefix word and kept going - lock in the canonical
+    // prefix, whatever follows (after any separating space) is free text.
+    const rest = text.slice(prefixWord.length).replace(/^\s+/, '');
+    return rest.length > 0 ? `${prefixWord} ${rest}` : text;
+  }
+  // Diverged from the prefix word immediately (typed something else
+  // entirely) - jump straight to prefix + their content.
+  return `${prefixWord} ${text}`;
 }
 
 // A prefixed field (jalan/kampong/simpang) whose value is only ever the bare
-// prefix itself - e.g. "Jln" with nothing typed after it - is functionally
-// empty for required-field validation. applyPrefix() already clears the
-// value entirely once backspaced to nothing during normal typing, but the
-// prefix is also inserted directly on focus (bypassing applyPrefix) so the
-// field shows the prefix before the user starts typing - if they then blur
-// without typing anything, the raw value stays exactly the trimmed prefix.
+// prefix word itself - e.g. "Jln" with nothing typed after it - is
+// functionally empty for required-field validation.
 export function isPrefixOnly(prefix, value) {
   return !value || !value.trim() || value.trim() === prefix.trim();
 }

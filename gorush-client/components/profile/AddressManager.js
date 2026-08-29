@@ -7,6 +7,7 @@ import { useIsMobile } from '../../lib/responsive';
 import { AnimatedPressable } from '../../lib/animations';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFontScale } from '../../context/FontScaleContext';
+import { useTheme } from '../../context/ThemeContext';
 
 function emptyAddress() {
   return { houseunitno: '', jalan: '', kampong: '', simpang: '', district: 'Brunei', postalcode: '' };
@@ -23,6 +24,7 @@ function validateAddress(data, t) {
 
 function AddressForm({ initial, onSave, onCancel, saving }) {
   const formStyles = useFormStyles();
+  const { colors } = useTheme();
   const { t } = useLanguage();
   const [data, setData] = useState(initial);
   const [errors, setErrors] = useState({});
@@ -56,30 +58,33 @@ function AddressForm({ initial, onSave, onCancel, saving }) {
         <TextInput
           accessibilityLabel={t('address.jalan')}
           style={inputStyle('jalan')}
+          placeholder="Jln"
+          placeholderTextColor={colors.textMuted}
           value={data.jalan}
-          onFocus={() => { setFocusedField('jalan'); if (!data.jalan) update('jalan', 'Jln '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(v) => update('jalan', applyPrefix('Jln ', v))}
+          {...focusHandlers('jalan')}
         />
       </Field>
       <Field label={t('address.kampong')} required error={errors.kampong}>
         <TextInput
           accessibilityLabel={t('address.kampong')}
           style={inputStyle('kampong')}
+          placeholder="Kg"
+          placeholderTextColor={colors.textMuted}
           value={data.kampong}
-          onFocus={() => { setFocusedField('kampong'); if (!data.kampong) update('kampong', 'Kg '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(v) => update('kampong', applyPrefix('Kg ', v))}
+          {...focusHandlers('kampong')}
         />
       </Field>
       <Field label={t('address.simpang')}>
         <TextInput
           accessibilityLabel={t('address.simpang')}
           style={inputStyle('simpang')}
+          placeholder="Spg"
+          placeholderTextColor={colors.textMuted}
           value={data.simpang}
-          onFocus={() => { setFocusedField('simpang'); if (!data.simpang) update('simpang', 'Spg '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(v) => update('simpang', applyPrefix('Spg ', v))}
+          {...focusHandlers('simpang')}
         />
       </Field>
       <Field label={t('address.district')} required>

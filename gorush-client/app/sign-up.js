@@ -248,10 +248,11 @@ export default function Register() {
             <TextInput
               style={inputStyle('jalan')}
               accessibilityLabel={t('address.jalan')}
+              placeholder="Jln"
+              placeholderTextColor={colors.textMuted}
               value={formData.jalan}
-              onFocus={() => { setFocusedField('jalan'); if (!formData.jalan) updateField('jalan', 'Jln '); }}
-              onBlur={() => setFocusedField(null)}
               onChangeText={(text) => handlePrefixInput('jalan', 'Jln ', text)}
+              {...focusHandlers('jalan')}
             />
           </Field>
 
@@ -259,10 +260,11 @@ export default function Register() {
             <TextInput
               style={inputStyle('kampong')}
               accessibilityLabel={t('address.kampong')}
+              placeholder="Kg"
+              placeholderTextColor={colors.textMuted}
               value={formData.kampong}
-              onFocus={() => { setFocusedField('kampong'); if (!formData.kampong) updateField('kampong', 'Kg '); }}
-              onBlur={() => setFocusedField(null)}
               onChangeText={(text) => handlePrefixInput('kampong', 'Kg ', text)}
+              {...focusHandlers('kampong')}
             />
           </Field>
 
@@ -270,10 +272,11 @@ export default function Register() {
             <TextInput
               style={inputStyle('simpang')}
               accessibilityLabel={t('address.simpang')}
+              placeholder="Spg"
+              placeholderTextColor={colors.textMuted}
               value={formData.simpang}
-              onFocus={() => { setFocusedField('simpang'); if (!formData.simpang) updateField('simpang', 'Spg '); }}
-              onBlur={() => setFocusedField(null)}
               onChangeText={(text) => handlePrefixInput('simpang', 'Spg ', text)}
+              {...focusHandlers('simpang')}
             />
           </Field>
 

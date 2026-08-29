@@ -76,10 +76,11 @@ export default function PartyDetailsForm({
           accessibilityLabel={t('address.jalan')}
           editable={!addressLocked}
           style={inputStyle('jalan')}
+          placeholder="Jln"
+          placeholderTextColor={colors.textMuted}
           value={values.jalan}
-          onFocus={() => { setFocusedField('jalan'); if (!values.jalan) onChange('jalan', 'Jln '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(v) => onChange('jalan', applyPrefix('Jln ', v))}
+          {...focusHandlers('jalan')}
         />
       </Field>
 
@@ -88,10 +89,11 @@ export default function PartyDetailsForm({
           accessibilityLabel={t('address.kampong')}
           editable={!addressLocked}
           style={inputStyle('kampong')}
+          placeholder="Kg"
+          placeholderTextColor={colors.textMuted}
           value={values.kampong}
-          onFocus={() => { setFocusedField('kampong'); if (!values.kampong) onChange('kampong', 'Kg '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(v) => onChange('kampong', applyPrefix('Kg ', v))}
+          {...focusHandlers('kampong')}
         />
       </Field>
 
@@ -100,10 +102,11 @@ export default function PartyDetailsForm({
           accessibilityLabel={t('address.simpang')}
           editable={!addressLocked}
           style={inputStyle('simpang')}
+          placeholder="Spg"
+          placeholderTextColor={colors.textMuted}
           value={values.simpang}
-          onFocus={() => { setFocusedField('simpang'); if (!values.simpang) onChange('simpang', 'Spg '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(v) => onChange('simpang', applyPrefix('Spg ', v))}
+          {...focusHandlers('simpang')}
         />
       </Field>
 

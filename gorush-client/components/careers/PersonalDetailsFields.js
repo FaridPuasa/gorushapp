@@ -135,30 +135,33 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
       <Field label={t('address.jalan')} required error={errors.jalan}>
         <TextInput
           style={inputStyle('jalan')}
+          placeholder="Jln"
+          placeholderTextColor={colors.textMuted}
           value={values.jalan}
-          onFocus={() => { setFocusedField('jalan'); if (!values.jalan) onChange('jalan', 'Jln '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(text) => onChange('jalan', applyPrefix('Jln ', text))}
+          {...focusHandlers('jalan')}
         />
       </Field>
 
       <Field label={t('address.kampong')} required error={errors.kampong}>
         <TextInput
           style={inputStyle('kampong')}
+          placeholder="Kg"
+          placeholderTextColor={colors.textMuted}
           value={values.kampong}
-          onFocus={() => { setFocusedField('kampong'); if (!values.kampong) onChange('kampong', 'Kg '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(text) => onChange('kampong', applyPrefix('Kg ', text))}
+          {...focusHandlers('kampong')}
         />
       </Field>
 
       <Field label={t('address.simpang')}>
         <TextInput
           style={inputStyle('simpang')}
+          placeholder="Spg"
+          placeholderTextColor={colors.textMuted}
           value={values.simpang}
-          onFocus={() => { setFocusedField('simpang'); if (!values.simpang) onChange('simpang', 'Spg '); }}
-          onBlur={() => setFocusedField(null)}
           onChangeText={(text) => onChange('simpang', applyPrefix('Spg ', text))}
+          {...focusHandlers('simpang')}
         />
       </Field>
 
