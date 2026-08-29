@@ -47,19 +47,29 @@ function decodeEntities(str) {
 const SIMPLE_TAG_RE = /^<\/?(b|strong|i|em|u|br|ul|ol|li)\b/i;
 const SPAN_OPEN_RE = /^<span\s+style="([^"]*)"\s*>$/i;
 const FONT_COLOR_OPEN_RE = /^<font\s+color="([^"]+)"\s*>$/i;
-const WRAP_CLOSE_RE = /^<\/(?:span|font)>$/i;
+// href is never admin-typed HTML - only ever set by directly editing the
+// database (the toolbar has no link button yet) - so this only needs to
+// accept a plain quoted attribute value, not worry about escaping.
+const A_OPEN_RE = /^<a\s+href="[^"]*"\s*>$/i;
+const WRAP_CLOSE_RE = /^<\/(?:span|font|a)>$/i;
 
 // Decides per-tag whether to keep or drop it, rather than one regex trying to describe every
 // allowed shape (including the two tags — span, font — that carry an attribute) via lookaheads.
 function stripDisallowedTags(html) {
   return html.replace(/<\/?[a-zA-Z][^>]*>/g, (tag) => (
-    SIMPLE_TAG_RE.test(tag) || SPAN_OPEN_RE.test(tag) || FONT_COLOR_OPEN_RE.test(tag) || WRAP_CLOSE_RE.test(tag) ? tag : ''
+    SIMPLE_TAG_RE.test(tag) || SPAN_OPEN_RE.test(tag) || FONT_COLOR_OPEN_RE.test(tag) || A_OPEN_RE.test(tag) || WRAP_CLOSE_RE.test(tag) ? tag : ''
   ));
 }
 
-const TOKEN_RE = /<(\/?)(b|strong|i|em|u|br|ul|ol|li)\s*\/?>|<span\s+style="([^"]*)"\s*>|<font\s+color="([^"]+)"\s*>|<\/(?:span|font)>/gi;
+const TOKEN_RE = /<(\/?)(b|strong|i|em|u|br|ul|ol|li)\s*\/?>|<span\s+style="([^"]*)"\s*>|<font\s+color="([^"]+)"\s*>|<a\s+href="([^"]*)"\s*>|<\/(?:span|font|a)>/gi;
 
-export function renderRichText(html, style) {
+// `onLinkPress(href)` is called when a rendered <a href="..."> segment is
+// tapped - the caller decides how to navigate (in-app route vs external
+// URL), since this file has no framework navigation dependency of its own.
+// Without it, <a> tags still render (as plain text, tag stripped) rather
+// than crashing - matches every other existing caller that doesn't need
+// links (HeroSlideshow, the admin Hero Slides preview).
+export function renderRichText(html, style, { onLinkPress, linkColor } = {}) {
   if (!html) return null;
   const cleaned = stripDisallowedTags(html);
   const nodes = [];
@@ -73,8 +83,9 @@ export function renderRichText(html, style) {
   const listStack = [];
   const colorStack = [];
   const sizeStack = [];
-  // Tracks exactly what each open <span>/<font> pushed, so its matching close pops only that —
-  // a span can carry color, size, both, or (via <font>) always just color.
+  const linkStack = [];
+  // Tracks exactly what each open <span>/<font>/<a> pushed, so its matching close pops only
+  // that — a span can carry color, size, both, a font always just color, and an <a> a link href.
   const openStack = [];
 
   const flush = () => {
@@ -85,7 +96,13 @@ export function renderRichText(html, style) {
     if (underlineDepth > 0) spanStyle.push({ textDecorationLine: 'underline' });
     if (colorStack.length > 0) spanStyle.push({ color: colorStack[colorStack.length - 1] });
     if (sizeStack.length > 0) spanStyle.push({ fontSize: sizeStack[sizeStack.length - 1] });
-    nodes.push(<Text key={key++} style={spanStyle}>{decodeEntities(buffer)}</Text>);
+    const href = linkStack[linkStack.length - 1];
+    const extraProps = {};
+    if (href && onLinkPress) {
+      spanStyle.push({ textDecorationLine: 'underline' }, linkColor ? { color: linkColor } : null);
+      extraProps.onPress = () => onLinkPress(href);
+    }
+    nodes.push(<Text key={key++} style={spanStyle} {...extraProps}>{decodeEntities(buffer)}</Text>);
     buffer = '';
   };
 
@@ -138,12 +155,17 @@ export function renderRichText(html, style) {
       flush();
       colorStack.push(match[4].trim());
       openStack.push({ color: true });
+    } else if (match[5] !== undefined) {
+      flush();
+      linkStack.push(match[5]);
+      openStack.push({ link: true });
     } else {
       flush();
       const frame = openStack.pop();
       if (frame) {
         if (frame.color) colorStack.pop();
         if (frame.size) sizeStack.pop();
+        if (frame.link) linkStack.pop();
       }
     }
   }

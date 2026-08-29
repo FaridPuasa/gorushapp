@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Text } from 'react-native';
+import { Text, Linking } from 'react-native';
+import { useRouter } from 'expo-router';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { formatAnnouncementDate, localizeAnnouncement, renderRichText } from '../lib/announcements';
 import { useTheme } from '../context/ThemeContext';
@@ -14,7 +15,16 @@ export default function Announcements() {
   const formStyles = useFormStyles();
   const { scaleFont } = useFontScale();
   const { token, isGuest, loading: authLoading } = useAuth();
+  const router = useRouter();
   const [announcements, setAnnouncements] = useState([]);
+
+  // Announcement bodies only ever carry an internal path (e.g. "/sign-up")
+  // or a full external URL - manually written straight into the database,
+  // since the admin rich-text toolbar has no link button yet.
+  const onLinkPress = (href) => {
+    if (/^https?:\/\//i.test(href)) Linking.openURL(href);
+    else router.push(href);
+  };
   const styles = {
     date: { fontSize: scaleFont(11), fontWeight: '700', color: colors.primary, marginBottom: 8, textAlign: 'center' },
   };
@@ -45,7 +55,7 @@ export default function Announcements() {
             eyebrow={formatAnnouncementDate(item.date)}
             eyebrowStyle={styles.date}
           >
-            <Text style={[formStyles.bodyText, { textAlign: align }]}>{renderRichText(body, formStyles.bodyText)}</Text>
+            <Text style={[formStyles.bodyText, { textAlign: align }]}>{renderRichText(body, formStyles.bodyText, { onLinkPress, linkColor: colors.primary })}</Text>
           </Card>
         );
       })}
