@@ -12,19 +12,14 @@ const AnnouncementSchema = new mongoose.Schema({
     // Body text carries **bold** / _italic_ markers, parsed client-side on display —
     // avoids storing/rendering real HTML for a couple of inline styles.
     bodyAlign: { type: String, enum: ['left', 'center', 'right'], default: 'center' },
-    // Independent visibility per audience - e.g. an announcement about the
-    // benefits of registering is only relevant to guests, not people who
-    // already have an account. Both default true (visible to everyone); the
-    // public GET treats a missing value as visible too, so announcements
-    // created before these fields existed are unaffected.
-    showToGuests: { type: Boolean, default: true },
-    showToLoggedIn: { type: Boolean, default: true },
-    // Independent of the two audience toggles above - controls only whether
-    // this announcement is eligible to appear in the site-wide top
-    // notification bar. It always still appears on the full /latest-update
-    // list regardless of this flag; same missing-means-visible convention as
-    // showToGuests/showToLoggedIn.
-    showOnBanner: { type: Boolean, default: true },
+    // Every announcement always appears on the full /latest-update list for
+    // everyone - no per-audience hiding there. These two control only
+    // whether it's eligible to appear in the site-wide top notification
+    // bar, independently per audience (e.g. shown to guests but not to
+    // logged-in users). Both default true; missing means visible too, so
+    // announcements created before these fields existed are unaffected.
+    showOnBannerToGuests: { type: Boolean, default: true },
+    showOnBannerToLoggedIn: { type: Boolean, default: true },
 }, { collection: 'announcements' });
 
 module.exports = mongoose.model('Announcement', AnnouncementSchema);

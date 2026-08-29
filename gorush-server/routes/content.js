@@ -6,7 +6,6 @@ const HeroSlide = require('../models/HeroSlide');
 const Vacancy = require('../models/Vacancy');
 const { isVacancyCurrentlyOpen } = require('../lib/vacancies');
 const PricingRule = require('../models/PricingRule');
-const { optionalAuth } = require('../middleware/auth');
 
 // Public, unauthenticated reads — the storefront (and its own order-availability checks)
 // need these regardless of who's browsing. Admin-only writes live in routes/admin.js.
@@ -21,12 +20,12 @@ router.get('/holidays', async (req, res) => {
     }
 });
 
-router.get('/announcements', optionalAuth, async (req, res) => {
+router.get('/announcements', async (req, res) => {
     try {
-        // $ne: false (not showToX: true) so announcements created before these
-        // fields existed - which have neither at all - stay visible by default.
-        const audienceField = req.userId ? 'showToLoggedIn' : 'showToGuests';
-        const announcements = await Announcement.find({ [audienceField]: { $ne: false } }).sort({ date: -1 }).lean();
+        // Always visible to everyone here - only the top notification bar
+        // (AnnouncementContext.js, client-side) filters by audience, via
+        // showOnBannerToGuests/showOnBannerToLoggedIn on each announcement.
+        const announcements = await Announcement.find().sort({ date: -1 }).lean();
         res.status(200).json(announcements);
     } catch (err) {
         console.error(err.message);

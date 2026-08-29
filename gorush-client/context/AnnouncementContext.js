@@ -7,26 +7,28 @@ import { useAuth } from './AuthContext';
 const AnnouncementContext = createContext(null);
 
 export function AnnouncementProvider({ children }) {
-  const { token, isGuest, loading: authLoading } = useAuth();
+  const { isGuest, loading: authLoading } = useAuth();
   const [dismissed, setDismissed] = useState(false);
   const [announcement, setAnnouncement] = useState(null);
 
   useEffect(() => {
-    // Wait for auth to resolve first - the server picks announcements by
-    // guest-vs-logged-in audience, so fetching before we know which one this
-    // visitor is would risk showing the wrong list for a moment (or the
-    // wrong one permanently, if this effect didn't also depend on auth
-    // state and re-run once it resolves).
+    // The list itself (/api/announcements) is the same for everyone - wait
+    // for auth to resolve just to know which banner field (guest vs
+    // logged-in) applies to this visitor before picking one, so it doesn't
+    // show the wrong audience's pick for a moment.
     if (authLoading) return;
-    // Server already sorts by date descending — the first one banner-eligible
-    // (showOnBanner !== false) is the one shown here. This is a separate
-    // concern from the audience toggles above (already applied server-side)
-    // and from the full Latest Updates list, which always shows every
-    // audience-eligible announcement regardless of this flag.
-    api.get('/api/announcements', { headers: !isGuest && token ? { Authorization: `Bearer ${token}` } : {} })
-      .then((res) => setAnnouncement(res.data.find((a) => a.showOnBanner !== false) || null))
+    // Server already sorts by date descending — the first one banner-
+    // eligible for THIS viewer's audience (showOnBannerToGuests/
+    // showOnBannerToLoggedIn) is the one shown here. Controlled
+    // independently per audience - an announcement can be on the banner for
+    // guests but not logged-in users, or vice versa. Independent of the
+    // full Latest Updates list, which always shows every announcement to
+    // everyone regardless of either banner flag.
+    const bannerField = isGuest ? 'showOnBannerToGuests' : 'showOnBannerToLoggedIn';
+    api.get('/api/announcements')
+      .then((res) => setAnnouncement(res.data.find((a) => a[bannerField] !== false) || null))
       .catch(() => setAnnouncement(null));
-  }, [authLoading, isGuest, token]);
+  }, [authLoading, isGuest]);
 
   const value = {
     dismissed,

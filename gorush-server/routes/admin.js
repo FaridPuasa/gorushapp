@@ -37,9 +37,9 @@ router.delete('/holidays/:id', async (req, res) => {
 
 // --- Announcements ---
 
-// Unlike the public GET (content.js), which only returns whichever audience
-// the requester belongs to - admin needs to see and manage every
-// announcement, including ones hidden from one or both audiences.
+// Same unfiltered list as the public GET (content.js) - kept as its own
+// admin-only route since it's paired with the create/update/delete routes
+// below, all behind requireAdmin.
 router.get('/announcements', async (req, res) => {
     try {
         const announcements = await Announcement.find().sort({ date: -1 }).lean();
@@ -52,14 +52,13 @@ router.get('/announcements', async (req, res) => {
 
 router.post('/announcements', async (req, res) => {
     try {
-        const { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, showToGuests, showToLoggedIn, showOnBanner } = req.body;
+        const { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, showOnBannerToGuests, showOnBannerToLoggedIn } = req.body;
         if (!titleEn || !bodyEn || !date) {
             return res.status(400).json({ error: "English title, body, and a date are required." });
         }
         const announcement = await Announcement.create({
             titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign,
-            showToGuests: showToGuests !== false, showToLoggedIn: showToLoggedIn !== false,
-            showOnBanner: showOnBanner !== false,
+            showOnBannerToGuests: showOnBannerToGuests !== false, showOnBannerToLoggedIn: showOnBannerToLoggedIn !== false,
         });
         res.status(201).json(announcement);
     } catch (err) {
@@ -70,13 +69,13 @@ router.post('/announcements', async (req, res) => {
 
 router.put('/announcements/:id', async (req, res) => {
     try {
-        const { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, showToGuests, showToLoggedIn, showOnBanner } = req.body;
+        const { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, showOnBannerToGuests, showOnBannerToLoggedIn } = req.body;
         if (!titleEn || !bodyEn || !date) {
             return res.status(400).json({ error: "English title, body, and a date are required." });
         }
         const announcement = await Announcement.findByIdAndUpdate(
             req.params.id,
-            { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, showToGuests, showToLoggedIn, showOnBanner },
+            { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, showOnBannerToGuests, showOnBannerToLoggedIn },
             { new: true }
         );
         if (!announcement) return res.status(404).json({ error: "Announcement not found." });

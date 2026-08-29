@@ -510,18 +510,18 @@ function HolidaysTab({ formStyles, colors, authHeader }) {
   );
 }
 
-const EMPTY_ANNOUNCEMENT = { titleEn: '', bodyEn: '', titleBm: '', bodyBm: '', date: '', bodyAlign: 'center', showToGuests: true, showToLoggedIn: true, showOnBanner: true };
+const EMPTY_ANNOUNCEMENT = {
+  titleEn: '', bodyEn: '', titleBm: '', bodyBm: '', date: '', bodyAlign: 'center',
+  showOnBannerToGuests: true, showOnBannerToLoggedIn: true,
+};
 
 function visibilitySuffix(item) {
-  const guestsHidden = item.showToGuests === false;
-  const loggedInHidden = item.showToLoggedIn === false;
-  const bannerHidden = item.showOnBanner === false;
-  let suffix = '';
-  if (guestsHidden && loggedInHidden) suffix = ' (Hidden from everyone)';
-  else if (guestsHidden) suffix = ' (Hidden from guests)';
-  else if (loggedInHidden) suffix = ' (Hidden from logged-in users)';
-  if (bannerHidden) suffix += ' (Not shown on top banner)';
-  return suffix;
+  const bannerGuestsHidden = item.showOnBannerToGuests === false;
+  const bannerLoggedInHidden = item.showOnBannerToLoggedIn === false;
+  if (bannerGuestsHidden && bannerLoggedInHidden) return ' (Not on top banner)';
+  if (bannerGuestsHidden) return ' (Not on top banner for guests)';
+  if (bannerLoggedInHidden) return ' (Not on top banner for logged-in users)';
+  return '';
 }
 
 function AnnouncementsTab({ formStyles, colors, authHeader }) {
@@ -550,9 +550,8 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
       bodyBm: item.bodyBm || '',
       date: item.date,
       bodyAlign: item.bodyAlign || 'center',
-      showToGuests: item.showToGuests !== false,
-      showToLoggedIn: item.showToLoggedIn !== false,
-      showOnBanner: item.showOnBanner !== false,
+      showOnBannerToGuests: item.showOnBannerToGuests !== false,
+      showOnBannerToLoggedIn: item.showOnBannerToLoggedIn !== false,
     });
   };
 
@@ -611,33 +610,23 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
         <Field label="Body alignment" hint="Applies to both language versions when displayed">
           <AlignmentPicker value={form.bodyAlign} onChange={(v) => onChange('bodyAlign', v)} colors={colors} />
         </Field>
-        <Field label="Visible to guests" hint="Visitors browsing without an account">
+        <Field label="Top notification bar (guests)" hint="This announcement still always appears on the Latest Updates page either way">
           <View style={formStyles.toggleRow}>
-            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.showToGuests && formStyles.toggleBtnActive]} onPress={() => onChange('showToGuests', true)}>
-              <Text style={form.showToGuests ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.showOnBannerToGuests && formStyles.toggleBtnActive]} onPress={() => onChange('showOnBannerToGuests', true)}>
+              <Text style={form.showOnBannerToGuests ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
             </AnimatedPressable>
-            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showToGuests && formStyles.toggleBtnActive]} onPress={() => onChange('showToGuests', false)}>
-              <Text style={!form.showToGuests ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showOnBannerToGuests && formStyles.toggleBtnActive]} onPress={() => onChange('showOnBannerToGuests', false)}>
+              <Text style={!form.showOnBannerToGuests ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
             </AnimatedPressable>
           </View>
         </Field>
-        <Field label="Visible to logged-in users" hint="Visitors with an account, signed in">
+        <Field label="Top notification bar (logged-in users)" hint="This announcement still always appears on the Latest Updates page either way">
           <View style={formStyles.toggleRow}>
-            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.showToLoggedIn && formStyles.toggleBtnActive]} onPress={() => onChange('showToLoggedIn', true)}>
-              <Text style={form.showToLoggedIn ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.showOnBannerToLoggedIn && formStyles.toggleBtnActive]} onPress={() => onChange('showOnBannerToLoggedIn', true)}>
+              <Text style={form.showOnBannerToLoggedIn ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
             </AnimatedPressable>
-            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showToLoggedIn && formStyles.toggleBtnActive]} onPress={() => onChange('showToLoggedIn', false)}>
-              <Text style={!form.showToLoggedIn ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
-            </AnimatedPressable>
-          </View>
-        </Field>
-        <Field label="Top notification bar" hint="This announcement still always appears on the Latest Updates page either way">
-          <View style={formStyles.toggleRow}>
-            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, form.showOnBanner && formStyles.toggleBtnActive]} onPress={() => onChange('showOnBanner', true)}>
-              <Text style={form.showOnBanner ? formStyles.toggleTextActive : formStyles.toggleText}>Shown</Text>
-            </AnimatedPressable>
-            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showOnBanner && formStyles.toggleBtnActive]} onPress={() => onChange('showOnBanner', false)}>
-              <Text style={!form.showOnBanner ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.toggleBtn, !form.showOnBannerToLoggedIn && formStyles.toggleBtnActive]} onPress={() => onChange('showOnBannerToLoggedIn', false)}>
+              <Text style={!form.showOnBannerToLoggedIn ? formStyles.toggleTextActive : formStyles.toggleText}>Hidden</Text>
             </AnimatedPressable>
           </View>
         </Field>

@@ -7,14 +7,12 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { api } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
 
 export default function Announcements() {
   const { colors } = useTheme();
   const { t, locale } = useLanguage();
   const formStyles = useFormStyles();
   const { scaleFont } = useFontScale();
-  const { token, isGuest, loading: authLoading } = useAuth();
   const router = useRouter();
   const [announcements, setAnnouncements] = useState([]);
 
@@ -30,13 +28,12 @@ export default function Announcements() {
   };
 
   useEffect(() => {
-    // Wait for auth to resolve - the server picks announcements by
-    // guest-vs-logged-in audience.
-    if (authLoading) return;
-    api.get('/api/announcements', { headers: !isGuest && token ? { Authorization: `Bearer ${token}` } : {} })
+    // Same list for every visitor - no guest/logged-in filtering here (that
+    // only applies to the top notification bar, AnnouncementContext.js).
+    api.get('/api/announcements')
       .then((res) => setAnnouncements(res.data))
       .catch(() => {});
-  }, [authLoading, isGuest, token]);
+  }, []);
 
   return (
     <PageScroll title={t('static.announcements.pageTitle')}>
