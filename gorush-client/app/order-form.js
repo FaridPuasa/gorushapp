@@ -423,7 +423,7 @@ export default function Order() {
   }
 
   return (
-    <PageScroll title={t('nav.orderNow')}>
+    <PageScroll title={t('nav.orderNow')} scrollToTopKey={step}>
       <Text style={formStyles.title}>{t('order.title')}</Text>
       <Text style={formStyles.subtitle}>
         {isGuest ? t('order.subtitleGuest') : t('order.subtitleLoggedIn')}

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -60,15 +60,36 @@ export function SocialIcon({ platform, url, size = 32 }) {
   );
 }
 
-export function PageScroll({ children, title, beforeContent }) {
+// `scrollToTopKey` - pass a value that changes when the page swaps to an
+// entirely different section of content (e.g. a multi-step form's current
+// step) - e.g. Order Review: the scroll offset is left wherever it was on
+// the long form (usually scrolled well down, near the button that got
+// tapped), and FadeIn/FadeInUp's mount-time visibility check
+// (useRevealRegistry, animations.js) measures each new section's position
+// against that stale offset - sections that land off-screen because of it
+// never get revealed until a manual scroll happens to trigger a recheck,
+// which reads as the page still loading. Resetting to the top before that
+// first check runs means everything above the fold measures correctly and
+// appears immediately.
+export function PageScroll({ children, title, beforeContent, scrollToTopKey }) {
   const formStyles = useFormStyles();
   const revealRegistry = useRevealRegistry();
+  const scrollRef = useRef(null);
+  const isFirstRender = useRef(true);
+
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollToTopKey]);
+
   return (
     <>
       <Head>
         <title>{title ? `${title} — Go Rush` : 'Go Rush'}</title>
       </Head>
       <ScrollView
+        ref={scrollRef}
         style={formStyles.masterScroll}
         contentContainerStyle={formStyles.masterContentOuter}
         onScroll={revealRegistry.handleScroll}

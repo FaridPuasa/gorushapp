@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { View, Text, Image, Pressable, StyleSheet, Platform, Modal, ScrollView, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, usePathname } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -26,6 +26,8 @@ export default function Navbar() {
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
   const router = useRouter();
+  const pathname = usePathname();
+  const isOrderFormPage = pathname === '/order-form';
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const isMobile = width < MOBILE_BREAKPOINT;
@@ -209,9 +211,16 @@ export default function Navbar() {
           >
             <Ionicons name="search" size={scaleFont(24)} color={colors.textPrimary} />
           </AnimatedPressable>
-          <AnimatedPressable scaleTo={1.06} style={styles.bottomNavCenterButton} href="/order-form" onPress={() => goTo('/order-form')}>
-            <Text style={styles.bottomNavCenterText}>{t('nav.orderNow').replace(' ', '\n')}</Text>
-          </AnimatedPressable>
+          {/* Hidden while already on the order form itself - a misclick here mid-way
+              through filling it out re-navigates to the same page, discarding
+              whatever the user had already entered, which reads as the form
+              randomly resetting. The 4 remaining flex:1 items redistribute evenly
+              across the freed-up width on their own, no layout change needed. */}
+          {!isOrderFormPage && (
+            <AnimatedPressable scaleTo={1.06} style={styles.bottomNavCenterButton} href="/order-form" onPress={() => goTo('/order-form')}>
+              <Text style={styles.bottomNavCenterText}>{t('nav.orderNow').replace(' ', '\n')}</Text>
+            </AnimatedPressable>
+          )}
           <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} onPress={() => setInfoOpen(true)}>
             <Ionicons name="information-circle" size={scaleFont(24)} color={colors.textPrimary} />
           </AnimatedPressable>
