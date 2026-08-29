@@ -15,7 +15,7 @@ import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers, PageScro
 import { AnimatedPressable } from '../lib/animations';
 import {
   isValidEmail, formatPostalCode, isValidPostalCode, formatICNumber,
-  formatBruHims, applyPrefix, getPasswordStrength, COUNTRY_CODES
+  formatBruHims, applyPrefix, isPrefixOnly, getPasswordStrength, COUNTRY_CODES
 } from '../lib/validators';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -98,8 +98,8 @@ export default function Register() {
     else if (formData.password !== formData.confirmPassword) newErrors.confirmPassword = t('auth.register.passwordsDontMatch');
 
     if (!formData.houseunitno.trim()) newErrors.houseunitno = t('auth.register.houseUnitRequired');
-    if (!formData.jalan.trim() || formData.jalan.trim() === 'Jln') newErrors.jalan = t('auth.register.jalanRequired');
-    if (!formData.kampong.trim() || formData.kampong.trim() === 'Kg') newErrors.kampong = t('auth.register.kampongRequired');
+    if (isPrefixOnly('Jln ', formData.jalan)) newErrors.jalan = t('auth.register.jalanRequired');
+    if (isPrefixOnly('Kg ', formData.kampong)) newErrors.kampong = t('auth.register.kampongRequired');
     if (formData.postalcode && !isValidPostalCode(formData.postalcode)) newErrors.postalcode = t('auth.register.postalCodeInvalid');
 
     if (!formData.phonenum) newErrors.phonenum = t('auth.register.phoneRequired');

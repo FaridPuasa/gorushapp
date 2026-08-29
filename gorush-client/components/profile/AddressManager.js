@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, SaveCancelRow, DeleteConfirm } from '../../lib/formPrimitives';
-import { formatPostalCode, isValidPostalCode } from '../../lib/validators';
+import { formatPostalCode, isValidPostalCode, applyPrefix, isPrefixOnly } from '../../lib/validators';
 import { useIsMobile } from '../../lib/responsive';
 import { AnimatedPressable } from '../../lib/animations';
 import { useLanguage } from '../../context/LanguageContext';
@@ -15,8 +15,8 @@ function emptyAddress() {
 function validateAddress(data, t) {
   const errors = {};
   if (!data.houseunitno.trim()) errors.houseunitno = t('common.required');
-  if (!data.jalan.trim()) errors.jalan = t('common.required');
-  if (!data.kampong.trim()) errors.kampong = t('common.required');
+  if (isPrefixOnly('Jln ', data.jalan)) errors.jalan = t('common.required');
+  if (isPrefixOnly('Kg ', data.kampong)) errors.kampong = t('common.required');
   if (data.postalcode && !isValidPostalCode(data.postalcode)) errors.postalcode = t('address.postalCodeInvalid');
   return errors;
 }
@@ -53,13 +53,34 @@ function AddressForm({ initial, onSave, onCancel, saving }) {
         <TextInput accessibilityLabel={t('address.houseUnitNo')} style={inputStyle('houseunitno')} value={data.houseunitno} onChangeText={(v) => update('houseunitno', v)} {...focusHandlers('houseunitno')} />
       </Field>
       <Field label={t('address.jalan')} required error={errors.jalan}>
-        <TextInput accessibilityLabel={t('address.jalan')} style={inputStyle('jalan')} value={data.jalan} onChangeText={(v) => update('jalan', v)} {...focusHandlers('jalan')} />
+        <TextInput
+          accessibilityLabel={t('address.jalan')}
+          style={inputStyle('jalan')}
+          value={data.jalan}
+          onFocus={() => { setFocusedField('jalan'); if (!data.jalan) update('jalan', 'Jln '); }}
+          onBlur={() => setFocusedField(null)}
+          onChangeText={(v) => update('jalan', applyPrefix('Jln ', v))}
+        />
       </Field>
       <Field label={t('address.kampong')} required error={errors.kampong}>
-        <TextInput accessibilityLabel={t('address.kampong')} style={inputStyle('kampong')} value={data.kampong} onChangeText={(v) => update('kampong', v)} {...focusHandlers('kampong')} />
+        <TextInput
+          accessibilityLabel={t('address.kampong')}
+          style={inputStyle('kampong')}
+          value={data.kampong}
+          onFocus={() => { setFocusedField('kampong'); if (!data.kampong) update('kampong', 'Kg '); }}
+          onBlur={() => setFocusedField(null)}
+          onChangeText={(v) => update('kampong', applyPrefix('Kg ', v))}
+        />
       </Field>
       <Field label={t('address.simpang')}>
-        <TextInput accessibilityLabel={t('address.simpang')} style={inputStyle('simpang')} value={data.simpang} onChangeText={(v) => update('simpang', v)} {...focusHandlers('simpang')} />
+        <TextInput
+          accessibilityLabel={t('address.simpang')}
+          style={inputStyle('simpang')}
+          value={data.simpang}
+          onFocus={() => { setFocusedField('simpang'); if (!data.simpang) update('simpang', 'Spg '); }}
+          onBlur={() => setFocusedField(null)}
+          onChangeText={(v) => update('simpang', applyPrefix('Spg ', v))}
+        />
       </Field>
       <Field label={t('address.district')} required>
         <View style={formStyles.pickerContainer}>

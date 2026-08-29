@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFormStyles, Card, PageScroll } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
-import { isValidEmail, isValidPostalCode, splitPhoneNumber } from '../lib/validators';
+import { isValidEmail, isValidPostalCode, splitPhoneNumber, isPrefixOnly } from '../lib/validators';
 import { PRODUCT_CODES } from '../lib/pricing';
 
 import WargaEmasBanner from '../components/order/WargaEmasBanner';
@@ -210,8 +210,8 @@ export default function Order() {
 
     if (!party.fullName.trim()) e.party.fullName = t('order.validation.fullNameRequired');
     if (!party.houseunitno.trim()) e.party.houseunitno = t('order.validation.required');
-    if (!party.jalan.trim()) e.party.jalan = t('order.validation.required');
-    if (!party.kampong.trim()) e.party.kampong = t('order.validation.required');
+    if (isPrefixOnly('Jln ', party.jalan)) e.party.jalan = t('order.validation.required');
+    if (isPrefixOnly('Kg ', party.kampong)) e.party.kampong = t('order.validation.required');
     if (party.postalcode && !isValidPostalCode(party.postalcode)) e.party.postalcode = t('order.validation.postalCodeInvalid');
     if (!isGuest && !party.email.trim()) e.party.email = t('order.validation.emailRequired');
     else if (party.email.trim() && !isValidEmail(party.email)) e.party.email = t('order.validation.emailInvalid');
@@ -234,8 +234,8 @@ export default function Order() {
     if (product === 'Local Delivery') {
       if (!receiver.fullName.trim()) e.receiver.fullName = t('order.validation.fullNameRequired');
       if (!receiver.houseunitno.trim()) e.receiver.houseunitno = t('order.validation.required');
-      if (!receiver.jalan.trim()) e.receiver.jalan = t('order.validation.required');
-      if (!receiver.kampong.trim()) e.receiver.kampong = t('order.validation.required');
+      if (isPrefixOnly('Jln ', receiver.jalan)) e.receiver.jalan = t('order.validation.required');
+      if (isPrefixOnly('Kg ', receiver.kampong)) e.receiver.kampong = t('order.validation.required');
       if (receiver.postalcode && !isValidPostalCode(receiver.postalcode)) e.receiver.postalcode = t('order.validation.postalCodeInvalid');
       // Receiver's email is the delivery recipient's own, not necessarily the
       // logged-in account owner's - never required, regardless of login status.

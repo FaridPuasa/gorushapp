@@ -58,6 +58,17 @@ export function applyPrefix(prefix, text) {
   return cleanText.length > 0 ? `${prefix}${cleanText}` : '';
 }
 
+// A prefixed field (jalan/kampong/simpang) whose value is only ever the bare
+// prefix itself - e.g. "Jln" with nothing typed after it - is functionally
+// empty for required-field validation. applyPrefix() already clears the
+// value entirely once backspaced to nothing during normal typing, but the
+// prefix is also inserted directly on focus (bypassing applyPrefix) so the
+// field shows the prefix before the user starts typing - if they then blur
+// without typing anything, the raw value stays exactly the trimmed prefix.
+export function isPrefixOnly(prefix, value) {
+  return !value || !value.trim() || value.trim() === prefix.trim();
+}
+
 export function dmyToIso(str) {
   const parts = (str || '').split('.');
   if (parts.length !== 3) return '';

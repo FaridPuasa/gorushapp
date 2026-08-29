@@ -6,7 +6,7 @@ import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers } from '.
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFontScale } from '../../context/FontScaleContext';
-import { formatPostalCode, COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber } from '../../lib/validators';
+import { formatPostalCode, COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber, applyPrefix } from '../../lib/validators';
 import { AnimatedPressable } from '../../lib/animations';
 
 function ViewOnlyRow({ label, value }) {
@@ -72,15 +72,39 @@ export default function PartyDetailsForm({
       </Field>
 
       <Field label={t('address.jalan')} required error={errors.jalan}>
-        <TextInput accessibilityLabel={t('address.jalan')} editable={!addressLocked} style={inputStyle('jalan')} value={values.jalan} onChangeText={(v) => onChange('jalan', v)} {...focusHandlers('jalan')} />
+        <TextInput
+          accessibilityLabel={t('address.jalan')}
+          editable={!addressLocked}
+          style={inputStyle('jalan')}
+          value={values.jalan}
+          onFocus={() => { setFocusedField('jalan'); if (!values.jalan) onChange('jalan', 'Jln '); }}
+          onBlur={() => setFocusedField(null)}
+          onChangeText={(v) => onChange('jalan', applyPrefix('Jln ', v))}
+        />
       </Field>
 
       <Field label={t('address.kampong')} required error={errors.kampong}>
-        <TextInput accessibilityLabel={t('address.kampong')} editable={!addressLocked} style={inputStyle('kampong')} value={values.kampong} onChangeText={(v) => onChange('kampong', v)} {...focusHandlers('kampong')} />
+        <TextInput
+          accessibilityLabel={t('address.kampong')}
+          editable={!addressLocked}
+          style={inputStyle('kampong')}
+          value={values.kampong}
+          onFocus={() => { setFocusedField('kampong'); if (!values.kampong) onChange('kampong', 'Kg '); }}
+          onBlur={() => setFocusedField(null)}
+          onChangeText={(v) => onChange('kampong', applyPrefix('Kg ', v))}
+        />
       </Field>
 
       <Field label={t('address.simpang')}>
-        <TextInput accessibilityLabel={t('address.simpang')} editable={!addressLocked} style={inputStyle('simpang')} value={values.simpang} onChangeText={(v) => onChange('simpang', v)} {...focusHandlers('simpang')} />
+        <TextInput
+          accessibilityLabel={t('address.simpang')}
+          editable={!addressLocked}
+          style={inputStyle('simpang')}
+          value={values.simpang}
+          onFocus={() => { setFocusedField('simpang'); if (!values.simpang) onChange('simpang', 'Spg '); }}
+          onBlur={() => setFocusedField(null)}
+          onChangeText={(v) => onChange('simpang', applyPrefix('Spg ', v))}
+        />
       </Field>
 
       <Field label={t('address.district')} required>
