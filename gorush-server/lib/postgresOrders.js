@@ -69,6 +69,12 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         appointmentDistrict: orderData.appointmentDistrict ?? null,
         appointmentPlace: orderData.appointmentPlace ?? null,
         sendOrderTo: orderData.sendOrderTo ?? null,
+        // grfmxstatusupdate's pharmacy form generator queries this as an
+        // explicit false for un-formed pharmacymoh orders - Mongo orders
+        // always got 'No' at creation, but this column has no DB default, so
+        // leaving it unset here left every gorush-created pharmacymoh order
+        // NULL and invisible to that query.
+        pharmacyFormCreated: orderData.product === 'pharmacymoh' ? false : null,
         payingPatient: orderData.payingPatient ?? null,
         ldPickupOrDelivery: orderData.ldPickupOrDelivery ?? null,
         itemContains: orderData.itemContains ?? null,
