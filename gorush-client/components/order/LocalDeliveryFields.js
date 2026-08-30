@@ -12,7 +12,7 @@ import { AnimatedPressable } from '../../lib/animations';
 
 export default function LocalDeliveryFields({
   values, onChange, errors = {}, focusedField, setFocusedField,
-  receiverValues, onReceiverChange, receiverErrors, isGuest,
+  receiverValues, onReceiverChange, receiverErrors, isGuest, registerFieldRef,
 }) {
   const { t } = useLanguage();
   const { colors } = useTheme();
@@ -43,7 +43,7 @@ export default function LocalDeliveryFields({
     <>
       <Card icon="📦" title={t('order.localDeliveryDetails')}>
         <Text style={formStyles.fieldLabel}>{t('order.pickupOrDelivery')}<Text style={formStyles.requiredMark}> *</Text></Text>
-        <View style={formStyles.toggleRow}>
+        <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('ldPickupOrDelivery', el) : undefined}>
           <AnimatedPressable style={[formStyles.toggleBtn, values.ldPickupOrDelivery === 'Delivery Only' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('ldPickupOrDelivery', 'Delivery Only')}>
             <Text style={values.ldPickupOrDelivery === 'Delivery Only' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.pickup')}</Text>
           </AnimatedPressable>
@@ -54,7 +54,7 @@ export default function LocalDeliveryFields({
 
         {isPickupAndDelivery && (
           <>
-            <Field label={t('order.pickupDate')} required error={pickupDateError || errors.pickupDate}>
+            <Field label={t('order.pickupDate')} required error={pickupDateError || errors.pickupDate} fieldKey="pickupDate" registerRef={registerFieldRef}>
               {Platform.OS === 'web' ? (
                 <input
                   type="date"
@@ -91,21 +91,21 @@ export default function LocalDeliveryFields({
               />
             )}
 
-            <Field label={t('order.pickupAddress')} required error={errors.pickupAddress}>
+            <Field label={t('order.pickupAddress')} required error={errors.pickupAddress} fieldKey="pickupAddress" registerRef={registerFieldRef}>
               <TextInput style={inputStyle('pickupAddress')} placeholder={t('order.pickupAddressPlaceholder')} placeholderTextColor={colors.textMuted} value={values.pickupAddress} onChangeText={(v) => onChange('pickupAddress', v)} {...focusHandlers('pickupAddress')} />
             </Field>
           </>
         )}
 
-        <Field label={t('order.productDescription')} required error={errors.itemContains}>
+        <Field label={t('order.productDescription')} required error={errors.itemContains} fieldKey="itemContains" registerRef={registerFieldRef}>
           <TextInput style={inputStyle('itemContains')} placeholder={t('order.productDescriptionPlaceholder')} placeholderTextColor={colors.textMuted} value={values.itemContains} onChangeText={(v) => onChange('itemContains', v)} {...focusHandlers('itemContains')} />
         </Field>
 
-        <Field label={t('order.productType')} required error={errors.ldProductType}>
+        <Field label={t('order.productType')} required error={errors.ldProductType} fieldKey="ldProductType" registerRef={registerFieldRef}>
           <TextInput style={inputStyle('ldProductType')} placeholder={t('order.productTypePlaceholder')} placeholderTextColor={colors.textMuted} value={values.ldProductType} onChangeText={(v) => onChange('ldProductType', v)} {...focusHandlers('ldProductType')} />
         </Field>
 
-        <Field label={t('order.productWeight')} required error={errors.ldProductWeight} hint={t('order.productWeightHint')}>
+        <Field label={t('order.productWeight')} required error={errors.ldProductWeight} hint={t('order.productWeightHint')} fieldKey="ldProductWeight" registerRef={registerFieldRef}>
           <TextInput
             style={inputStyle('ldProductWeight')}
             keyboardType="numeric"
@@ -134,10 +134,12 @@ export default function LocalDeliveryFields({
         showAdditionalPhone={false}
         isGuest={isGuest}
         requireEmail={false}
+        fieldKeyPrefix="receiver."
+        registerFieldRef={registerFieldRef}
       />
 
       <Card icon="💳" title={t('order.billTo')}>
-        <View style={formStyles.toggleRow}>
+        <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('billTo', el) : undefined}>
           <AnimatedPressable style={[formStyles.toggleBtn, values.billTo === 'Sender' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('billTo', 'Sender')}>
             <Text style={values.billTo === 'Sender' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.billToSender')}</Text>
           </AnimatedPressable>

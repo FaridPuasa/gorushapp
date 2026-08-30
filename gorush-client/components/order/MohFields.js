@@ -8,7 +8,7 @@ import { formatBruHims } from '../../lib/validators';
 import IdentityFields from './IdentityFields';
 import { AnimatedPressable } from '../../lib/animations';
 
-export default function MohFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnlyIdentity = false, bruhimsSaved = false, payingPatientSaved = false, appointmentDistrictSaved = false }) {
+export default function MohFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnlyIdentity = false, bruhimsSaved = false, payingPatientSaved = false, appointmentDistrictSaved = false, registerFieldRef }) {
   const { t } = useLanguage();
   const formStyles = useFormStyles();
   const { scaleFont } = useFontScale();
@@ -31,7 +31,7 @@ export default function MohFields({ values, onChange, errors = {}, focusedField,
           <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color }}>{values.bruhimsnum}</Text>
         </View>
       ) : (
-        <Field label={t('order.bruHimsNo')} required hint={t('order.bruHimsHint')} error={errors.bruhimsnum}>
+        <Field label={t('order.bruHimsNo')} required hint={t('order.bruHimsHint')} error={errors.bruhimsnum} fieldKey="bruhimsnum" registerRef={registerFieldRef}>
           <TextInput
             style={inputStyle('bruhimsnum')}
             maxLength={10}
@@ -50,6 +50,7 @@ export default function MohFields({ values, onChange, errors = {}, focusedField,
         focusedField={focusedField}
         setFocusedField={setFocusedField}
         viewOnly={viewOnlyIdentity}
+        registerFieldRef={registerFieldRef}
       />
 
       {appointmentDistrictSaved ? (
@@ -58,7 +59,7 @@ export default function MohFields({ values, onChange, errors = {}, focusedField,
           <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color }}>{districtLabel}</Text>
         </View>
       ) : (
-        <Field label={t('order.appointmentDistrict')} required>
+        <Field label={t('order.appointmentDistrict')} required fieldKey="appointmentDistrict" registerRef={registerFieldRef}>
           <View style={formStyles.pickerContainer}>
             <Picker style={formStyles.pickerControl} selectedValue={values.appointmentDistrict} onValueChange={(v) => onChange('appointmentDistrict', v)}>
               {DISTRICT_ITEMS.map((d) => <Picker.Item key={d.value} label={d.label} value={d.value} />)}
@@ -77,7 +78,7 @@ export default function MohFields({ values, onChange, errors = {}, focusedField,
       ) : (
         <>
           <Text style={formStyles.fieldLabel}>{t('identity.payingPatient')}<Text style={formStyles.requiredMark}> *</Text></Text>
-          <View style={formStyles.toggleRow}>
+          <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('payingPatient', el) : undefined}>
             <AnimatedPressable style={[formStyles.toggleBtn, values.payingPatient === 'Yes' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('payingPatient', 'Yes')}>
               <Text style={values.payingPatient === 'Yes' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('common.yes')}</Text>
             </AnimatedPressable>

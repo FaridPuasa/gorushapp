@@ -6,7 +6,7 @@ import { useFontScale } from '../../context/FontScaleContext';
 import IdentityFields from './IdentityFields';
 import { AnimatedPressable } from '../../lib/animations';
 
-export default function JpmcFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnlyIdentity = false, patientNumberSaved = false, payingPatientSaved = false }) {
+export default function JpmcFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnlyIdentity = false, patientNumberSaved = false, payingPatientSaved = false, registerFieldRef }) {
   const { t } = useLanguage();
   const formStyles = useFormStyles();
   const { scaleFont } = useFontScale();
@@ -21,7 +21,7 @@ export default function JpmcFields({ values, onChange, errors = {}, focusedField
           <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color }}>{values.patientNumber}</Text>
         </View>
       ) : (
-        <Field label={t('order.patientNo')} required error={errors.patientNumber}>
+        <Field label={t('order.patientNo')} required error={errors.patientNumber} fieldKey="patientNumber" registerRef={registerFieldRef}>
           <TextInput style={inputStyle('patientNumber')} value={values.patientNumber} onChangeText={(v) => onChange('patientNumber', v)} {...focusHandlers('patientNumber')} />
         </Field>
       )}
@@ -33,10 +33,11 @@ export default function JpmcFields({ values, onChange, errors = {}, focusedField
         focusedField={focusedField}
         setFocusedField={setFocusedField}
         viewOnly={viewOnlyIdentity}
+        registerFieldRef={registerFieldRef}
       />
 
       <Text style={formStyles.fieldLabel}>{t('order.jpmcOrPjsc')}<Text style={formStyles.requiredMark}> *</Text></Text>
-      <View style={formStyles.toggleRow}>
+      <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('appointmentPlace', el) : undefined}>
         <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'JPMC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'JPMC')}>
           <Text style={values.appointmentPlace === 'JPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.jpmc')}</Text>
         </AnimatedPressable>
@@ -55,7 +56,7 @@ export default function JpmcFields({ values, onChange, errors = {}, focusedField
       ) : (
         <>
           <Text style={formStyles.fieldLabel}>{t('identity.payingPatient')}<Text style={formStyles.requiredMark}> *</Text></Text>
-          <View style={formStyles.toggleRow}>
+          <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('payingPatient', el) : undefined}>
             <AnimatedPressable style={[formStyles.toggleBtn, values.payingPatient === 'Yes' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('payingPatient', 'Yes')}>
               <Text style={values.payingPatient === 'Yes' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('common.yes')}</Text>
             </AnimatedPressable>

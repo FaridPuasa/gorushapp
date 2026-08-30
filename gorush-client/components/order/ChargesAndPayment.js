@@ -13,7 +13,7 @@ export default function ChargesAndPayment({
   paymentMethod, onPaymentMethodChange,
   remarks, onRemarksChange,
   focusedField, setFocusedField, errors = {},
-  noChargeRequired = false,
+  noChargeRequired = false, registerFieldRef,
 }) {
   const { t } = useLanguage();
   const formStyles = useFormStyles();
@@ -31,7 +31,7 @@ export default function ChargesAndPayment({
   return (
     <Card icon="💰" title={t('order.chargesAndPayment')}>
       {!noChargeRequired && (
-        <Field label={t('order.charges')} required error={errors.chargeCode} hint={!district ? t('order.selectChargesHint') : undefined}>
+        <Field label={t('order.charges')} required error={errors.chargeCode} hint={!district ? t('order.selectChargesHint') : undefined} fieldKey="chargeCode" registerRef={registerFieldRef}>
           <View style={formStyles.pickerContainer}>
             <Picker style={formStyles.pickerControl} selectedValue={chargeCode} onValueChange={onChargeCodeChange} enabled={options.length > 0}>
               <Picker.Item label={t('order.selectChargesPlaceholder')} value="" />
@@ -46,7 +46,7 @@ export default function ChargesAndPayment({
         </Field>
       )}
 
-      <Field label={t('order.paymentMethod')} required error={errors.paymentMethod}>
+      <Field label={t('order.paymentMethod')} required error={errors.paymentMethod} fieldKey="paymentMethod" registerRef={registerFieldRef}>
         <View style={formStyles.pickerContainer}>
           <Picker style={formStyles.pickerControl} selectedValue={paymentMethod} onValueChange={onPaymentMethodChange}>
             <Picker.Item label={t('order.selectPaymentPlaceholder')} value="" />

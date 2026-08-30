@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useEffect } from 'react';
+import React, { useMemo, useRef, useEffect, forwardRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -71,10 +71,16 @@ export function SocialIcon({ platform, url, size = 32 }) {
 // which reads as the page still loading. Resetting to the top before that
 // first check runs means everything above the fold measures correctly and
 // appears immediately.
-export function PageScroll({ children, title, beforeContent, scrollToTopKey }) {
+// `scrollRef` (optional) - forwarded ref to the underlying ScrollView, for a
+// parent that needs to scroll to a specific position itself (e.g. jumping to
+// the first invalid field on a failed form submit, via useFieldFocus below).
+// PageScroll still works exactly as before for callers that don't pass one -
+// it falls back to its own internal ref for the scrollToTopKey behavior.
+export const PageScroll = forwardRef(function PageScroll({ children, title, beforeContent, scrollToTopKey }, forwardedScrollRef) {
   const formStyles = useFormStyles();
   const revealRegistry = useRevealRegistry();
-  const scrollRef = useRef(null);
+  const ownScrollRef = useRef(null);
+  const scrollRef = forwardedScrollRef || ownScrollRef;
   const isFirstRender = useRef(true);
 
   useEffect(() => {
@@ -112,7 +118,7 @@ export function PageScroll({ children, title, beforeContent, scrollToTopKey }) {
       </ScrollView>
     </>
   );
-}
+});
 
 export function Card({ icon, title, centered, titleStyle, eyebrow, eyebrowStyle, children }) {
   const formStyles = useFormStyles();
@@ -137,11 +143,19 @@ export function Card({ icon, title, centered, titleStyle, eyebrow, eyebrowStyle,
   );
 }
 
-export function Field({ label, required, error, hint, children }) {
+// `fieldKey` + `registerRef` (both optional) - when a parent form passes
+// these (via useFieldFocus below), Field wraps itself in a ref registered
+// under that key, so scrollToFirstError() can measure this field's position
+// and scroll it into view on a failed submit. Every call site not passing
+// them behaves exactly as before.
+export function Field({ label, required, error, hint, children, fieldKey, registerRef }) {
   const formStyles = useFormStyles();
   const isMobile = useIsMobile();
   return (
-    <View style={formStyles.fieldGroup}>
+    <View
+      style={formStyles.fieldGroup}
+      ref={fieldKey && registerRef ? (el) => registerRef(fieldKey, el) : undefined}
+    >
       {label ? (
         <Text style={[formStyles.fieldLabel, isMobile && styles.centerText]}>
           {label}{required ? <Text style={formStyles.requiredMark}> *</Text> : null}
@@ -152,6 +166,52 @@ export function Field({ label, required, error, hint, children }) {
       {error ? <Text style={[formStyles.fieldError, isMobile && styles.centerText]}>{error}</Text> : null}
     </View>
   );
+}
+
+// Shared "scroll to and focus the first invalid field" mechanism for any
+// form using Field/PageScroll. Usage in a form component:
+//   const scrollRef = useRef(null);
+//   const { registerFieldRef, scrollToFirstError } = useFieldFocus();
+//   <PageScroll ref={scrollRef}>...<Field fieldKey="party.fullName" registerRef={registerFieldRef}>...
+//   scrollToFirstError(FIELD_ORDER, errors, scrollRef);
+//
+// FIELD_ORDER is a flat array of dot-path keys in the same visual top-to-
+// bottom order the fields are rendered in - the first one present (with a
+// truthy value) in the flattened `errors` object wins. Nested error shapes
+// (e.g. `errors.party.fullName`, `errors.cbslItems[0].quantity`) are read via
+// a simple dot/bracket path lookup, matching how the order form's own
+// validateForm() already nests its errors object.
+export function useFieldFocus() {
+  const fieldRefs = useRef({});
+  const registerFieldRef = (key, el) => {
+    if (el) fieldRefs.current[key] = el;
+    else delete fieldRefs.current[key];
+  };
+
+  const scrollToFirstError = (fieldOrder, errors, scrollRef) => {
+    const firstKey = fieldOrder.find((key) => readPath(errors, key));
+    const node = firstKey && fieldRefs.current[firstKey];
+    if (!node || !scrollRef?.current) return;
+
+    // measureLayout needs the target's underlying native node - ScrollView
+    // itself is an acceptable target on both iOS/Android/web (RN forwards
+    // the scroll responder's node for this exact purpose).
+    node.measureLayout(
+      scrollRef.current,
+      (x, y) => {
+        // A little headroom above the field so its label isn't flush
+        // against the top edge/header.
+        scrollRef.current.scrollTo({ y: Math.max(y - 24, 0), animated: true });
+      },
+      () => {} // measurement can fail harmlessly (e.g. node not yet laid out) - just skip the scroll.
+    );
+  };
+
+  return { registerFieldRef, scrollToFirstError };
+}
+
+function readPath(obj, path) {
+  return path.split(/[.[\]]+/).filter(Boolean).reduce((acc, key) => (acc == null ? acc : acc[key]), obj);
 }
 
 export function InfoNotice({ icon = 'ℹ️', title, children }) {

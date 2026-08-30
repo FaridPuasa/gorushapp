@@ -8,7 +8,7 @@ import { AnimatedPressable } from '../../lib/animations';
 
 export default function CrossBorderFields({
   values, onChange, errors = {}, focusedField, setFocusedField,
-  items, itemErrors = [], onItemChange, onAddItem, onRemoveItem,
+  items, itemErrors = [], onItemChange, onAddItem, onRemoveItem, registerFieldRef,
 }) {
   const { t } = useLanguage();
   const { colors } = useTheme();
@@ -40,7 +40,7 @@ export default function CrossBorderFields({
       </InfoNotice>
 
       <Text style={formStyles.fieldLabel}>{t('order.deliveryOrSelfCollect')}<Text style={formStyles.requiredMark}> *</Text></Text>
-      <View style={formStyles.toggleRow}>
+      <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('shipmentMethod', el) : undefined}>
         <AnimatedPressable style={[formStyles.toggleBtn, values.shipmentMethod === 'Delivery' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('shipmentMethod', 'Delivery')}>
           <Text style={values.shipmentMethod === 'Delivery' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.delivery')}</Text>
         </AnimatedPressable>
@@ -49,11 +49,11 @@ export default function CrossBorderFields({
         </AnimatedPressable>
       </View>
 
-      <Field label={t('order.originalTrackingNo')} required error={errors.parcelTrackingNum} hint={t('order.originalTrackingNoHint')}>
+      <Field label={t('order.originalTrackingNo')} required error={errors.parcelTrackingNum} hint={t('order.originalTrackingNoHint')} fieldKey="parcelTrackingNum" registerRef={registerFieldRef}>
         <TextInput style={inputStyle('parcelTrackingNum')} value={values.parcelTrackingNum} onChangeText={(v) => onChange('parcelTrackingNum', v)} {...focusHandlers('parcelTrackingNum')} />
       </Field>
 
-      <Field label={t('order.courier')} required error={errors.supplierName} hint={t('order.courierHint')}>
+      <Field label={t('order.courier')} required error={errors.supplierName} hint={t('order.courierHint')} fieldKey="supplierName" registerRef={registerFieldRef}>
         <TextInput style={inputStyle('supplierName')} value={values.supplierName} onChangeText={(v) => onChange('supplierName', v)} {...focusHandlers('supplierName')} />
       </Field>
 
@@ -77,7 +77,7 @@ export default function CrossBorderFields({
               )}
             </View>
 
-            <Field label={t('order.itemDescription')} required error={itemErrs.itemContains}>
+            <Field label={t('order.itemDescription')} required error={itemErrs.itemContains} fieldKey={`cbslItems[${index}].itemContains`} registerRef={registerFieldRef}>
               <TextInput
                 style={itemInputStyle(itemFieldKey('itemContains'))}
                 value={item.itemContains}
@@ -86,7 +86,7 @@ export default function CrossBorderFields({
               />
             </Field>
 
-            <Field label={t('order.quantity')} required error={itemErrs.quantity}>
+            <Field label={t('order.quantity')} required error={itemErrs.quantity} fieldKey={`cbslItems[${index}].quantity`} registerRef={registerFieldRef}>
               <TextInput
                 style={itemInputStyle(itemFieldKey('quantity'))}
                 keyboardType="numeric"
@@ -96,7 +96,7 @@ export default function CrossBorderFields({
               />
             </Field>
 
-            <Field label={t('order.totalItemPrice')} required error={itemErrs.totalItemPrice}>
+            <Field label={t('order.totalItemPrice')} required error={itemErrs.totalItemPrice} fieldKey={`cbslItems[${index}].totalItemPrice`} registerRef={registerFieldRef}>
               <TextInput
                 style={itemInputStyle(itemFieldKey('totalItemPrice'))}
                 keyboardType="numeric"
@@ -106,7 +106,7 @@ export default function CrossBorderFields({
               />
             </Field>
 
-            <Field label={t('order.uploadInvoice')} required error={itemErrs.screenshotInvoice}>
+            <Field label={t('order.uploadInvoice')} required error={itemErrs.screenshotInvoice} fieldKey={`cbslItems[${index}].screenshotInvoice`} registerRef={registerFieldRef}>
               {item.screenshotInvoice ? (
                 <Image source={{ uri: item.screenshotInvoice }} style={{ width: 120, height: 120, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
               ) : null}

@@ -3,7 +3,7 @@ import { Text, TextInput, View, ActivityIndicator, Platform } from 'react-native
 import { AnimatedPressable } from '../lib/animations';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { useFormStyles, Card, PageScroll } from '../lib/formPrimitives';
+import { useFormStyles, Card, PageScroll, useFieldFocus } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { isValidEmail, isValidPostalCode, splitPhoneNumber, isPrefixOnly } from '../lib/validators';
@@ -52,6 +52,32 @@ const SELF_COLLECT_ADDRESS = {
   postalcode: 'BE1518',
 };
 
+// Flat, top-to-bottom visual order of every field the 'form' step can show,
+// used by scrollToFirstError (useFieldFocus, lib/formPrimitives) to jump to
+// whichever one actually has an error after a failed handleReviewOrder. Only
+// one product's conditional section is ever populated with real fields at a
+// time, so including every product's fields here unconditionally is safe -
+// the others simply have no matching key in `errors` and are skipped over.
+const PARTY_FIELD_ORDER = ['party.fullName', 'party.houseunitno', 'party.jalan', 'party.kampong', 'party.postalcode', 'party.email', 'party.phone'];
+const MOH_JPMC_PHC_FIELD_ORDER = ['dateOfBirth', 'icNum', 'passport', 'payingPatient', 'appointmentDistrict', 'bruhimsnum', 'appointmentPlace', 'patientNumber'];
+const LOCAL_DELIVERY_FIELD_ORDER = ['receiver.fullName', 'receiver.houseunitno', 'receiver.jalan', 'receiver.kampong', 'receiver.postalcode', 'receiver.email', 'receiver.phone', 'ldPickupOrDelivery', 'pickupDate', 'pickupAddress', 'itemContains', 'ldProductType', 'ldProductWeight', 'billTo'];
+const CBSL_FIELD_ORDER = ['shipmentMethod', 'parcelTrackingNum', 'supplierName'];
+const CHARGES_FIELD_ORDER = ['chargeCode', 'paymentMethod'];
+
+function buildFieldOrder(product, cbslItemCount) {
+  const order = ['product', ...PARTY_FIELD_ORDER];
+  if (['MOH', 'JPMC', 'PHC'].includes(product)) order.push(...MOH_JPMC_PHC_FIELD_ORDER);
+  if (product === 'Local Delivery') order.push(...LOCAL_DELIVERY_FIELD_ORDER);
+  if (product === 'Cross Border Service Limbang') {
+    order.push(...CBSL_FIELD_ORDER);
+    for (let i = 0; i < cbslItemCount; i++) {
+      order.push(`cbslItems[${i}].itemContains`, `cbslItems[${i}].quantity`, `cbslItems[${i}].totalItemPrice`, `cbslItems[${i}].screenshotInvoice`);
+    }
+  }
+  order.push(...CHARGES_FIELD_ORDER);
+  return order;
+}
+
 function hasErrors(e) {
   const flatKeys = Object.keys(e).filter((k) => k !== 'party' && k !== 'receiver' && k !== 'cbslItems');
   if (flatKeys.some((k) => e[k])) return true;
@@ -79,6 +105,8 @@ export default function Order() {
   const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [errors, setErrors] = useState({});
   const [focusedField, setFocusedField] = useState(null);
+  const scrollRef = useRef(null);
+  const { registerFieldRef, scrollToFirstError } = useFieldFocus();
   const [submitting, setSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
   const [placedOrder, setPlacedOrder] = useState(null);
@@ -277,6 +305,7 @@ export default function Order() {
     setErrors(newErrors);
     if (hasErrors(newErrors)) {
       setStatusMessage({ type: 'error', text: t('order.fixHighlighted') });
+      scrollToFirstError(buildFieldOrder(product, cbslItems.length), newErrors, scrollRef);
       return;
     }
     setStatusMessage(null);
@@ -423,7 +452,7 @@ export default function Order() {
   }
 
   return (
-    <PageScroll title={t('nav.orderNow')} scrollToTopKey={step}>
+    <PageScroll ref={scrollRef} title={t('nav.orderNow')} scrollToTopKey={step}>
       <Text style={formStyles.title}>{t('order.title')}</Text>
       <Text style={formStyles.subtitle}>
         {isGuest ? t('order.subtitleGuest') : t('order.subtitleLoggedIn')}
@@ -453,22 +482,25 @@ export default function Order() {
                 showAdditionalPhone
                 isGuest={isGuest}
                 addressLocked={isSelfCollectSelected}
+                fieldKeyPrefix="party."
+                registerFieldRef={registerFieldRef}
               />
 
               {product === 'MOH' && (
-                <MohFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} bruhimsSaved={bruhimsSaved} payingPatientSaved={payingPatientSaved} appointmentDistrictSaved={appointmentDistrictSaved} />
+                <MohFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} bruhimsSaved={bruhimsSaved} payingPatientSaved={payingPatientSaved} appointmentDistrictSaved={appointmentDistrictSaved} registerFieldRef={registerFieldRef} />
               )}
               {product === 'JPMC' && (
-                <JpmcFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} patientNumberSaved={patientNumberSaved} payingPatientSaved={payingPatientSaved} />
+                <JpmcFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} patientNumberSaved={patientNumberSaved} payingPatientSaved={payingPatientSaved} registerFieldRef={registerFieldRef} />
               )}
               {product === 'PHC' && (
-                <PhcFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} patientNumberSaved={patientNumberSaved} payingPatientSaved={payingPatientSaved} />
+                <PhcFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} patientNumberSaved={patientNumberSaved} payingPatientSaved={payingPatientSaved} registerFieldRef={registerFieldRef} />
               )}
               {product === 'Local Delivery' && (
                 <LocalDeliveryFields
                   values={details} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField}
                   receiverValues={receiver} onReceiverChange={updateReceiver} receiverErrors={errors.receiver}
                   isGuest={isGuest}
+                  registerFieldRef={registerFieldRef}
                 />
               )}
               {product === 'Cross Border Service Limbang' && (
@@ -476,6 +508,7 @@ export default function Order() {
                   values={details} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField}
                   items={cbslItems} itemErrors={errors.cbslItems || []}
                   onItemChange={updateCbslItem} onAddItem={addCbslItem} onRemoveItem={removeCbslItem}
+                  registerFieldRef={registerFieldRef}
                 />
               )}
 
@@ -493,6 +526,7 @@ export default function Order() {
                 setFocusedField={setFocusedField}
                 errors={errors}
                 noChargeRequired={cbslSelfCollect}
+                registerFieldRef={registerFieldRef}
               />
 
               <AnimatedPressable scaleTo={1.03} style={formStyles.buttonAccent} onPress={handleReviewOrder}>

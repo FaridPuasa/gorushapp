@@ -23,7 +23,9 @@ function ViewOnlyRow({ label, value }) {
 export default function PartyDetailsForm({
   icon = '📇', title, values, onChange, errors = {}, focusedField, setFocusedField,
   viewOnly = false, showAdditionalPhone = false, isGuest = false, addressLocked = false, requireEmail = !isGuest,
+  fieldKeyPrefix = '', registerFieldRef,
 }) {
+  const fk = (name) => `${fieldKeyPrefix}${name}`;
   const router = useRouter();
   const { t } = useLanguage();
   const { colors } = useTheme();
@@ -59,7 +61,7 @@ export default function PartyDetailsForm({
 
   return (
     <Card icon={icon} title={title}>
-      <Field label={t('contact.fullName')} required error={errors.fullName}>
+      <Field label={t('contact.fullName')} required error={errors.fullName} fieldKey={fk('fullName')} registerRef={registerFieldRef}>
         <TextInput accessibilityLabel={t('contact.fullName')} style={inputStyle('fullName')} value={values.fullName} onChangeText={(v) => onChange('fullName', v)} {...focusHandlers('fullName')} />
       </Field>
 
@@ -67,11 +69,11 @@ export default function PartyDetailsForm({
         <Text style={[formStyles.fieldHint, { marginBottom: 10 }]}>{t('address.selfCollectLocked')}</Text>
       )}
 
-      <Field label={t('address.houseUnitNo')} required error={errors.houseunitno}>
+      <Field label={t('address.houseUnitNo')} required error={errors.houseunitno} fieldKey={fk('houseunitno')} registerRef={registerFieldRef}>
         <TextInput accessibilityLabel={t('address.houseUnitNo')} editable={!addressLocked} style={inputStyle('houseunitno')} placeholder={t('address.houseUnitPlaceholder')} placeholderTextColor={colors.textMuted} value={values.houseunitno} onChangeText={(v) => onChange('houseunitno', v)} {...focusHandlers('houseunitno')} />
       </Field>
 
-      <Field label={t('address.jalan')} required error={errors.jalan}>
+      <Field label={t('address.jalan')} required error={errors.jalan} fieldKey={fk('jalan')} registerRef={registerFieldRef}>
         <TextInput
           accessibilityLabel={t('address.jalan')}
           editable={!addressLocked}
@@ -84,7 +86,7 @@ export default function PartyDetailsForm({
         />
       </Field>
 
-      <Field label={t('address.kampong')} required error={errors.kampong}>
+      <Field label={t('address.kampong')} required error={errors.kampong} fieldKey={fk('kampong')} registerRef={registerFieldRef}>
         <TextInput
           accessibilityLabel={t('address.kampong')}
           editable={!addressLocked}
@@ -118,7 +120,7 @@ export default function PartyDetailsForm({
         </View>
       </Field>
 
-      <Field label={t('address.postalCode')} error={errors.postalcode} hint={t('address.postalCodeHint')}>
+      <Field label={t('address.postalCode')} error={errors.postalcode} hint={t('address.postalCodeHint')} fieldKey={fk('postalcode')} registerRef={registerFieldRef}>
         <TextInput
           editable={!addressLocked}
           style={inputStyle('postalcode')}
@@ -131,7 +133,7 @@ export default function PartyDetailsForm({
         />
       </Field>
 
-      <Field label={t('contact.email')} required={requireEmail} error={errors.email}>
+      <Field label={t('contact.email')} required={requireEmail} error={errors.email} fieldKey={fk('email')} registerRef={registerFieldRef}>
         <TextInput
           accessibilityLabel={t('contact.email')}
           style={inputStyle('email')}
@@ -145,7 +147,7 @@ export default function PartyDetailsForm({
         />
       </Field>
 
-      <Field label={t('contact.phoneNumber')} required error={errors.phone}>
+      <Field label={t('contact.phoneNumber')} required error={errors.phone} fieldKey={fk('phone')} registerRef={registerFieldRef}>
         <View style={formStyles.phoneRow}>
           <View style={formStyles.miniPicker}>
             <Picker

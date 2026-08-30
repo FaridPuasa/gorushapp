@@ -20,7 +20,7 @@ function ViewOnlyRow({ label, value }) {
   );
 }
 
-export default function IdentityFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnly = false }) {
+export default function IdentityFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnly = false, registerFieldRef }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const { t } = useLanguage();
   const { colors } = useTheme();
@@ -49,7 +49,7 @@ export default function IdentityFields({ values, onChange, errors = {}, focusedF
 
   return (
     <>
-      <Field label={t('identity.dateOfBirth')} required error={errors.dateOfBirth}>
+      <Field label={t('identity.dateOfBirth')} required error={errors.dateOfBirth} fieldKey="dateOfBirth" registerRef={registerFieldRef}>
         {Platform.OS === 'web' ? (
           <input
             type="date"
@@ -91,7 +91,7 @@ export default function IdentityFields({ values, onChange, errors = {}, focusedF
         </AnimatedPressable>
       </View>
       {values.idType === 'IC' ? (
-        <Field error={errors.icNum}>
+        <Field error={errors.icNum} fieldKey="icNum" registerRef={registerFieldRef}>
           <TextInput
             style={inputStyle('icNum')}
             placeholder={t('identity.icPlaceholder')}
@@ -104,7 +104,7 @@ export default function IdentityFields({ values, onChange, errors = {}, focusedF
           />
         </Field>
       ) : (
-        <Field error={errors.passport}>
+        <Field error={errors.passport} fieldKey="passport" registerRef={registerFieldRef}>
           <TextInput
             style={inputStyle('passport')}
             placeholder={t('identity.passportNumber')}
