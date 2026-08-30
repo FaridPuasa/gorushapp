@@ -97,7 +97,11 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         // for came from gorushbn.com, regardless of whatever (if anything)
         // the client sent as its own orderOrigin field (gorush-internal-only,
         // see the file header - not the same concept as this column).
-        orderOrigin: 'GR Website',
+        // Split Member/Guest (2026-08-30) so staff can tell at a glance
+        // whether an order came from a real account or a one-off guest
+        // checkout - orderData.userId is only ever set when req.userId was
+        // present at submission (see routes/orders.js), i.e. a logged-in order.
+        orderOrigin: orderData.userId ? 'GR Website Member' : 'GR Website Guest',
         gorushUserId: orderData.userId ? String(orderData.userId) : null,
         // Detrack's own convention: a freshly created job starts at attempt 1,
         // not 0 - this column was declared in schema.prisma but never actually
