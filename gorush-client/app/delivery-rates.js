@@ -68,7 +68,7 @@ const RATE_SECTIONS = [
         code: 'Standard',
         tagline: 'A dependable option for those who prioritize cost-effectiveness and flexibility in their delivery timelines.',
         location: 'Nation-Wide',
-        duration: '2-3 Working Days',
+        duration: '2-3 Working Days after medicine collected from Pharmacy',
         prices: [{ label: null, price: 4 }],
       },
       {
@@ -101,7 +101,7 @@ const RATE_SECTIONS = [
         code: 'Standard',
         tagline: 'A dependable option for those who prioritize cost-effectiveness and flexibility in their delivery timelines.',
         location: 'Nation-Wide',
-        duration: '2-3 Working Days',
+        duration: '2-3 Working Days after medicine collected from Pharmacy',
         prices: [
           { label: 'Brunei-Muara', price: 4 },
           { label: 'Tutong & Belait', price: 8 },
@@ -161,7 +161,7 @@ const RATE_SECTIONS = [
         code: 'Self Collect',
         tagline: 'Self Collect at Go Rush Office.',
         location: 'Go Rush Office',
-        duration: 'Next Working Day',
+        duration: 'Next Day after medicine collected from Pharmacy',
         prices: [{ label: null, price: 4 }],
       },
     ],
