@@ -16,7 +16,10 @@ const { parseGorushIso } = require('./dateHelpers');
 // - address / senderAddressDetail (structured subdocs) - only the
 //   pre-concatenated receiverAddress/senderAddress strings are stored,
 //   matching how grfmxstatusupdate itself stores addresses.
-// - orderOrigin, agreedTerms - gorush-internal-only, no downstream use.
+// - agreedTerms - gorush-internal-only, no downstream use.
+// - orderData.orderOrigin (a client-supplied, unused field, distinct from
+//   the orderOrigin column below) is likewise ignored - see that field's
+//   own comment further down for what actually gets stored there instead.
 // - history - built separately below as a single OrderHistory row.
 function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
     return {
@@ -89,6 +92,12 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         supplierName: orderData.supplierName ?? null,
         items: orderData.items ?? null,
         currentStatus: orderData.currentStatus ?? 'Info Received',
+        // Lets grfmxstatusupdate's Search Jobs / dashboard show where an
+        // order actually came from - every order this function builds a row
+        // for came from gorushbn.com, regardless of whatever (if anything)
+        // the client sent as its own orderOrigin field (gorush-internal-only,
+        // see the file header - not the same concept as this column).
+        orderOrigin: 'GR Website',
         gorushUserId: orderData.userId ? String(orderData.userId) : null,
         // Detrack's own convention: a freshly created job starts at attempt 1,
         // not 0 - this column was declared in schema.prisma but never actually
