@@ -6,10 +6,10 @@ import { useLanguage } from '../../context/LanguageContext';
 import { HIGHEST_ACHIEVEMENT_OPTIONS, DURATION_OPTIONS, PARCEL_NUM_OPTIONS, CAR_OWN_OPTIONS, getApplicationTypeConfig } from '../../lib/careersOptions';
 import { AnimatedPressable } from '../../lib/animations';
 
-function ToggleField({ label, required, error, value, onChange, formStyles }) {
+function ToggleField({ label, required, error, value, onChange, formStyles, fieldKey, registerRef }) {
   const { t } = useLanguage();
   return (
-    <Field label={label} required={required} error={error}>
+    <Field label={label} required={required} error={error} fieldKey={fieldKey} registerRef={registerRef}>
       <View style={formStyles.toggleRow}>
         <AnimatedPressable scaleTo={1.03} style={[formStyles.toggleBtn, value === 'Yes' && formStyles.toggleBtnActive]} onPress={() => onChange('Yes')}>
           <Text style={value === 'Yes' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('common.yes')}</Text>
@@ -22,7 +22,7 @@ function ToggleField({ label, required, error, value, onChange, formStyles }) {
   );
 }
 
-export default function PositionDetailsFields({ vacancy, values, onChange, errors = {} }) {
+export default function PositionDetailsFields({ vacancy, values, onChange, errors = {}, registerFieldRef }) {
   const { t } = useLanguage();
   const formStyles = useFormStyles();
   const config = getApplicationTypeConfig(vacancy.applicationType);
@@ -35,7 +35,7 @@ export default function PositionDetailsFields({ vacancy, values, onChange, error
         </View>
       </Field>
 
-      <Field label={t('careers.highestAchievement')} required error={errors.highestAchievement}>
+      <Field label={t('careers.highestAchievement')} required error={errors.highestAchievement} fieldKey="highestAchievement" registerRef={registerFieldRef}>
         <View style={formStyles.pickerContainer}>
           <Picker style={formStyles.pickerControl} selectedValue={values.highestAchievement} onValueChange={(v) => onChange('highestAchievement', v)}>
             {HIGHEST_ACHIEVEMENT_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
@@ -44,7 +44,7 @@ export default function PositionDetailsFields({ vacancy, values, onChange, error
       </Field>
 
       {config.needsPartTime && (
-        <Field label={t('careers.partTimeDuration')} required error={errors.partTimeDuration}>
+        <Field label={t('careers.partTimeDuration')} required error={errors.partTimeDuration} fieldKey="partTimeDuration" registerRef={registerFieldRef}>
           <View style={formStyles.pickerContainer}>
             <Picker style={formStyles.pickerControl} selectedValue={values.partTimeDuration} onValueChange={(v) => onChange('partTimeDuration', v)}>
               <Picker.Item label={t('common.selectEllipsis')} value="" />
@@ -55,7 +55,7 @@ export default function PositionDetailsFields({ vacancy, values, onChange, error
       )}
 
       {config.needsCarOwn && (
-        <Field label={t('careers.carOwn')} required error={errors.carOwn}>
+        <Field label={t('careers.carOwn')} required error={errors.carOwn} fieldKey="carOwn" registerRef={registerFieldRef}>
           <View style={formStyles.pickerContainer}>
             <Picker style={formStyles.pickerControl} selectedValue={values.carOwn} onValueChange={(v) => onChange('carOwn', v)}>
               <Picker.Item label={t('common.selectEllipsis')} value="" />
@@ -74,10 +74,12 @@ export default function PositionDetailsFields({ vacancy, values, onChange, error
             value={values.deliverBefore}
             onChange={(v) => onChange('deliverBefore', v)}
             formStyles={formStyles}
+            fieldKey="deliverBefore"
+            registerRef={registerFieldRef}
           />
           {values.deliverBefore === 'Yes' && (
             <>
-              <Field label={t('careers.experienceDelivery')} required error={errors.experienceDelivery}>
+              <Field label={t('careers.experienceDelivery')} required error={errors.experienceDelivery} fieldKey="experienceDelivery" registerRef={registerFieldRef}>
                 <View style={formStyles.pickerContainer}>
                   <Picker style={formStyles.pickerControl} selectedValue={values.experienceDelivery} onValueChange={(v) => onChange('experienceDelivery', v)}>
                     <Picker.Item label={t('common.selectEllipsis')} value="" />
@@ -85,7 +87,7 @@ export default function PositionDetailsFields({ vacancy, values, onChange, error
                   </Picker>
                 </View>
               </Field>
-              <Field label={t('careers.parcelNum')} required error={errors.parcelNum}>
+              <Field label={t('careers.parcelNum')} required error={errors.parcelNum} fieldKey="parcelNum" registerRef={registerFieldRef}>
                 <View style={formStyles.pickerContainer}>
                   <Picker style={formStyles.pickerControl} selectedValue={values.parcelNum} onValueChange={(v) => onChange('parcelNum', v)}>
                     <Picker.Item label={t('common.selectEllipsis')} value="" />
@@ -106,6 +108,8 @@ export default function PositionDetailsFields({ vacancy, values, onChange, error
           value={values.driveManual}
           onChange={(v) => onChange('driveManual', v)}
           formStyles={formStyles}
+          fieldKey="driveManual"
+          registerRef={registerFieldRef}
         />
       )}
     </Card>

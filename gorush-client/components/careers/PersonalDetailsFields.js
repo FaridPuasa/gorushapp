@@ -25,7 +25,7 @@ function ViewOnlyRow({ label, value }) {
   );
 }
 
-export default function PersonalDetailsFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnly = false, isGuest = false }) {
+export default function PersonalDetailsFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnly = false, isGuest = false, registerFieldRef }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const router = useRouter();
   const { t } = useLanguage();
@@ -65,7 +65,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
 
   return (
     <Card icon="🪪" title={t('careers.personalDetails')}>
-      <Field label={t('contact.fullName')} required error={errors.name}>
+      <Field label={t('contact.fullName')} required error={errors.name} fieldKey="name" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('name')}
           value={values.name}
@@ -74,7 +74,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
         />
       </Field>
 
-      <Field label={t('identity.dateOfBirth')} required error={errors.dateofbirth}>
+      <Field label={t('identity.dateOfBirth')} required error={errors.dateofbirth} fieldKey="dateofbirth" registerRef={registerFieldRef}>
         {Platform.OS === 'web' ? (
           <input
             type="date"
@@ -108,7 +108,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
         />
       )}
 
-      <Field label={t('identity.icNumber')} required error={errors.icnumber}>
+      <Field label={t('identity.icNumber')} required error={errors.icnumber} fieldKey="icnumber" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('icnumber')}
           placeholder={t('identity.icPlaceholder')}
@@ -121,7 +121,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
         />
       </Field>
 
-      <Field label={t('address.houseUnitNo')} required error={errors.houseunitno}>
+      <Field label={t('address.houseUnitNo')} required error={errors.houseunitno} fieldKey="houseunitno" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('houseunitno')}
           placeholder={t('address.houseUnitPlaceholder')}
@@ -132,7 +132,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
         />
       </Field>
 
-      <Field label={t('address.jalan')} required error={errors.jalan}>
+      <Field label={t('address.jalan')} required error={errors.jalan} fieldKey="jalan" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('jalan')}
           placeholder="Jln"
@@ -143,7 +143,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
         />
       </Field>
 
-      <Field label={t('address.kampong')} required error={errors.kampong}>
+      <Field label={t('address.kampong')} required error={errors.kampong} fieldKey="kampong" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('kampong')}
           placeholder="Kg"
@@ -176,7 +176,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
         </View>
       </Field>
 
-      <Field label={t('address.postalCode')} error={errors.postalcode} hint={t('address.postalCodeHint')}>
+      <Field label={t('address.postalCode')} error={errors.postalcode} hint={t('address.postalCodeHint')} fieldKey="postalcode" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('postalcode')}
           placeholder={t('address.postalCodePlaceholder')}
@@ -188,7 +188,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
         />
       </Field>
 
-      <Field label={t('contact.email')} required={!isGuest} error={errors.email}>
+      <Field label={t('contact.email')} required={!isGuest} error={errors.email} fieldKey="email" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('email')}
           placeholder={t('contact.emailPlaceholder')}
@@ -201,7 +201,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
         />
       </Field>
 
-      <Field label={t('contact.phoneNumber')} required error={errors.phonenum}>
+      <Field label={t('contact.phoneNumber')} required error={errors.phonenum} fieldKey="phonenum" registerRef={registerFieldRef}>
         <View style={formStyles.phoneRow}>
           <View style={formStyles.miniPicker}>
             <Picker

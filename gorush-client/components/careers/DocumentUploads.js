@@ -27,7 +27,7 @@ async function readNativeDocumentAsBase64(asset) {
   return `data:${asset.mimeType || 'application/octet-stream'};base64,${base64}`;
 }
 
-export default function DocumentUploads({ vacancy, values, onChange, errors = {} }) {
+export default function DocumentUploads({ vacancy, values, onChange, errors = {}, registerFieldRef }) {
   const { t } = useLanguage();
   const formStyles = useFormStyles();
   const config = getApplicationTypeConfig(vacancy.applicationType);
@@ -62,7 +62,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
 
   return (
     <Card icon="📎" title={t('careers.documents')}>
-      <Field label={t('careers.uploadIcFront')} required error={errors.icFront}>
+      <Field label={t('careers.uploadIcFront')} required error={errors.icFront} fieldKey="icFront" registerRef={registerFieldRef}>
         {values.icFront ? (
           <Image source={{ uri: values.icFront }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
         ) : null}
@@ -71,7 +71,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
         </AnimatedPressable>
       </Field>
 
-      <Field label={t('careers.uploadResume')} required error={errors.resumeCv || resumeError} hint={t('careers.uploadResumeHint')}>
+      <Field label={t('careers.uploadResume')} required error={errors.resumeCv || resumeError} hint={t('careers.uploadResumeHint')} fieldKey="resumeCv" registerRef={registerFieldRef}>
         {values.resumeCvName ? <Text style={[formStyles.bodyText, { marginBottom: 10 }]}>📄 {values.resumeCvName}</Text> : null}
         <AnimatedPressable scaleTo={1.04} style={formStyles.button} onPress={pickResume}>
           <Text style={formStyles.buttonText}>{values.resumeCv ? t('careers.changeFile') : t('careers.chooseFile')}</Text>
@@ -80,7 +80,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
 
       {config.needsLicense && (
         <>
-          <Field label={t('careers.uploadLicenseFront')} required error={errors.drivingLicenseFront}>
+          <Field label={t('careers.uploadLicenseFront')} required error={errors.drivingLicenseFront} fieldKey="drivingLicenseFront" registerRef={registerFieldRef}>
             {values.drivingLicenseFront ? (
               <Image source={{ uri: values.drivingLicenseFront }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
             ) : null}
@@ -89,7 +89,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
             </AnimatedPressable>
           </Field>
 
-          <Field label={t('careers.uploadLicenseBack')} required error={errors.drivingLicenseBack}>
+          <Field label={t('careers.uploadLicenseBack')} required error={errors.drivingLicenseBack} fieldKey="drivingLicenseBack" registerRef={registerFieldRef}>
             {values.drivingLicenseBack ? (
               <Image source={{ uri: values.drivingLicenseBack }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
             ) : null}

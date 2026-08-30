@@ -5,7 +5,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
-import { PageScroll, useFormStyles, Card } from '../lib/formPrimitives';
+import { PageScroll, useFormStyles, Card, useFieldFocus } from '../lib/formPrimitives';
 import { isValidEmail, isValidPostalCode, splitPhoneNumber } from '../lib/validators';
 import { getApplicationTypeConfig } from '../lib/careersOptions';
 import VacancyList from '../components/careers/VacancyList';
@@ -13,6 +13,18 @@ import PersonalDetailsFields from '../components/careers/PersonalDetailsFields';
 import PositionDetailsFields from '../components/careers/PositionDetailsFields';
 import DocumentUploads from '../components/careers/DocumentUploads';
 import ApplicationSummary from '../components/careers/ApplicationSummary';
+
+// Flat, top-to-bottom visual order of every field the 'form' step can show,
+// used by scrollToFirstError (useFieldFocus, lib/formPrimitives) to jump to
+// whichever one actually has an error after a failed handleReview. Fields
+// gated by the vacancy's applicationType config (partTimeDuration, carOwn,
+// etc.) simply have no matching key in `errors` when not applicable, so
+// including all of them unconditionally is safe.
+const FIELD_ORDER = [
+  'name', 'dateofbirth', 'icnumber', 'houseunitno', 'jalan', 'kampong', 'postalcode', 'email', 'phonenum',
+  'highestAchievement', 'partTimeDuration', 'carOwn', 'deliverBefore', 'experienceDelivery', 'parcelNum', 'driveManual',
+  'icFront', 'resumeCv', 'drivingLicenseFront', 'drivingLicenseBack',
+];
 
 function emptyPersonal() {
   return {
@@ -46,6 +58,8 @@ export default function Careers() {
   const [statusMessage, setStatusMessage] = useState(null);
   const [applicantName, setApplicantName] = useState('');
   const [profile, setProfile] = useState(null);
+  const scrollRef = React.useRef(null);
+  const { registerFieldRef, scrollToFirstError } = useFieldFocus();
 
   // AuthContext's `user` is a flattened summary — fetch the full profile separately, same
   // as order.js, so personal details can be pre-filled (and locked) from the saved profile.
@@ -152,6 +166,7 @@ export default function Careers() {
     setErrors(newErrors);
     if (Object.values(newErrors).some(Boolean)) {
       setStatusMessage({ type: 'error', text: t('order.fixHighlighted') });
+      scrollToFirstError(FIELD_ORDER, newErrors, scrollRef);
       return;
     }
     setStatusMessage(null);
@@ -197,7 +212,7 @@ export default function Careers() {
 
   if (step === 'submitted') {
     return (
-      <PageScroll title={t('nav.careers')}>
+      <PageScroll ref={scrollRef} title={t('nav.careers')}>
         <Card icon="✅" title={t('careers.thankYou').replace('${name}', applicantName)}>
           <Text style={[formStyles.bodyText, { marginBottom: 16 }]}>{t('careers.submittedBody')}</Text>
           <AnimatedPressable style={formStyles.buttonAccent} onPress={handleApplyAnother} scaleTo={1.04}>
@@ -209,7 +224,7 @@ export default function Careers() {
   }
 
   return (
-    <PageScroll title={t('nav.careers')}>
+    <PageScroll ref={scrollRef} title={t('nav.careers')}>
       <Text style={formStyles.title}>{t('careers.title')}</Text>
       <Text style={formStyles.subtitle}>
         {step === 'list' ? t('careers.subtitle') : t('careers.applyingFor').replace('${title}', vacancy.title)}
@@ -234,9 +249,9 @@ export default function Careers() {
 
       {step === 'form' && vacancy && (
         <>
-          <PersonalDetailsFields values={personal} onChange={updatePersonal} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnly={viewOnlyPersonal} isGuest={isGuest} />
-          <PositionDetailsFields vacancy={vacancy} values={application} onChange={updateApplication} errors={errors} />
-          <DocumentUploads vacancy={vacancy} values={files} onChange={updateFile} errors={errors} />
+          <PersonalDetailsFields values={personal} onChange={updatePersonal} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnly={viewOnlyPersonal} isGuest={isGuest} registerFieldRef={registerFieldRef} />
+          <PositionDetailsFields vacancy={vacancy} values={application} onChange={updateApplication} errors={errors} registerFieldRef={registerFieldRef} />
+          <DocumentUploads vacancy={vacancy} values={files} onChange={updateFile} errors={errors} registerFieldRef={registerFieldRef} />
 
           <AnimatedPressable style={formStyles.buttonAccent} onPress={handleReview} scaleTo={1.04}>
             <Text style={formStyles.buttonText}>{t('careers.reviewApplication')}</Text>

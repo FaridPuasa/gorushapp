@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, SaveCancelRow, DeleteConfirm } from '../../lib/formPrimitives';
+import { Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, SaveCancelRow, DeleteConfirm, useFieldFocus } from '../../lib/formPrimitives';
 import { formatICNumber, formatBruHims, dmyToIso, dmyToDate } from '../../lib/validators';
 import { useIsMobile } from '../../lib/responsive';
 import { AnimatedPressable } from '../../lib/animations';
@@ -49,7 +49,12 @@ function validateDetails(data, t) {
   return errors;
 }
 
-function DetailsForm({ initial, onSave, onCancel, saving }) {
+// Flat, top-to-bottom visual order of every field this form can show, used
+// by scrollToFirstError (useFieldFocus, lib/formPrimitives) to jump to
+// whichever one actually has an error after a failed save.
+const FIELD_ORDER = ['receivername', 'dateofbirth', 'icnum', 'passportnum', 'bruhimsnum'];
+
+function DetailsForm({ initial, onSave, onCancel, saving, scrollRef }) {
   const formStyles = useFormStyles();
   const { t } = useLanguage();
   const { colors } = useTheme();
@@ -58,6 +63,7 @@ function DetailsForm({ initial, onSave, onCancel, saving }) {
   const [focusedField, setFocusedField] = useState(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [rawDate, setRawDate] = useState(() => dmyToDate(initial.dateofbirth));
+  const { registerFieldRef, scrollToFirstError } = useFieldFocus();
 
   const inputStyle = makeInputStyle(formStyles, focusedField, errors);
   const focusHandlers = makeFocusHandlers(setFocusedField);
@@ -86,17 +92,20 @@ function DetailsForm({ initial, onSave, onCancel, saving }) {
   const handleSave = () => {
     const newErrors = validateDetails(data, t);
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    if (Object.keys(newErrors).length > 0) {
+      scrollToFirstError(FIELD_ORDER, newErrors, scrollRef);
+      return;
+    }
     onSave(data);
   };
 
   return (
     <View style={{ marginTop: 8 }}>
-      <Field label={t('identity.receiverName')} required error={errors.receivername}>
+      <Field label={t('identity.receiverName')} required error={errors.receivername} fieldKey="receivername" registerRef={registerFieldRef}>
         <TextInput accessibilityLabel={t('identity.receiverName')} style={inputStyle('receivername')} value={data.receivername} onChangeText={(v) => update('receivername', v)} {...focusHandlers('receivername')} />
       </Field>
 
-      <Field label={t('identity.dateOfBirth')} required error={errors.dateofbirth}>
+      <Field label={t('identity.dateOfBirth')} required error={errors.dateofbirth} fieldKey="dateofbirth" registerRef={registerFieldRef}>
         {Platform.OS === 'web' ? (
           <input
             type="date"
@@ -131,7 +140,7 @@ function DetailsForm({ initial, onSave, onCancel, saving }) {
         </AnimatedPressable>
       </View>
       {data.idType === 'IC' ? (
-        <Field error={errors.icnum}>
+        <Field error={errors.icnum} fieldKey="icnum" registerRef={registerFieldRef}>
           <TextInput
             style={inputStyle('icnum')}
             placeholder={t('identity.icPlaceholder')}
@@ -144,12 +153,12 @@ function DetailsForm({ initial, onSave, onCancel, saving }) {
           />
         </Field>
       ) : (
-        <Field error={errors.passportnum}>
+        <Field error={errors.passportnum} fieldKey="passportnum" registerRef={registerFieldRef}>
           <TextInput style={inputStyle('passportnum')} placeholder={t('identity.passportNumber')} placeholderTextColor={colors.textMuted} value={data.passportnum} onChangeText={(v) => update('passportnum', v)} {...focusHandlers('passportnum')} />
         </Field>
       )}
 
-      <Field label={t('identity.bruHimsNo')} error={errors.bruhimsnum} hint={t('identity.bruHimsHint')}>
+      <Field label={t('identity.bruHimsNo')} error={errors.bruhimsnum} hint={t('identity.bruHimsHint')} fieldKey="bruhimsnum" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('bruhimsnum')}
           maxLength={10}
@@ -195,7 +204,7 @@ function DetailsForm({ initial, onSave, onCancel, saving }) {
   );
 }
 
-export default function PersonalDetailsManager({ items, onAdd, onEdit, onDelete, onSetDefault }) {
+export default function PersonalDetailsManager({ items, onAdd, onEdit, onDelete, onSetDefault, scrollRef }) {
   const formStyles = useFormStyles();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
@@ -253,7 +262,7 @@ export default function PersonalDetailsManager({ items, onAdd, onEdit, onDelete,
       {sortedItems.map((entry) => (
         <View key={entry._id} style={{ marginBottom: 14, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: formStyles.card.borderColor }}>
           {editingId === entry._id ? (
-            <DetailsForm initial={toFormData(entry)} onSave={handleSave} onCancel={closeForm} saving={saving} />
+            <DetailsForm initial={toFormData(entry)} onSave={handleSave} onCancel={closeForm} saving={saving} scrollRef={scrollRef} />
           ) : (
             <>
               {entry.isDefault && (
@@ -292,7 +301,7 @@ export default function PersonalDetailsManager({ items, onAdd, onEdit, onDelete,
       ))}
 
       {editingId === 'new' ? (
-        <DetailsForm initial={emptyDetails()} onSave={handleSave} onCancel={closeForm} saving={saving} />
+        <DetailsForm initial={emptyDetails()} onSave={handleSave} onCancel={closeForm} saving={saving} scrollRef={scrollRef} />
       ) : (
         <AnimatedPressable onPress={() => setEditingId('new')} scaleTo={1.04}>
           <Text style={{ color: formStyles.button.backgroundColor, fontWeight: '700', fontSize: scaleFont(14) }}>{t('editProfile.addPersonalDetails')}</Text>

@@ -11,7 +11,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers, PageScroll } from '../lib/formPrimitives';
+import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers, PageScroll, useFieldFocus } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import {
   isValidEmail, formatPostalCode, isValidPostalCode, formatICNumber,
@@ -21,6 +21,17 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { getBruneiNow, getBruneiTodayISO } from '../lib/bruneiTime';
+
+// Flat, top-to-bottom visual order of every field this single-screen form
+// can show, used by scrollToFirstError (useFieldFocus, lib/formPrimitives)
+// to jump to whichever one actually has an error after a failed submit.
+const FIELD_ORDER = [
+  'email', 'password', 'confirmPassword',
+  'houseunitno', 'jalan', 'kampong', 'postalcode',
+  'phonenum',
+  'receivername', 'dateofbirth', 'icnum', 'passportnum', 'bruhimsnum',
+  'Agreepolicy',
+];
 
 const INITIAL_FORM_DATA = {
   email: '', password: '', confirmPassword: '',
@@ -53,6 +64,8 @@ export default function Register() {
   const [statusMessage, setStatusMessage] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [focusedField, setFocusedField] = useState(null);
+  const scrollRef = React.useRef(null);
+  const { registerFieldRef, scrollToFirstError } = useFieldFocus();
 
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [rawDate, setRawDate] = useState(new Date());
@@ -129,6 +142,7 @@ export default function Register() {
 
     if (Object.keys(newErrors).length > 0) {
       setStatusMessage({ type: 'error', text: t('order.fixHighlighted') });
+      scrollToFirstError(FIELD_ORDER, newErrors, scrollRef);
       return;
     }
 
@@ -157,7 +171,7 @@ export default function Register() {
   if (authLoading || !isGuest) return null;
 
   return (
-    <PageScroll title={t('nav.register')}>
+    <PageScroll ref={scrollRef} title={t('nav.register')}>
       <View style={{ width: '100%', maxWidth: 520, alignSelf: 'center' }}>
         <Text style={formStyles.title}>{t('auth.register.title')}</Text>
         <Text style={formStyles.subtitle}>{t('auth.register.subtitle')}</Text>
@@ -171,7 +185,7 @@ export default function Register() {
         )}
 
         <Card icon="👤" title={t('auth.register.accountDetails')}>
-          <Field label={t('contact.email')} required error={errors.email}>
+          <Field label={t('contact.email')} required error={errors.email} fieldKey="email" registerRef={registerFieldRef}>
             <TextInput
               style={inputStyle('email')}
               placeholder={t('contact.emailPlaceholder')}
@@ -184,7 +198,7 @@ export default function Register() {
             />
           </Field>
 
-          <Field label={t('auth.register.password')} required error={errors.password}>
+          <Field label={t('auth.register.password')} required error={errors.password} fieldKey="password" registerRef={registerFieldRef}>
             <View style={formStyles.passwordContainer}>
               <TextInput
                 style={[inputStyle('password'), formStyles.passwordInput]}
@@ -209,7 +223,7 @@ export default function Register() {
             )}
           </Field>
 
-          <Field label={t('auth.register.confirmPassword')} required error={errors.confirmPassword}>
+          <Field label={t('auth.register.confirmPassword')} required error={errors.confirmPassword} fieldKey="confirmPassword" registerRef={registerFieldRef}>
             <View style={formStyles.passwordContainer}>
               <TextInput
                 style={[inputStyle('confirmPassword'), formStyles.passwordInput]}
@@ -233,7 +247,7 @@ export default function Register() {
         </Card>
 
         <Card icon="📍" title={t('auth.register.defaultAddress')}>
-          <Field label={t('address.houseUnitNo')} required error={errors.houseunitno}>
+          <Field label={t('address.houseUnitNo')} required error={errors.houseunitno} fieldKey="houseunitno" registerRef={registerFieldRef}>
             <TextInput
               style={inputStyle('houseunitno')}
               placeholder={t('address.houseUnitPlaceholder')}
@@ -244,7 +258,7 @@ export default function Register() {
             />
           </Field>
 
-          <Field label={t('address.jalan')} required error={errors.jalan}>
+          <Field label={t('address.jalan')} required error={errors.jalan} fieldKey="jalan" registerRef={registerFieldRef}>
             <TextInput
               style={inputStyle('jalan')}
               accessibilityLabel={t('address.jalan')}
@@ -256,7 +270,7 @@ export default function Register() {
             />
           </Field>
 
-          <Field label={t('address.kampong')} required error={errors.kampong}>
+          <Field label={t('address.kampong')} required error={errors.kampong} fieldKey="kampong" registerRef={registerFieldRef}>
             <TextInput
               style={inputStyle('kampong')}
               accessibilityLabel={t('address.kampong')}
@@ -291,7 +305,7 @@ export default function Register() {
             </View>
           </Field>
 
-          <Field label={t('address.postalCode')} error={errors.postalcode} hint={t('address.postalCodeHint')}>
+          <Field label={t('address.postalCode')} error={errors.postalcode} hint={t('address.postalCodeHint')} fieldKey="postalcode" registerRef={registerFieldRef}>
             <TextInput
               style={inputStyle('postalcode')}
               placeholder={t('address.postalCodePlaceholder')}
@@ -307,7 +321,7 @@ export default function Register() {
         <Card icon="📞" title={t('auth.register.contactInformation')}>
           <Text style={formStyles.infoHint}>{t('auth.register.phoneHint')}</Text>
 
-          <Field label={t('contact.phoneNumber')} required error={errors.phonenum}>
+          <Field label={t('contact.phoneNumber')} required error={errors.phonenum} fieldKey="phonenum" registerRef={registerFieldRef}>
             <View style={formStyles.phoneRow}>
               <View style={formStyles.miniPicker}>
                 <Picker style={formStyles.pickerControl} selectedValue={formData.countryCodeMain} onValueChange={(val) => updateField('countryCodeMain', val)}>
@@ -347,7 +361,7 @@ export default function Register() {
         </Card>
 
         <Card icon="🪪" title={t('auth.register.personalDetails')}>
-          <Field label={t('auth.register.receiverName')} required error={errors.receivername}>
+          <Field label={t('auth.register.receiverName')} required error={errors.receivername} fieldKey="receivername" registerRef={registerFieldRef}>
             <TextInput
               style={inputStyle('receivername')}
               placeholder={t('auth.register.receiverNamePlaceholder')}
@@ -358,7 +372,7 @@ export default function Register() {
             />
           </Field>
 
-          <Field label={t('identity.dateOfBirth')} required error={errors.dateofbirth}>
+          <Field label={t('identity.dateOfBirth')} required error={errors.dateofbirth} fieldKey="dateofbirth" registerRef={registerFieldRef}>
             {Platform.OS === 'web' ? (
               <input
                 type="date"
@@ -401,7 +415,7 @@ export default function Register() {
             </AnimatedPressable>
           </View>
           {formData.idType === 'IC' ? (
-            <Field error={errors.icnum}>
+            <Field error={errors.icnum} fieldKey="icnum" registerRef={registerFieldRef}>
               <TextInput
                 style={inputStyle('icnum')}
                 placeholder={t('identity.icPlaceholder')}
@@ -414,7 +428,7 @@ export default function Register() {
               />
             </Field>
           ) : (
-            <Field error={errors.passportnum}>
+            <Field error={errors.passportnum} fieldKey="passportnum" registerRef={registerFieldRef}>
               <TextInput
                 style={inputStyle('passportnum')}
                 placeholder={t('identity.passportNumber')}
@@ -426,7 +440,7 @@ export default function Register() {
             </Field>
           )}
 
-          <Field label={t('auth.register.bruHimsNo')} error={errors.bruhimsnum} hint={t('auth.register.bruHimsHint')}>
+          <Field label={t('auth.register.bruHimsNo')} error={errors.bruhimsnum} hint={t('auth.register.bruHimsHint')} fieldKey="bruhimsnum" registerRef={registerFieldRef}>
             <TextInput
               style={inputStyle('bruhimsnum')}
               maxLength={10}
@@ -457,14 +471,16 @@ export default function Register() {
         </Card>
 
         <Card icon="📜" title={t('auth.register.agreements')}>
-          <AnimatedPressable
-            scaleTo={1.02}
-            style={[formStyles.checkboxFake, formData.Agreepolicy ? formStyles.checkboxActive : errors.Agreepolicy && formStyles.checkboxErrorBox]}
-            onPress={() => updateField('Agreepolicy', !formData.Agreepolicy)}
-          >
-            <Text style={formStyles.checkboxText}>{formData.Agreepolicy ? t('auth.register.agreedPolicy') : t('auth.register.tapAgreePolicy')}</Text>
-          </AnimatedPressable>
-          {errors.Agreepolicy && <Text style={formStyles.fieldError}>{errors.Agreepolicy}</Text>}
+          <View ref={registerFieldRef ? (el) => registerFieldRef('Agreepolicy', el) : undefined}>
+            <AnimatedPressable
+              scaleTo={1.02}
+              style={[formStyles.checkboxFake, formData.Agreepolicy ? formStyles.checkboxActive : errors.Agreepolicy && formStyles.checkboxErrorBox]}
+              onPress={() => updateField('Agreepolicy', !formData.Agreepolicy)}
+            >
+              <Text style={formStyles.checkboxText}>{formData.Agreepolicy ? t('auth.register.agreedPolicy') : t('auth.register.tapAgreePolicy')}</Text>
+            </AnimatedPressable>
+            {errors.Agreepolicy && <Text style={formStyles.fieldError}>{errors.Agreepolicy}</Text>}
+          </View>
 
           <AnimatedPressable
             scaleTo={1.02}

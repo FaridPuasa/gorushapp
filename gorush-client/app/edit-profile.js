@@ -3,7 +3,7 @@ import { Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers } from '../lib/formPrimitives';
+import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, useFieldFocus } from '../lib/formPrimitives';
 import { isValidEmail, getPasswordStrength } from '../lib/validators';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -42,7 +42,7 @@ function SaveButton({ onPress, saving, label }) {
   );
 }
 
-function AccountSection({ profile, headers, onSaved }) {
+function AccountSection({ profile, headers, onSaved, scrollRef }) {
   const formStyles = useFormStyles();
   const { t } = useLanguage();
   const [email, setEmail] = useState(profile.email);
@@ -50,6 +50,7 @@ function AccountSection({ profile, headers, onSaved }) {
   const [focusedField, setFocusedField] = useState(null);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
+  const { registerFieldRef, scrollToFirstError } = useFieldFocus();
 
   const inputStyle = makeInputStyle(formStyles, focusedField, errors);
   const focusHandlers = makeFocusHandlers(setFocusedField);
@@ -59,7 +60,10 @@ function AccountSection({ profile, headers, onSaved }) {
     if (!email.trim()) newErrors.email = t('contact.emailRequired');
     else if (!isValidEmail(email)) newErrors.email = t('contact.emailInvalid');
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    if (Object.keys(newErrors).length > 0) {
+      scrollToFirstError(['email'], newErrors, scrollRef);
+      return;
+    }
 
     setSaving(true);
     setStatusMessage(null);
@@ -77,7 +81,7 @@ function AccountSection({ profile, headers, onSaved }) {
   return (
     <Card icon="👤" title={t('editProfile.accountDetails')}>
       <StatusBanner statusMessage={statusMessage} />
-      <Field label={t('contact.email')} required error={errors.email}>
+      <Field label={t('contact.email')} required error={errors.email} fieldKey="email" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('email')}
           value={email}
@@ -92,7 +96,7 @@ function AccountSection({ profile, headers, onSaved }) {
   );
 }
 
-function PasswordSection({ headers }) {
+function PasswordSection({ headers, scrollRef }) {
   const formStyles = useFormStyles();
   const { t } = useLanguage();
   const { colors } = useTheme();
@@ -106,6 +110,7 @@ function PasswordSection({ headers }) {
   const [focusedField, setFocusedField] = useState(null);
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
+  const { registerFieldRef, scrollToFirstError } = useFieldFocus();
 
   const inputStyle = makeInputStyle(formStyles, focusedField, errors);
   const focusHandlers = makeFocusHandlers(setFocusedField);
@@ -118,7 +123,10 @@ function PasswordSection({ headers }) {
     if (!confirmPassword) newErrors.confirmPassword = t('editProfile.confirmNewPasswordRequired');
     else if (newPassword !== confirmPassword) newErrors.confirmPassword = t('editProfile.passwordsNoMatch');
     setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) return;
+    if (Object.keys(newErrors).length > 0) {
+      scrollToFirstError(['currentPassword', 'newPassword', 'confirmPassword'], newErrors, scrollRef);
+      return;
+    }
 
     setSaving(true);
     setStatusMessage(null);
@@ -139,7 +147,7 @@ function PasswordSection({ headers }) {
     <Card icon="🔑" title={t('editProfile.changePassword')}>
       <StatusBanner statusMessage={statusMessage} />
 
-      <Field label={t('editProfile.currentPassword')} required error={errors.currentPassword}>
+      <Field label={t('editProfile.currentPassword')} required error={errors.currentPassword} fieldKey="currentPassword" registerRef={registerFieldRef}>
         <View style={formStyles.passwordContainer}>
           <TextInput
             style={[inputStyle('currentPassword'), formStyles.passwordInput]}
@@ -155,7 +163,7 @@ function PasswordSection({ headers }) {
         </View>
       </Field>
 
-      <Field label={t('editProfile.newPassword')} required error={errors.newPassword}>
+      <Field label={t('editProfile.newPassword')} required error={errors.newPassword} fieldKey="newPassword" registerRef={registerFieldRef}>
         <View style={formStyles.passwordContainer}>
           <TextInput
             style={[inputStyle('newPassword'), formStyles.passwordInput]}
@@ -179,7 +187,7 @@ function PasswordSection({ headers }) {
         )}
       </Field>
 
-      <Field label={t('editProfile.confirmNewPassword')} required error={errors.confirmPassword}>
+      <Field label={t('editProfile.confirmNewPassword')} required error={errors.confirmPassword} fieldKey="confirmPassword" registerRef={registerFieldRef}>
         <View style={formStyles.passwordContainer}>
           <TextInput
             style={[inputStyle('confirmPassword'), formStyles.passwordInput]}
@@ -215,6 +223,7 @@ export default function EditProfile() {
   const [profile, setProfile] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadError, setLoadError] = useState(null);
+  const scrollRef = React.useRef(null);
 
   useEffect(() => {
     if (!authLoading && isGuest) {
@@ -262,18 +271,19 @@ export default function EditProfile() {
   const headers = { headers: { Authorization: `Bearer ${token}` } };
 
   return (
-    <PageScroll title={t('editProfile.title')}>
+    <PageScroll ref={scrollRef} title={t('editProfile.title')}>
       <Text style={formStyles.title}>{t('editProfile.title')}</Text>
       <Text style={formStyles.subtitle}>{t('editProfile.subtitle')}</Text>
 
-      <AccountSection profile={profile} headers={headers} onSaved={async () => { await loadProfile(); await refreshProfile(); }} />
-      <PasswordSection headers={headers} />
+      <AccountSection profile={profile} headers={headers} onSaved={async () => { await loadProfile(); await refreshProfile(); }} scrollRef={scrollRef} />
+      <PasswordSection headers={headers} scrollRef={scrollRef} />
       <PersonalDetailsManager
         items={profile.userdetails}
         onAdd={(data) => api.post('/api/profile/userdetails', data, headers).then(loadProfile)}
         onEdit={(id, data) => api.put(`/api/profile/userdetails/${id}`, data, headers).then(loadProfile)}
         onDelete={(id) => api.delete(`/api/profile/userdetails/${id}`, headers).then(loadProfile)}
         onSetDefault={(id) => api.put(`/api/profile/userdetails/${id}/default`, {}, headers).then(loadProfile)}
+        scrollRef={scrollRef}
       />
 
       <AddressManager
