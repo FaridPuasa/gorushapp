@@ -196,12 +196,25 @@ export function useFieldFocus() {
     // measureLayout needs the target's underlying native node - ScrollView
     // itself is an acceptable target on both iOS/Android/web (RN forwards
     // the scroll responder's node for this exact purpose).
+    //
+    // On web specifically, react-native-web's measureLayout polyfill returns
+    // y relative to the ScrollView's CURRENTLY VISIBLE viewport (computed
+    // from live getBoundingClientRect-style geometry), not an absolute
+    // position within the scrollable content - unlike true native RN, where
+    // measureLayout already returns a scroll-offset-independent value. So on
+    // web, a field sitting above the current scroll position measures as a
+    // NEGATIVE y, which without correction just clamped to 0 - "scroll to
+    // the very top" instead of to the field, confirmed live. Adding the
+    // ScrollView's own current scrollTop (available directly since on web
+    // scrollRef.current IS the real scrolling DOM node) converts that
+    // viewport-relative offset back into an absolute scroll target.
     node.measureLayout(
       scrollRef.current,
       (x, y) => {
+        const currentScrollTop = Platform.OS === 'web' ? (scrollRef.current.scrollTop || 0) : 0;
         // A little headroom above the field so its label isn't flush
         // against the top edge/header.
-        scrollRef.current.scrollTo({ y: Math.max(y - 24, 0), animated: true });
+        scrollRef.current.scrollTo({ y: Math.max(currentScrollTop + y - 24, 0), animated: true });
       },
       () => {} // measurement can fail harmlessly (e.g. node not yet laid out) - just skip the scroll.
     );
