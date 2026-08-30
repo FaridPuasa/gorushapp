@@ -75,7 +75,7 @@ const RATE_SECTIONS = [
         code: 'Express',
         tagline: "The perfect solution when you need your essentials urgently and can't afford to wait.",
         location: 'Bandar Seri Begawan Area Only',
-        duration: 'Next Day after medicine collected from Pharmacy',
+        duration: 'Next Working Day after medicine collected from Pharmacy',
         prices: [{ label: null, price: 5.5 }],
       },
       {
@@ -112,7 +112,7 @@ const RATE_SECTIONS = [
         code: 'Express',
         tagline: "The perfect solution when you need your essentials urgently and can't afford to wait.",
         location: 'Bandar Seri Begawan Area Only',
-        duration: 'Next Day after medicine collected from Pharmacy',
+        duration: 'Next Working Day after medicine collected from Pharmacy',
         prices: [{ label: null, price: 5.5 }],
       },
       {
@@ -161,7 +161,7 @@ const RATE_SECTIONS = [
         code: 'Self Collect',
         tagline: 'Self Collect at Go Rush Office.',
         location: 'Go Rush Office',
-        duration: 'Next Day after medicine collected from Pharmacy',
+        duration: 'Next Working Day after medicine collected from Pharmacy',
         prices: [{ label: null, price: 4 }],
       },
     ],
