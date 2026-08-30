@@ -45,6 +45,13 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         // orderData.totalPrice is already a real number (routes/orders.js no longer
         // stringifies it) - passed through as-is.
         totalPrice: orderData.totalPrice ?? null,
+        // grfmxstatusupdate's own order-creation paths (Make.com webhook
+        // handlers, Portal Reorder) always set paymentAmount equal to the
+        // computed total at creation time - this column had no equivalent
+        // in gorushapp's insert at all, leaving every gorush-created order's
+        // Payment Amount blank on the dashboard/Search Jobs, unlike every
+        // other intake path.
+        paymentAmount: orderData.totalPrice ?? null,
         dateTimeSubmission: parseGorushIso(orderData.dateTimeSubmission),
         // creationDate and lastUpdateDateTime both mirror dateTimeSubmission -
         // same instant, since the order was just created - so gorush-created
