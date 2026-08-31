@@ -116,6 +116,11 @@ model Order {
   senderPostalCode        String?   @map("sender_postal_code")
   gorushUserId            String?   @map("gorush_user_id")
   detrackJobId            String?   @map("detrack_job_id")
+  // Added to grfmxstatusupdate's schema/DB well before this app started
+  // writing it (commit 09fa214) - never mirrored here, so every order
+  // creation since that commit deployed has thrown a Prisma
+  // "Unknown argument `orderOrigin`" validation error and failed outright.
+  orderOrigin             String?   @map("order_origin")
 
   // Not populated by gorush-server - mirrored here only to keep this file's shape
   // in sync with grfmxstatusupdate's own Order model (that schema is the source
