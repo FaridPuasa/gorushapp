@@ -484,7 +484,7 @@ export default {
     goToOrder: 'Buat Tempahan Ini',
   },
   wargaEmasForm: {
-    subtitle: 'Perkhidmatan penghantaran ubat percuma untuk warga emas — isikan butiran anda di bawah.',
+    subtitle: 'Cara lebih mudah untuk warga emas membuat pesanan — pasukan khidmat pelanggan kami akan membantu memproses pesanan anda supaya anda tidak perlu mengisi butiran yang banyak.',
     cardTitle: 'Butiran Warga Emas',
     icFront: 'Gambar Kad Pengenalan (Depan)',
     icBack: 'Gambar Kad Pengenalan (Belakang)',

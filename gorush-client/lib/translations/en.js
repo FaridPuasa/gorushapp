@@ -484,7 +484,7 @@ export default {
     goToOrder: 'Place This Order',
   },
   wargaEmasForm: {
-    subtitle: 'A free medicine delivery service for senior citizens — fill in your details below.',
+    subtitle: 'A simpler way for senior citizens to order — our customer service team helps place your order so you don\'t have to fill in all the details yourself.',
     cardTitle: 'Warga Emas Details',
     icFront: 'IC Picture (Front)',
     icBack: 'IC Picture (Back)',
