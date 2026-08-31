@@ -19,6 +19,7 @@ const { appendJpmcGuestOrderRow, appendCbslManifestRows } = require('../lib/msGr
 const { sendWhatsAppMessage } = require('../lib/whatsapp');
 const { getAreaFromAddress } = require('../lib/area');
 const { notifyTeams } = require('../lib/teamsNotify');
+const { getDistrictLabel, extractBaseJobMethod, formatJobMethod } = require('../lib/jobMethodFormat');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
@@ -42,13 +43,14 @@ const PHARMACY_PRODUCTS = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc'];
 // original Make.com-driven cases), or any localdelivery order (added
 // 2026-08-28, same recipient list).
 function getOrderAlertReason(orderData) {
-    if ((orderData.product === 'pharmacymoh' || orderData.product === 'pharmacyjpmc') && orderData.jobMethod === 'Immediate') {
+    const baseJobMethod = extractBaseJobMethod(orderData.jobMethod);
+    if ((orderData.product === 'pharmacymoh' || orderData.product === 'pharmacyjpmc') && baseJobMethod === 'Immediate') {
         return 'immediate';
     }
     if (orderData.product === 'pharmacyphc') {
         return 'phc';
     }
-    if (orderData.jobMethod === 'Self Collect') {
+    if (baseJobMethod === 'Self Collect') {
         return 'selfCollect';
     }
     if (orderData.product === 'localdelivery') {
@@ -80,7 +82,7 @@ function formatBruneiDateTime(date) {
 function buildOrderAlertEmail(reason, orderData, trackingNumber) {
     const productName = ORDER_ALERT_PRODUCT_NAME[orderData.product] || orderData.product;
     const dateTimeSubmission = formatBruneiDateTime(orderData.dateTimeSubmission);
-    const area = orderData.address?.district || '';
+    const area = getDistrictLabel(orderData.address?.district) || '';
     // MOH uses bruhimsnum, JPMC/PHC use patientNumber - mutually exclusive
     // per product, so a single combined line covers all 3 pharmacy products.
     // Not applicable to Local Delivery at all - omitted for that product
@@ -93,6 +95,7 @@ function buildOrderAlertEmail(reason, orderData, trackingNumber) {
         <p>DO Tracking Number: ${trackingNumber}</p>
         <p>Date Time Submission: ${dateTimeSubmission}</p>
         <p>Product: ${productName}</p>
+        <p>Job Method: ${orderData.jobMethod || ''}</p>
         <p>Receiver Name: ${orderData.receiverName || ''}</p>
         <p>Receiver Address: ${orderData.receiverAddress || ''}</p>
         <p>Receiver Phone Number: ${orderData.receiverPhoneNumber || ''}</p>
@@ -120,6 +123,7 @@ function buildOrderAlertEmail(reason, orderData, trackingNumber) {
             <p>DO Tracking Number: ${trackingNumber}</p>
             <p>Date Time Submission: ${dateTimeSubmission}</p>
             <p>Product: ${productName}</p>
+            <p>Job Method: ${orderData.jobMethod || ''}</p>
             <p>Receiver Name: ${orderData.receiverName || ''}</p>
             <p>Receiver Phone Number: ${orderData.receiverPhoneNumber || ''}</p>
             <p>Additional Phone Number: ${orderData.additionalPhoneNumber || ''}</p>
@@ -318,7 +322,7 @@ router.post('/', optionalAuth, async (req, res) => {
             senderEmail,
             senderPhoneNumber,
             deliveryTypeCode: cbslSelfCollect ? 'N/A' : mapDeliveryTypeCode(deliveryTypeCode),
-            jobMethod: cbslSelfCollect ? 'Self Collect' : deliveryTypeCode,
+            jobMethod: cbslSelfCollect ? 'Self Collect' : formatJobMethod(deliveryTypeCode, address.district),
             paymentMethod,
             remarks,
             // Real number, not a currency-formatted string - cargoPrice below is the one

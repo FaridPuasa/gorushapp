@@ -8,6 +8,7 @@
 // visibility into their own order type. Only used by the Postgres
 // order-intake path (see routes/orders.js).
 const axios = require('axios');
+const { getDistrictLabel, extractBaseJobMethod } = require('./jobMethodFormat');
 
 const PRODUCT_DISPLAY_NAME = {
     pharmacymoh: 'Pharmacy MOH',
@@ -26,13 +27,13 @@ const CATEGORIES = [
         key: 'immediate',
         envVar: 'TEAMS_WEBHOOK_URL_IMMEDIATE',
         title: '🚨 Immediate Order',
-        matches: (orderData) => orderData.jobMethod === 'Immediate',
+        matches: (orderData) => extractBaseJobMethod(orderData.jobMethod) === 'Immediate',
     },
     {
         key: 'selfCollect',
         envVar: 'TEAMS_WEBHOOK_URL_SELFCOLLECT',
         title: '📦 Self Collect Order',
-        matches: (orderData) => orderData.jobMethod === 'Self Collect',
+        matches: (orderData) => extractBaseJobMethod(orderData.jobMethod) === 'Self Collect',
     },
     {
         key: 'phc',
@@ -54,6 +55,7 @@ function buildOrderCard(title, orderData, trackingNumber, categoryKey) {
         { title: 'Tracking Number', value: trackingNumber || '' },
         { title: 'Date Time Submission', value: formatBruneiDateTime(orderData.dateTimeSubmission) },
         { title: 'Product', value: productName },
+        { title: 'Job Method', value: orderData.jobMethod || '' },
         { title: 'Receiver', value: orderData.receiverName || '' },
     ];
     // Self Collect always uses the fixed office address now (not the
@@ -66,7 +68,7 @@ function buildOrderCard(title, orderData, trackingNumber, categoryKey) {
         // source: the customer's chosen district, e.g. "Brunei"/"Tutong" -
         // not the finer kampong-based classification in orderData.area/
         // Detrack's zone).
-        facts.push({ title: 'Area', value: orderData.address?.district || '' });
+        facts.push({ title: 'Area', value: getDistrictLabel(orderData.address?.district) || '' });
     }
     facts.push({ title: 'Phone', value: orderData.receiverPhoneNumber || '' });
     if (orderData.additionalPhoneNumber) {
