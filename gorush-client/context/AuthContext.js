@@ -57,7 +57,21 @@ export function AuthProvider({ children }) {
     if (token) await fetchProfile(token);
   }, [token, fetchProfile]);
 
-  const value = { user, token, isGuest: !token, isAdmin: user?.role === 'admin', loading, login, logout, applyToken, refreshProfile };
+  const value = {
+    user,
+    token,
+    isGuest: !token,
+    isAdmin: user?.role === 'admin',
+    isJpmc: user?.role === 'jpmc',
+    isGorush: user?.role === 'gorush',
+    // Anyone allowed onto the JPMC portal page - admin can see it too, for support.
+    canViewJpmcPortal: ['jpmc', 'gorush', 'admin'].includes(user?.role),
+    loading,
+    login,
+    logout,
+    applyToken,
+    refreshProfile,
+  };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

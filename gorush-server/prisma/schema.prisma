@@ -137,6 +137,17 @@ model Order {
   podUpdated              DateTime? @map("pod_updated")
   podSource               String?   @map("pod_source")
 
+  // JPMC pharmacy client portal - populated by this app's own routes/jpmc.js,
+  // read by gorush-client's /jpmc-portal. See grfmxstatusupdate's
+  // schema.prisma (source of truth) for the authoritative column definitions.
+  jpmcPharmacyStatus      String?   @map("jpmc_pharmacy_status")
+  jpmcPatientInformed     String?   @map("jpmc_patient_informed")
+  jpmcPharmacyRemarks     String?   @map("jpmc_pharmacy_remarks")
+  jpmcTotalAmount         Decimal?  @map("jpmc_total_amount") @db.Decimal(12, 2)
+  jpmcFinanceDateReceived DateTime? @map("jpmc_finance_date_received")
+  jpmcFieldsUpdatedBy     String?   @map("jpmc_fields_updated_by")
+  jpmcFieldsUpdatedAt     DateTime? @map("jpmc_fields_updated_at")
+
   history OrderHistory[]
 
   @@index([parcelTrackingNum])

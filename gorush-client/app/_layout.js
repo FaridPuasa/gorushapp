@@ -29,26 +29,29 @@ export default function RootLayout() {
   );
 }
 
-// Confines the admin account to the /admin area, and — the other direction — keeps everyone
-// else out of it, since /admin has no guard of its own and would otherwise render for any
-// guest or customer who navigates there directly (the server-side requireAdmin check only
-// protects the write endpoints, not the page itself). A single check here instead of guarding
-// every page individually. Login/register stay reachable so logging out and back in as a
-// different account still works.
+// Confines staff accounts (admin, jpmc, gorush) to their own area, and — the other direction —
+// keeps everyone else out of it, since neither /admin nor /jpmc-portal has a guard of its own
+// and would otherwise render for any guest or customer who navigates there directly (the
+// server-side requireAdmin/requireRole checks only protect the write endpoints, not the page
+// itself). A single check here instead of guarding every page individually. Login/register stay
+// reachable so logging out and back in as a different account still works.
 function AdminGuard() {
-  const { isAdmin, loading } = useAuth();
+  const { isAdmin, isJpmc, isGorush, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
     if (loading) return;
     if (isAdmin) {
-      const allowed = pathname === '/admin' || pathname === '/login';
+      const allowed = pathname === '/admin' || pathname === '/jpmc-portal' || pathname === '/login';
       if (!allowed) router.replace('/admin');
-    } else if (pathname === '/admin') {
+    } else if (isJpmc || isGorush) {
+      const allowed = pathname === '/jpmc-portal' || pathname === '/login';
+      if (!allowed) router.replace('/jpmc-portal');
+    } else if (pathname === '/admin' || pathname === '/jpmc-portal') {
       router.replace('/');
     }
-  }, [loading, isAdmin, pathname]);
+  }, [loading, isAdmin, isJpmc, isGorush, pathname]);
 
   return null;
 }

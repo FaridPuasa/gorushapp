@@ -39,6 +39,27 @@ function requireAdmin(req, res, next) {
     }
 }
 
+function requireRole(...roles) {
+    return function (req, res, next) {
+        const token = getTokenFromHeader(req);
+        if (!token) {
+            return res.status(401).json({ error: "Authentication required." });
+        }
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            if (!roles.includes(decoded.role)) {
+                return res.status(403).json({ error: "You don't have access to this." });
+            }
+            req.userId = decoded.userId;
+            req.userEmail = decoded.email;
+            req.userRole = decoded.role;
+            next();
+        } catch (err) {
+            return res.status(401).json({ error: "Invalid or expired session. Please log in again." });
+        }
+    };
+}
+
 function optionalAuth(req, res, next) {
     const token = getTokenFromHeader(req);
     if (token) {
@@ -52,4 +73,4 @@ function optionalAuth(req, res, next) {
     next();
 }
 
-module.exports = { requireAuth, requireAdmin, optionalAuth };
+module.exports = { requireAuth, requireAdmin, requireRole, optionalAuth };

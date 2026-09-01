@@ -38,6 +38,7 @@ app.use('/api/profile', require('./routes/profile'));
 app.use('/api/warga-emas-orders', require('./routes/wargaEmasOrders'));
 app.use('/api/careers', require('./routes/careers'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/jpmc', require('./routes/jpmc'));
 app.use('/api', require('./routes/content'));
 
 // Pull the connection string securely from the environment file
