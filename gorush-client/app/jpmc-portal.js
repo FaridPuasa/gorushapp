@@ -216,7 +216,7 @@ function OrderTable({ orders, onSelect, colors, scaleFont }) {
           <OrderTableRow
             key={order.id}
             order={order}
-            onView={() => onSelect(order.id)}
+            onView={() => onSelect(order)}
             colors={colors}
             isLast={i === orders.length - 1}
             isEven={i % 2 === 1}
@@ -558,7 +558,14 @@ export default function JpmcPortal() {
   const [viewMode, setViewMode] = useState('window');
   const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [selectedOrderId, setSelectedOrderId] = useState(null);
+  // Set either from tapping a table row (the matching object from `data.orders`)
+  // or from the tracking-number lookup below (a standalone fetch, independent
+  // of whatever tab/window is currently selected) - so it holds the full order
+  // object directly rather than just an id to look up.
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [trackingQuery, setTrackingQuery] = useState('');
+  const [trackingLoading, setTrackingLoading] = useState(false);
+  const [trackingError, setTrackingError] = useState('');
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
@@ -595,12 +602,33 @@ export default function JpmcPortal() {
 
   const handleSaved = (id, updatedOrder) => {
     setData((prev) => (prev ? { ...prev, orders: prev.orders.map((o) => (o.id === id ? updatedOrder : o)) } : prev));
+    // Keep the open modal in sync too - it may be showing a tracking-lookup
+    // result that isn't part of `data.orders` at all.
+    setSelectedOrder((prev) => (prev && prev.id === id ? updatedOrder : prev));
   };
 
-  const selectedOrder = useMemo(
-    () => data?.orders.find((o) => o.id === selectedOrderId) || null,
-    [data, selectedOrderId]
-  );
+  // Quick tracking-number lookup (same idea as gorushfmxupdate's dashboard search) -
+  // independent of whatever tab/window/page is currently selected, so staff can jump
+  // straight to one order's card without hunting for it in the table.
+  const handleTrackingLookup = async () => {
+    const query = trackingQuery.trim();
+    if (!query) return;
+    setTrackingLoading(true);
+    setTrackingError('');
+    try {
+      const res = await api.get('/api/jpmc/orders', { headers: authHeader, params: { view: 'all', search: query, limit: 5 } });
+      const match = res.data.orders.find((o) => (o.doTrackingNumber || '').toLowerCase() === query.toLowerCase()) || res.data.orders[0];
+      if (match) {
+        setSelectedOrder(match);
+      } else {
+        setTrackingError(`No JPMC order found for "${query}".`);
+      }
+    } catch (e) {
+      setTrackingError(e.response?.data?.error || 'Lookup failed.');
+    } finally {
+      setTrackingLoading(false);
+    }
+  };
 
   const subtitle = viewMode === 'all'
     ? 'All JPMC/PJSC orders, newest first'
@@ -612,6 +640,36 @@ export default function JpmcPortal() {
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
       <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>JPMC Pharmacy Orders</Text>
       <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{subtitle}</Text>
+
+      {/* Same idea as gorushfmxupdate's dashboard tracking search - a direct lookup that
+          pops the order straight into the detail card, bypassing whatever tab/window/page
+          is currently selected in the table below. */}
+      <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 16 }}>
+        <Text style={captionStyle}>Search Tracking Number</Text>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <TextInput
+            style={[formStyles.input, { flex: 1, marginBottom: 0, fontSize: scaleFont(14) }]}
+            value={trackingQuery}
+            onChangeText={(v) => { setTrackingQuery(v); if (trackingError) setTrackingError(''); }}
+            onSubmitEditing={handleTrackingLookup}
+            placeholder="e.g. GR200056701JP"
+            placeholderTextColor={colors.textMuted}
+            autoCapitalize="characters"
+          />
+          <AnimatedPressable
+            scaleTo={1.03}
+            onPress={handleTrackingLookup}
+            disabled={trackingLoading || !trackingQuery.trim()}
+            style={[
+              { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
+              (trackingLoading || !trackingQuery.trim()) && { opacity: 0.5 },
+            ]}
+          >
+            {trackingLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '700', fontSize: scaleFont(13) }}>Search</Text>}
+          </AnimatedPressable>
+        </View>
+        {trackingError ? <Text style={[formStyles.fieldError, { marginTop: 8, marginBottom: 0 }]}>{trackingError}</Text> : null}
+      </View>
 
       {/* One bordered panel groups every filter, visually separate from the table below.
           The two filter rows are deliberately styled differently - solid pills for STATUS
@@ -692,7 +750,7 @@ export default function JpmcPortal() {
       )}
 
       {!loading && !error && data?.orders.length > 0 && (
-        <OrderTable orders={data.orders} onSelect={setSelectedOrderId} colors={colors} scaleFont={scaleFont} />
+        <OrderTable orders={data.orders} onSelect={setSelectedOrder} colors={colors} scaleFont={scaleFont} />
       )}
 
       {!loading && !error && viewMode === 'all' && data && data.totalPages > 1 && (
@@ -712,10 +770,10 @@ export default function JpmcPortal() {
     <>
       <PageScroll title="JPMC Pharmacy Orders" beforeContent={pageContent} />
 
-      <Modal visible={!!selectedOrder} transparent animationType="fade" onRequestClose={() => setSelectedOrderId(null)}>
+      <Modal visible={!!selectedOrder} transparent animationType="fade" onRequestClose={() => setSelectedOrder(null)}>
         <Pressable
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 }}
-          onPress={() => setSelectedOrderId(null)}
+          onPress={() => setSelectedOrder(null)}
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
@@ -727,7 +785,7 @@ export default function JpmcPortal() {
                 canEdit={isJpmc}
                 authHeader={authHeader}
                 onSaved={handleSaved}
-                onClose={() => setSelectedOrderId(null)}
+                onClose={() => setSelectedOrder(null)}
                 formStyles={formStyles}
                 colors={colors}
                 scaleFont={scaleFont}
