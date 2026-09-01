@@ -322,7 +322,7 @@ router.post('/', optionalAuth, async (req, res) => {
             senderEmail,
             senderPhoneNumber,
             deliveryTypeCode: cbslSelfCollect ? 'N/A' : mapDeliveryTypeCode(deliveryTypeCode),
-            jobMethod: cbslSelfCollect ? 'Self Collect' : formatJobMethod(deliveryTypeCode, address.district),
+            jobMethod: cbslSelfCollect ? 'Self Collect' : formatJobMethod(deliveryTypeCode, address.district, product),
             paymentMethod,
             remarks,
             // Real number, not a currency-formatted string - cargoPrice below is the one
