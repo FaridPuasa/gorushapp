@@ -85,6 +85,10 @@ function buildPostgresOrderRow(orderData, { trackingNumber, sequence }) {
         // leaving it unset here left every gorush-created pharmacymoh order
         // NULL and invisible to that query.
         pharmacyFormCreated: orderData.product === 'pharmacymoh' ? false : null,
+        // JPMC pharmacy portal starts every new order in the "New Order" bucket
+        // explicitly, rather than relying on the portal treating a null column
+        // as that default - see routes/jpmc.js.
+        jpmcPharmacyStatus: orderData.product === 'pharmacyjpmc' ? 'New Order' : null,
         payingPatient: orderData.payingPatient ?? null,
         ldPickupOrDelivery: orderData.ldPickupOrDelivery ?? null,
         itemContains: orderData.itemContains ?? null,

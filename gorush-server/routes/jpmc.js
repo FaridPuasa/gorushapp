@@ -68,14 +68,16 @@ router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) =
             ];
         }
         if (req.query.pharmacyStatus) {
-            // 'New Order' is the default/unset state - matches rows that haven't
-            // been touched yet (null) as well as ones explicitly saved as such.
-            // Prisma's `in` filter doesn't accept null as a member, hence the OR.
-            if (req.query.pharmacyStatus === 'New Order') {
-                where.AND = [...(where.AND || []), { OR: [{ jpmcPharmacyStatus: 'New Order' }, { jpmcPharmacyStatus: null }] }];
-            } else {
-                where.jpmcPharmacyStatus = req.query.pharmacyStatus;
-            }
+            // Comma-separated - lets the portal's tabs (In Process/Completed/
+            // Duplicate&Cancelled/All) ask for a whole status group in one request,
+            // not just a single value. 'New Order' is the default/unset state -
+            // matches rows that haven't been touched yet (null) as well as ones
+            // explicitly saved as such. Prisma's `in` filter doesn't accept null as
+            // a member, hence the OR.
+            const statuses = req.query.pharmacyStatus.split(',');
+            const orClauses = statuses.map((s) => ({ jpmcPharmacyStatus: s }));
+            if (statuses.includes('New Order')) orClauses.push({ jpmcPharmacyStatus: null });
+            where.AND = [...(where.AND || []), { OR: orClauses }];
         }
         if (req.query.goRushStatus) {
             where.currentStatus = req.query.goRushStatus;
@@ -118,7 +120,7 @@ router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) =
         where.dateTimeSubmission = { gte: windowRange.start, lte: windowRange.end };
         const orders = await prisma.order.findMany({
             where,
-            orderBy: { dateTimeSubmission: 'asc' },
+            orderBy: { dateTimeSubmission: 'desc' },
         });
 
         res.json({ view, from: windowRange.start, to: windowRange.end, orders: orders.map(toApiShape) });
