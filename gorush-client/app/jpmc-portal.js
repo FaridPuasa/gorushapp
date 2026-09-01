@@ -260,11 +260,15 @@ function Section({ icon, title, children, colors, scaleFont, style }) {
 // bold value, same convention as the reference tracking-search card's grid.
 function DetailField({ label, value, minWidth = 140, colors, scaleFont }) {
   return (
-    <View style={{ minWidth, flexGrow: 1 }}>
+    // flexShrink + maxWidth stop a long value (a full address, a long name)
+    // from growing the box past the section's width - without them a plain
+    // flexGrow item keeps expanding to fit its unwrapped text instead of
+    // wrapping, and the whole card overflows sideways.
+    <View style={{ minWidth, maxWidth: '100%', flexGrow: 1, flexShrink: 1 }}>
       <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>
         {label}
       </Text>
-      <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary }}>{value ?? '—'}</Text>
+      <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary, flexShrink: 1 }}>{value ?? '—'}</Text>
     </View>
   );
 }
@@ -272,45 +276,47 @@ function DetailField({ label, value, minWidth = 140, colors, scaleFont }) {
 // GO RUSH status timeline - same OrderHistory data grfmxstatusupdate's own Search
 // Jobs page renders, just drawn with RN primitives (dot + connector line per step,
 // latest entry marked "Current").
+const HISTORY_STEP_WIDTH = 160;
+
 function StatusHistoryTimeline({ history, colors, scaleFont }) {
   if (!history || history.length === 0) return null;
   return (
     <Section icon="🕒" title="GO RUSH Status History" colors={colors} scaleFont={scaleFont}>
-      <View style={{ width: '100%' }}>
-        {history.map((h, i) => {
-          const isCurrent = i === history.length - 1;
-          const badge = goRushStatusBadgeColors(h.status, colors);
-          const meta = [h.updatedBy, h.lastLocation].filter(Boolean).join(' · ');
-          return (
-            <View key={i} style={{ flexDirection: 'row' }}>
-              <View style={{ width: 22, alignItems: 'center' }}>
-                <View
-                  style={{
-                    width: 14, height: 14, borderRadius: 7, marginTop: 2,
-                    backgroundColor: isCurrent ? badge.fg : colors.card,
-                    borderWidth: 2, borderColor: isCurrent ? badge.fg : colors.border,
-                  }}
-                />
-                {i < history.length - 1 && <View style={{ width: 2, flex: 1, minHeight: 24, backgroundColor: colors.border, marginTop: 2 }} />}
-              </View>
-              <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 16 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color: isCurrent ? badge.fg : colors.textPrimary }}>
-                    {h.status || '—'}
-                  </Text>
-                  {isCurrent && (
-                    <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: badge.bg }}>
-                      <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: badge.fg }}>Current</Text>
-                    </View>
-                  )}
+      <ScrollView horizontal showsHorizontalScrollIndicator style={{ width: '100%' }}>
+        <View style={{ flexDirection: 'row' }}>
+          {history.map((h, i) => {
+            const isCurrent = i === history.length - 1;
+            const badge = goRushStatusBadgeColors(h.status, colors);
+            return (
+              <View key={i} style={{ width: HISTORY_STEP_WIDTH }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View
+                    style={{
+                      width: 14, height: 14, borderRadius: 7,
+                      backgroundColor: isCurrent ? badge.fg : colors.card,
+                      borderWidth: 2, borderColor: isCurrent ? badge.fg : colors.border,
+                    }}
+                  />
+                  {i < history.length - 1 && <View style={{ flex: 1, height: 2, backgroundColor: colors.border, marginLeft: 2 }} />}
                 </View>
-                <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 2 }}>{formatDMYTime(h.dateUpdated)}</Text>
-                {meta ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 1 }}>{meta}</Text> : null}
+                <View style={{ paddingTop: 8, paddingRight: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                    <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color: isCurrent ? badge.fg : colors.textPrimary }}>
+                      {h.status || '—'}
+                    </Text>
+                    {isCurrent && (
+                      <View style={{ paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, backgroundColor: badge.bg }}>
+                        <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: badge.fg }}>Current</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 2 }}>{formatDMYTime(h.dateUpdated)}</Text>
+                </View>
               </View>
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      </ScrollView>
     </Section>
   );
 }
@@ -713,7 +719,7 @@ export default function JpmcPortal() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%', maxWidth: 640, maxHeight: '90%' }}
+            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 820, maxHeight: '92%' }}
           >
             {selectedOrder && (
               <OrderDetail
