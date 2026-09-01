@@ -150,6 +150,20 @@ function OrderTableRow({ order, onView, colors, isLast, isEven, scaleFont }) {
         borderBottomWidth: isLast ? 0 : 1, borderBottomColor: colors.border,
       }}
     >
+      <View style={{ width: ACTIONS_WIDTH }}>
+        <AnimatedPressable
+          scaleTo={1.05}
+          onPress={onView}
+          style={{
+            flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
+            paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
+            backgroundColor: colors.subtleBackground, borderWidth: 1, borderColor: colors.border,
+          }}
+        >
+          <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
+          <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View</Text>
+        </AnimatedPressable>
+      </View>
       {COLUMNS.map((c) => {
         if (c.badge) {
           const badge = goRushStatusBadgeColors(order[c.key], colors);
@@ -176,20 +190,6 @@ function OrderTableRow({ order, onView, colors, isLast, isEven, scaleFont }) {
           </Text>
         );
       })}
-      <View style={{ width: ACTIONS_WIDTH }}>
-        <AnimatedPressable
-          scaleTo={1.05}
-          onPress={onView}
-          style={{
-            flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
-            paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
-            backgroundColor: colors.subtleBackground, borderWidth: 1, borderColor: colors.border,
-          }}
-        >
-          <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
-          <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View</Text>
-        </AnimatedPressable>
-      </View>
     </View>
   );
 }
@@ -203,14 +203,14 @@ function OrderTable({ orders, onSelect, colors, scaleFont }) {
     >
       <View style={{ width: TABLE_WIDTH, backgroundColor: colors.card, borderRadius: 12, overflow: 'hidden' }}>
         <View style={{ flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, backgroundColor: colors.subtleBackground, borderBottomWidth: 1, borderBottomColor: colors.border }}>
+          <Text style={{ width: ACTIONS_WIDTH, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+            Actions
+          </Text>
           {COLUMNS.map((c) => (
             <Text key={c.key} style={{ width: c.width, paddingRight: 8, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 }}>
               {c.label}
             </Text>
           ))}
-          <Text style={{ width: ACTIONS_WIDTH, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-            Actions
-          </Text>
         </View>
         {orders.map((order, i) => (
           <OrderTableRow
