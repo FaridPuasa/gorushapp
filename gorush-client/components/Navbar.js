@@ -21,7 +21,8 @@ import { AnimatedPressable } from '../lib/animations';
 const BAR_HEIGHT = NAVBAR_HEIGHT;
 
 export default function Navbar() {
-  const { user, isGuest, isAdmin, loading, logout } = useAuth();
+  const { user, isGuest, isAdmin, isJpmc, isGorush, loading, logout } = useAuth();
+  const isJpmcPortalRole = isJpmc || isGorush;
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
@@ -80,6 +81,14 @@ export default function Navbar() {
     { label: t('nav.logOut'), onPress: handleLogout },
   ];
 
+  // jpmc/gorush staff only ever need the portal link + change password + log out -
+  // everything else on this consumer-facing app (ordering, tracking, company info,
+  // language switching) is irrelevant to them.
+  const jpmcUserItems = [
+    { label: t('nav.editProfile'), href: '/edit-profile' },
+    { label: t('nav.logOut'), onPress: handleLogout },
+  ];
+
   const goTo = (href) => router.push(href);
 
   return (
@@ -89,7 +98,7 @@ export default function Navbar() {
           {isMobile ? (
             <>
               <View style={styles.mobileLogoCenter} pointerEvents="box-none">
-                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : '/'} onPress={() => goTo(isAdmin ? '/admin' : '/')}>
+                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : '/')}>
                   <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
                 </AnimatedPressable>
               </View>
@@ -98,15 +107,43 @@ export default function Navbar() {
               </AnimatedPressable>
             </>
           ) : (
-          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : '/'} onPress={() => goTo(isAdmin ? '/admin' : '/')}>
+          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : '/')}>
             <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
           </AnimatedPressable>
           )}
           {!isMobile && (
           <View style={styles.desktopLinks}>
-            {isAdmin ? (
+            {isJpmcPortalRole ? (
               !loading && (
                 <>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/jpmc-portal" onPress={() => goTo('/jpmc-portal')}>
+                    <Text style={styles.navText}>JPMC</Text>
+                  </AnimatedPressable>
+                  <SettingsDropdown
+                    align="right"
+                    showLanguage={false}
+                    isOpen={openMenu === 'settings'}
+                    onToggle={() => setOpenMenu(openMenu === 'settings' ? null : 'settings')}
+                  />
+                  <NavDropdown
+                    label={user?.email ? maskEmail(user.email) : t('nav.account')}
+                    items={jpmcUserItems}
+                    isOpen={openMenu === 'user'}
+                    onToggle={() => setOpenMenu(openMenu === 'user' ? null : 'user')}
+                    onClose={closeAll}
+                    align="right"
+                  />
+                </>
+              )
+            ) : isAdmin ? (
+              !loading && (
+                <>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/admin" onPress={() => goTo('/admin')}>
+                    <Text style={styles.navText}>Website</Text>
+                  </AnimatedPressable>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/jpmc-portal" onPress={() => goTo('/jpmc-portal')}>
+                    <Text style={styles.navText}>JPMC</Text>
+                  </AnimatedPressable>
                   <SettingsDropdown
                     align="right"
                     isOpen={openMenu === 'settings'}
@@ -198,7 +235,7 @@ export default function Navbar() {
         )}
       </View>
 
-      {isMobile && !isAdmin && (
+      {isMobile && !isAdmin && !isJpmcPortalRole && (
         <View style={[styles.bottomNav, { height: BOTTOM_NAV_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
           <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} href="/" onPress={() => goTo('/')}>
             <Ionicons name="home" size={scaleFont(24)} color={colors.textPrimary} />
@@ -282,6 +319,27 @@ export default function Navbar() {
               </AnimatedPressable>
             </View>
             <ScrollView style={styles.mobileMenu}>
+              {isAdmin && (
+                <AnimatedPressable
+                  scaleTo={1.02}
+                  style={styles.mobileItem}
+                  href="/admin"
+                  onPress={() => { goTo('/admin'); closeAccountMenu(); }}
+                >
+                  <Text style={styles.mobileItemText}>Website</Text>
+                </AnimatedPressable>
+              )}
+              {(isAdmin || isJpmcPortalRole) && (
+                <AnimatedPressable
+                  scaleTo={1.02}
+                  style={styles.mobileItem}
+                  href="/jpmc-portal"
+                  onPress={() => { goTo('/jpmc-portal'); closeAccountMenu(); }}
+                >
+                  <Text style={styles.mobileItemText}>JPMC</Text>
+                </AnimatedPressable>
+              )}
+
               <AnimatedPressable
                 scaleTo={1.02}
                 style={styles.mobileItem}
@@ -292,15 +350,19 @@ export default function Navbar() {
               {accountExpanded === 'settings' && (
                 <View style={styles.mobileSettingsPanel}>
                   <ThemeToggle />
-                  <View style={{ height: 10 }} />
-                  <LanguagePicker />
+                  {!isJpmcPortalRole && (
+                    <>
+                      <View style={{ height: 10 }} />
+                      <LanguagePicker />
+                    </>
+                  )}
                   <View style={{ height: 10 }} />
                   <FontScalePicker />
                 </View>
               )}
 
               {!loading && (
-                isAdmin ? (
+                (isJpmcPortalRole || isAdmin) ? (
                   <AnimatedPressable scaleTo={1.02} style={styles.mobileItem} onPress={() => { handleLogout(); closeAccountMenu(); }}>
                     <Text style={styles.mobileItemText}>{t('nav.logOut')}</Text>
                   </AnimatedPressable>

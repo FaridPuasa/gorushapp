@@ -12,16 +12,24 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
+import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
+
+// This is a data-table page, not a form - the app's normal ~900px form
+// column reads as a cramped single lane of text for a 7-column table plus a
+// multi-section detail modal. Passed via PageScroll's `beforeContent` (see
+// lib/formPrimitives.js), which renders outside the capped formWrapper, so
+// only this page gets the wider column instead of changing the app-wide cap.
+const WIDE_MAX_WIDTH = 1300;
 
 const STATUS_OPTIONS = ['New Order', 'Entered', 'Pending Payment', 'Pending Query', 'Completed', 'Duplicate Order', 'Cancelled Order'];
 const PATIENT_INFORMED_OPTIONS = ['Yes', 'No'];
 // currentStatus values actually set by grfmxstatusupdate's Detrack sync - shown verbatim
-// under "GO RUSH STATUS", no renaming.
+// under "GO RUSH STATUS", no renaming. Trimmed to the statuses JPMC staff actually care
+// about tracking against (the warehouse-internal ones - Queued for Warehouse, Return,
+// Custom Clearing, On Hold, Disposed - aren't useful filter targets for them).
 const GO_RUSH_STATUS_OPTIONS = [
-  'Info Received', 'Queued for Warehouse', 'At Warehouse', 'Out for Delivery',
-  'Return to Warehouse', 'Return', 'Custom Clearing', 'On Hold', 'Self Collect',
-  'Completed', 'Cancelled', 'Disposed',
+  'Info Received', 'At Warehouse', 'Out for Delivery', 'Return to Warehouse', 'Self Collect', 'Completed', 'Cancelled',
 ];
 const SEARCH_DEBOUNCE_MS = 400;
 const VIEW_MODES = [
@@ -51,13 +59,23 @@ function formatDMY(value) {
   return `${dd}.${mm}.${d.getFullYear()}`;
 }
 
+// 12-hour, e.g. "12:00pm" / "5:30am" - no leading zero on the hour.
+function formatTime12(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  let h = d.getHours();
+  const ampm = h >= 12 ? 'pm' : 'am';
+  h = h % 12;
+  if (h === 0) h = 12;
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${min}${ampm}`;
+}
+
 function formatDMYTime(value) {
   if (!value) return '—';
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '—';
-  const hh = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${formatDMY(value)} ${hh}:${min}`;
+  return `${formatDMY(value)} ${formatTime12(value)}`;
 }
 
 function toDateOnly(value) {
@@ -101,69 +119,116 @@ function DateField({ value, onChange, formStyles }) {
   );
 }
 
-function goRushStatusColor(status, colors) {
+function goRushStatusBadgeColors(status, colors) {
   const s = (status || '').toLowerCase();
-  if (s === 'completed') return colors.primary;
-  if (s === 'cancelled' || s === 'disposed') return colors.error;
-  if (s === 'out for delivery') return '#e67e22';
-  return colors.textSecondary;
+  if (s === 'completed') return { bg: colors.primaryLight || '#e6f4ea', fg: colors.primary };
+  if (s === 'cancelled' || s === 'disposed') return { bg: colors.errorLight || '#fdecea', fg: colors.error };
+  if (s === 'out for delivery') return { bg: '#fdf1e3', fg: '#e67e22' };
+  if (s === 'at warehouse') return { bg: '#eee6fb', fg: '#7c4dff' };
+  return { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
 }
 
 const COLUMNS = [
-  { key: 'dateTimeSubmission', label: 'Date/Time Submitted', width: 150 },
-  { key: 'doTrackingNumber', label: 'Tracking No.', width: 120 },
-  { key: 'receiverName', label: 'Name', width: 170 },
-  { key: 'patientNumber', label: 'Patient No.', width: 100 },
-  { key: 'appointmentPlace', label: 'Location', width: 80 },
-  { key: 'jpmcPharmacyStatus', label: 'JPMC Pharmacy Status', width: 150 },
-  { key: 'goRushStatus', label: 'GO RUSH Status', width: 130 },
+  { key: 'dateTimeSubmission', label: 'Date/Time Submitted', width: 170 },
+  { key: 'doTrackingNumber', label: 'Tracking No.', width: 130 },
+  { key: 'receiverName', label: 'Name', width: 190 },
+  { key: 'patientNumber', label: 'Patient No.', width: 110 },
+  { key: 'appointmentPlace', label: 'Location', width: 90 },
+  { key: 'jpmcPharmacyStatus', label: 'JPMC Pharmacy Status', width: 170 },
+  { key: 'goRushStatus', label: 'GO RUSH Status', width: 150 },
 ];
 const TABLE_WIDTH = COLUMNS.reduce((sum, c) => sum + c.width, 0);
 
-function OrderTableRow({ order, onPress, colors, isLast }) {
+function OrderTableRow({ order, onPress, colors, isLast, scaleFont }) {
+  const badge = goRushStatusBadgeColors(order.goRushStatus, colors);
   return (
     <AnimatedPressable
       scaleTo={1}
       onPress={onPress}
       style={{
-        flexDirection: 'row', width: TABLE_WIDTH, paddingVertical: 10,
+        flexDirection: 'row', width: TABLE_WIDTH, paddingVertical: 12, alignItems: 'center',
         borderBottomWidth: isLast ? 0 : 1, borderBottomColor: colors.border,
       }}
     >
-      <Text style={{ width: COLUMNS[0].width, fontSize: 12, color: colors.textPrimary }}>{formatDMYTime(order.dateTimeSubmission)}</Text>
-      <Text style={{ width: COLUMNS[1].width, fontSize: 12, color: colors.textPrimary }}>{order.doTrackingNumber || '—'}</Text>
-      <Text style={{ width: COLUMNS[2].width, fontSize: 12, color: colors.textPrimary, fontWeight: '600' }} numberOfLines={1}>{order.receiverName || '—'}</Text>
-      <Text style={{ width: COLUMNS[3].width, fontSize: 12, color: colors.textPrimary }}>{order.patientNumber || '—'}</Text>
-      <Text style={{ width: COLUMNS[4].width, fontSize: 12, color: colors.textPrimary }}>{order.appointmentPlace || '—'}</Text>
-      <Text style={{ width: COLUMNS[5].width, fontSize: 12, color: colors.textPrimary, fontWeight: '600' }}>{order.jpmcPharmacyStatus || 'New Order'}</Text>
-      <Text style={{ width: COLUMNS[6].width, fontSize: 12, fontWeight: '700', color: goRushStatusColor(order.goRushStatus, colors) }}>{order.goRushStatus || '—'}</Text>
+      <Text style={{ width: COLUMNS[0].width, fontSize: scaleFont(13), color: colors.textPrimary }}>{formatDMYTime(order.dateTimeSubmission)}</Text>
+      <Text style={{ width: COLUMNS[1].width, fontSize: scaleFont(13), color: colors.textPrimary }}>{order.doTrackingNumber || '—'}</Text>
+      <Text style={{ width: COLUMNS[2].width, fontSize: scaleFont(13), color: colors.textPrimary, fontWeight: '600' }} numberOfLines={1}>{order.receiverName || '—'}</Text>
+      <Text style={{ width: COLUMNS[3].width, fontSize: scaleFont(13), color: colors.textPrimary }}>{order.patientNumber || '—'}</Text>
+      <Text style={{ width: COLUMNS[4].width, fontSize: scaleFont(13), color: colors.textPrimary }}>{order.appointmentPlace || '—'}</Text>
+      <Text style={{ width: COLUMNS[5].width, fontSize: scaleFont(13), color: colors.textPrimary, fontWeight: '600' }}>{order.jpmcPharmacyStatus || 'New Order'}</Text>
+      <View style={{ width: COLUMNS[6].width }}>
+        <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: badge.bg }}>
+          <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: badge.fg }}>{order.goRushStatus || '—'}</Text>
+        </View>
+      </View>
     </AnimatedPressable>
   );
 }
 
-function OrderTable({ orders, onSelect, colors, formStyles }) {
+function OrderTable({ orders, onSelect, colors, scaleFont }) {
   return (
     <ScrollView horizontal showsHorizontalScrollIndicator style={{ marginBottom: 16 }}>
       <View style={{ width: TABLE_WIDTH }}>
-        <View style={{ flexDirection: 'row', paddingBottom: 8, borderBottomWidth: 2, borderBottomColor: colors.border }}>
+        <View style={{ flexDirection: 'row', paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: colors.border }}>
           {COLUMNS.map((c) => (
-            <Text key={c.key} style={{ width: c.width, fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>
+            <Text key={c.key} style={{ width: c.width, fontSize: scaleFont(12), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>
               {c.label}
             </Text>
           ))}
         </View>
         {orders.map((order, i) => (
-          <OrderTableRow key={order.id} order={order} onPress={() => onSelect(order.id)} colors={colors} isLast={i === orders.length - 1} />
+          <OrderTableRow key={order.id} order={order} onPress={() => onSelect(order.id)} colors={colors} isLast={i === orders.length - 1} scaleFont={scaleFont} />
         ))}
       </View>
     </ScrollView>
   );
 }
 
+// Bordered, softly-tinted box grouping related fields under an uppercase label -
+// matches gorushfmxupdate's "Tracking Number Search" result card (Shipment Info /
+// Customer Info / Payment / etc. sections), just built with RN primitives here.
+function Section({ icon, title, children, colors, scaleFont, style }) {
+  return (
+    <View
+      style={[
+        {
+          backgroundColor: colors.subtleBackground || colors.background,
+          borderRadius: 10,
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: 14,
+          marginBottom: 12,
+        },
+        style,
+      ]}
+    >
+      <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>
+        {icon} {title}
+      </Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 12 }}>
+        {children}
+      </View>
+    </View>
+  );
+}
+
+// One label/value pair within a Section - the small uppercase grey label over a
+// bold value, same convention as the reference tracking-search card's grid.
+function DetailField({ label, value, minWidth = 140, colors, scaleFont }) {
+  return (
+    <View style={{ minWidth, flexGrow: 1 }}>
+      <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>
+        {label}
+      </Text>
+      <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary }}>{value ?? '—'}</Text>
+    </View>
+  );
+}
+
 // Full-detail card shown inside the modal when a row is tapped - both the
 // read-only context (submission info, address, remarks from patient) and the
 // 5 JPMC-owned editable fields, in one place.
-function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles, colors }) {
+function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles, colors, scaleFont }) {
   const [status, setStatus] = useState(order.jpmcPharmacyStatus || 'New Order');
   const [patientInformed, setPatientInformed] = useState(order.jpmcPatientInformed || '');
   const [remarks, setRemarks] = useState(order.jpmcPharmacyRemarks || '');
@@ -206,65 +271,69 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
     }
   };
 
+  const badge = goRushStatusBadgeColors(order.goRushStatus, colors);
+
   return (
-    <View style={{ maxHeight: '90%' }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
-        <Text style={[formStyles.sectionHeader, { flex: 1, marginBottom: 0 }]}>{order.receiverName || 'Unnamed patient'}</Text>
+    <View style={{ maxHeight: '100%' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{order.doTrackingNumber || 'No tracking yet'}</Text>
+          <View style={{ alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: badge.bg }}>
+            <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: badge.fg }}>{order.goRushStatus || '—'}</Text>
+          </View>
+        </View>
         <AnimatedPressable scaleTo={1.1} onPress={onClose} style={{ padding: 4 }}>
-          <Text style={{ fontSize: 18, color: colors.textMuted }}>✕</Text>
+          <Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text>
         </AnimatedPressable>
       </View>
       <ScrollView>
-        <Text style={{ color: colors.textMuted, fontSize: 12, marginBottom: 12 }}>
-          {order.doTrackingNumber || 'No tracking yet'} · Submitted {formatDMYTime(order.dateTimeSubmission)}
-        </Text>
+        <Section icon="📦" title="Order Info" colors={colors} scaleFont={scaleFont}>
+          <DetailField label="Date/Time Submitted" value={formatDMYTime(order.dateTimeSubmission)} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Payment Method" value={order.paymentMethod} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Delivery Type" value={order.jobMethod} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Total Price" value={order.totalPrice ? `$${order.totalPrice}` : null} colors={colors} scaleFont={scaleFont} />
+        </Section>
 
-        <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 10, marginBottom: 14 }}>
-          <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 2 }}>
-            {order.appointmentPlace ? `${order.appointmentPlace} · ` : ''}PRN: {order.patientNumber || '—'}
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 2 }}>
-            {order.receiverPhoneNumber || '—'}{order.additionalPhoneNumber ? ` / ${order.additionalPhoneNumber}` : ''}
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 2 }}>
-            {order.jobMethod || '—'} · {order.paymentMethod || '—'} · ${order.totalPrice || '0'}
-          </Text>
-          <Text style={{ color: colors.textSecondary, fontSize: 12, marginBottom: 2 }}>{order.receiverAddress || '—'}</Text>
-          {order.remarks ? <Text style={{ color: colors.textMuted, fontSize: 12, marginTop: 4 }}>Remarks from Patient: {order.remarks}</Text> : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8 }}>
-            <Text style={{ fontSize: 12, color: colors.textMuted, marginRight: 6 }}>GO RUSH STATUS:</Text>
-            <Text style={{ fontSize: 12, fontWeight: '700', color: goRushStatusColor(order.goRushStatus, colors) }}>
-              {order.goRushStatus || '—'}
-            </Text>
-          </View>
-        </View>
+        <Section icon="👤" title="Customer Info" colors={colors} scaleFont={scaleFont}>
+          <DetailField label="Name" value={order.receiverName} minWidth={180} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Patient No." value={order.patientNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Location" value={order.appointmentPlace} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Main Phone No." value={order.receiverPhoneNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Additional Phone No." value={order.additionalPhoneNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Customer Address" value={order.receiverAddress} minWidth={260} colors={colors} scaleFont={scaleFont} />
+        </Section>
 
-        <Text style={[formStyles.fieldLabel, { marginBottom: 8 }]}>JPMC Pharmacy</Text>
-        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-          <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 160 }]}>
-            <Picker enabled={canEdit} style={formStyles.pickerControl} selectedValue={status} onValueChange={setStatus}>
-              {STATUS_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
-            </Picker>
+        {order.remarks ? (
+          <Section icon="💬" title="Remarks from Patient" colors={colors} scaleFont={scaleFont}>
+            <DetailField label="Remarks" value={order.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
+          </Section>
+        ) : null}
+
+        <Section icon="💊" title="JPMC Pharmacy" colors={colors} scaleFont={scaleFont}>
+          <View style={{ width: '100%', flexDirection: 'row', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
+            <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 160 }]}>
+              <Picker enabled={canEdit} style={formStyles.pickerControl} selectedValue={status} onValueChange={setStatus}>
+                {STATUS_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
+              </Picker>
+            </View>
+            <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 140 }]}>
+              <Picker enabled={canEdit} style={formStyles.pickerControl} selectedValue={patientInformed} onValueChange={setPatientInformed}>
+                <Picker.Item label="Patient Informed?" value="" />
+                {PATIENT_INFORMED_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
+              </Picker>
+            </View>
           </View>
-          <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 140 }]}>
-            <Picker enabled={canEdit} style={formStyles.pickerControl} selectedValue={patientInformed} onValueChange={setPatientInformed}>
-              <Picker.Item label="Patient Informed?" value="" />
-              {PATIENT_INFORMED_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
-            </Picker>
-          </View>
-        </View>
-        <TextInput
-          style={[formStyles.input, { marginBottom: 10 }]}
-          placeholder="Remarks from Pharmacy"
-          placeholderTextColor={colors.textMuted}
-          value={remarks}
-          onChangeText={setRemarks}
-          editable={canEdit}
-          multiline
-        />
-        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center', marginBottom: 10, flexWrap: 'wrap' }}>
           <TextInput
-            style={[formStyles.input, { width: 100, marginBottom: 0 }]}
+            style={[formStyles.input, { width: '100%', marginBottom: 10 }]}
+            placeholder="Remarks from Pharmacy"
+            placeholderTextColor={colors.textMuted}
+            value={remarks}
+            onChangeText={setRemarks}
+            editable={canEdit}
+            multiline
+          />
+          <TextInput
+            style={[formStyles.input, { width: 120, marginBottom: 0 }]}
             placeholder="Total $"
             placeholderTextColor={colors.textMuted}
             value={String(totalAmount)}
@@ -272,21 +341,26 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
             editable={canEdit}
             keyboardType="numeric"
           />
+        </Section>
+
+        <Section icon="🧾" title="JPMC Finance" colors={colors} scaleFont={scaleFont}>
           <View>
-            <Text style={[formStyles.fieldLabel, { marginBottom: 6 }]}>JPMC Finance — Date Received</Text>
+            <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>
+              Date Received
+            </Text>
             {canEdit ? (
               <DateField value={dateReceived} onChange={setDateReceived} formStyles={formStyles} />
             ) : (
-              <Text style={formStyles.bodyText}>{dateReceived ? formatDMY(dateReceived) : '—'}</Text>
+              <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary }}>{dateReceived ? formatDMY(dateReceived) : '—'}</Text>
             )}
           </View>
-        </View>
+        </Section>
 
         {error ? <Text style={formStyles.fieldError}>{error}</Text> : null}
         {canEdit && (
           <AnimatedPressable
             scaleTo={1.03}
-            style={[formStyles.button, { alignSelf: 'flex-start', paddingHorizontal: 20 }, (!dirty || saving) && formStyles.buttonDisabled]}
+            style={[formStyles.button, { alignSelf: 'flex-start', paddingHorizontal: 24, marginTop: 4 }, (!dirty || saving) && formStyles.buttonDisabled]}
             onPress={save}
             disabled={!dirty || saving}
           >
@@ -301,6 +375,7 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
 export default function JpmcPortal() {
   const { token, isJpmc } = useAuth();
   const { colors } = useTheme();
+  const { scaleFont } = useFontScale();
   const formStyles = useFormStyles();
   const authHeader = { Authorization: `Bearer ${token}` };
 
@@ -363,10 +438,10 @@ export default function JpmcPortal() {
     ? 'All JPMC/PJSC orders, newest first'
     : data ? `Processing window: ${formatDMYTime(data.from)} — ${formatDMYTime(data.to)}` : 'Loading…';
 
-  return (
-    <PageScroll title="JPMC Pharmacy Orders">
-      <Text style={formStyles.title}>JPMC Pharmacy Orders</Text>
-      <Text style={formStyles.subtitle}>{subtitle}</Text>
+  const pageContent = (
+    <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
+      <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>JPMC Pharmacy Orders</Text>
+      <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{subtitle}</Text>
 
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
         {TABS.map((t) => (
@@ -379,7 +454,7 @@ export default function JpmcPortal() {
               activeTab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary },
             ]}
           >
-            <Text style={{ fontWeight: '700', fontSize: 13, color: activeTab === t.key ? '#fff' : colors.textPrimary }}>
+            <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: activeTab === t.key ? '#fff' : colors.textPrimary }}>
               {t.label}
             </Text>
           </AnimatedPressable>
@@ -398,7 +473,7 @@ export default function JpmcPortal() {
                 viewMode === m.value && { backgroundColor: colors.subtleBackground, borderColor: colors.primary },
               ]}
             >
-              <Text style={{ fontWeight: '600', fontSize: 12, color: viewMode === m.value ? colors.primary : colors.textSecondary }}>
+              <Text style={{ fontWeight: '600', fontSize: scaleFont(12), color: viewMode === m.value ? colors.primary : colors.textSecondary }}>
                 {m.label}
               </Text>
             </AnimatedPressable>
@@ -412,14 +487,14 @@ export default function JpmcPortal() {
         )}
 
         <TextInput
-          style={[formStyles.input, { marginBottom: 10 }]}
+          style={[formStyles.input, { marginBottom: 10, fontSize: scaleFont(14) }]}
           value={searchInput}
           onChangeText={setSearchInput}
           placeholder="Search by patient name, patient number, or tracking number"
           placeholderTextColor={colors.textMuted}
         />
 
-        <View style={[formStyles.pickerContainer, { maxWidth: 260 }]}>
+        <View style={[formStyles.pickerContainer, { maxWidth: 280 }]}>
           <Picker style={formStyles.pickerControl} selectedValue={goRushStatusFilter} onValueChange={setGoRushStatusFilter}>
             <Picker.Item label="All GO RUSH Statuses" value="" />
             {GO_RUSH_STATUS_OPTIONS.map((s) => <Picker.Item key={s} label={s} value={s} />)}
@@ -446,7 +521,7 @@ export default function JpmcPortal() {
       )}
 
       {!loading && !error && data?.orders.length > 0 && (
-        <OrderTable orders={data.orders} onSelect={setSelectedOrderId} colors={colors} formStyles={formStyles} />
+        <OrderTable orders={data.orders} onSelect={setSelectedOrderId} colors={colors} scaleFont={scaleFont} />
       )}
 
       {!loading && !error && viewMode === 'all' && data && data.totalPages > 1 && (
@@ -470,6 +545,12 @@ export default function JpmcPortal() {
           </AnimatedPressable>
         </View>
       )}
+    </View>
+  );
+
+  return (
+    <>
+      <PageScroll title="JPMC Pharmacy Orders" beforeContent={pageContent} />
 
       <Modal visible={!!selectedOrder} transparent animationType="fade" onRequestClose={() => setSelectedOrderId(null)}>
         <Pressable
@@ -478,7 +559,7 @@ export default function JpmcPortal() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%', maxWidth: 560, maxHeight: '90%' }}
+            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 20, width: '100%', maxWidth: 640, maxHeight: '90%' }}
           >
             {selectedOrder && (
               <OrderDetail
@@ -489,11 +570,12 @@ export default function JpmcPortal() {
                 onClose={() => setSelectedOrderId(null)}
                 formStyles={formStyles}
                 colors={colors}
+                scaleFont={scaleFont}
               />
             )}
           </Pressable>
         </Pressable>
       </Modal>
-    </PageScroll>
+    </>
   );
 }

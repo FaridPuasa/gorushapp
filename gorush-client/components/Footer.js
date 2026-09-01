@@ -6,6 +6,7 @@ import { AnimatedPressable } from '../lib/animations';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
+import { useAuth } from '../context/AuthContext';
 import { useIsMobile } from '../lib/responsive';
 import { getBruneiNow } from '../lib/bruneiTime';
 import { FACEBOOK_URL, INSTAGRAM_URL, TIKTOK_URL } from '../lib/contactInfo';
@@ -16,12 +17,26 @@ export default function Footer() {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
+  const { isJpmc, isGorush, isAdmin } = useAuth();
+  const isJpmcPortalRole = isJpmc || isGorush || isAdmin;
   const isMobile = useIsMobile();
   const styles = useMemo(() => makeStyles(colors, scaleFont), [colors, scaleFont]);
 
   // On mobile, navigation moves to the sticky bottom nav bar (see Navbar.js) — the
   // footer's links/social/clock become redundant screen-space there.
   if (isMobile) return null;
+
+  // jpmc/gorush staff have no use for the marketing links or social icons - just
+  // the Brunei time reference (relevant to the noon-cutover processing window)
+  // and the copyright line.
+  if (isJpmcPortalRole) {
+    return (
+      <View style={styles.footer}>
+        <BruneiClock style={styles.clock} />
+        <Text style={styles.copyright}>{t('footer.copyright').replace('{year}', String(getBruneiNow().getUTCFullYear()))}</Text>
+      </View>
+    );
+  }
 
   const LINKS = [
     { label: t('nav.home'), href: '/' },

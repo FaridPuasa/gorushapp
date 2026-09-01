@@ -9,7 +9,7 @@ import ThemeToggle from './ThemeToggle';
 import LanguagePicker from './LanguagePicker';
 import FontScalePicker from './FontScalePicker';
 
-export default function SettingsDropdown({ isOpen, onToggle, align = 'left', label, extraItems = [] }) {
+export default function SettingsDropdown({ isOpen, onToggle, align = 'left', label, extraItems = [], showLanguage = true }) {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
@@ -34,8 +34,12 @@ export default function SettingsDropdown({ isOpen, onToggle, align = 'left', lab
           <Text style={[styles.groupLabel, { color: colors.textMuted, fontSize: scaleFont(11) }]}>{t('themeToggle.light')}/{t('themeToggle.dark')}</Text>
           <ThemeToggle />
 
-          <Text style={[styles.groupLabel, { color: colors.textMuted, marginTop: 14, fontSize: scaleFont(11) }]}>{t('languagePicker.english')}/{t('languagePicker.malay')}</Text>
-          <LanguagePicker />
+          {showLanguage && (
+            <>
+              <Text style={[styles.groupLabel, { color: colors.textMuted, marginTop: 14, fontSize: scaleFont(11) }]}>{t('languagePicker.english')}/{t('languagePicker.malay')}</Text>
+              <LanguagePicker />
+            </>
+          )}
 
           <Text style={[styles.groupLabel, { color: colors.textMuted, marginTop: 14, fontSize: scaleFont(11) }]}>{t('fontScale.small')}/{t('fontScale.regular')}/{t('fontScale.large')}</Text>
           <FontScalePicker />

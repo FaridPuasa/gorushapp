@@ -214,7 +214,8 @@ function PasswordSection({ headers, scrollRef }) {
 }
 
 export default function EditProfile() {
-  const { isGuest, loading: authLoading, token, refreshProfile } = useAuth();
+  const { isGuest, isJpmc, isGorush, loading: authLoading, token, refreshProfile } = useAuth();
+  const isJpmcPortalStaff = isJpmc || isGorush;
   const router = useRouter();
   const { colors } = useTheme();
   const { t } = useLanguage();
@@ -269,6 +270,18 @@ export default function EditProfile() {
   }
 
   const headers = { headers: { Authorization: `Bearer ${token}` } };
+
+  // jpmc/gorush are staff accounts with no delivery-address/personal-detail data of
+  // their own kind (see setUserRoles.js/the direct-insert script) - only a password
+  // to manage.
+  if (isJpmcPortalStaff) {
+    return (
+      <PageScroll ref={scrollRef} title={t('editProfile.title')}>
+        <Text style={formStyles.title}>{t('editProfile.title')}</Text>
+        <PasswordSection headers={headers} scrollRef={scrollRef} />
+      </PageScroll>
+    );
+  }
 
   return (
     <PageScroll ref={scrollRef} title={t('editProfile.title')}>

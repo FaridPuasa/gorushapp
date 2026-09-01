@@ -75,12 +75,17 @@ function bruneiNoonOf(dateStr) {
   return fromBruneiWallClock(noonOf(new Date(`${dateStr}T00:00:00.000Z`)));
 }
 
-// The window that *starts* on `dateStr` (i.e. the JPMC portal's equivalent of
-// the old Excel sheet's per-cutover date tab) - if `dateStr` isn't itself a
-// working day (Sunday/holiday), snaps back to the nearest working day whose
-// window covers it, same as currentWindow() would for any other instant.
+// The window that *ends* at noon on `dateStr` (e.g. 21 Aug -> 20 Aug 12pm
+// through 21 Aug 12pm) - this is the JPMC portal's equivalent of the old
+// Excel sheet's per-cutover date tab, named by the date its cutover falls on.
+// If `dateStr` isn't itself a working day (Sunday/holiday), snaps back to the
+// nearest working-day noon at-or-before it for the window's end.
 function windowForDate(dateStr, holidayDates) {
-  return currentWindow(holidayDates, bruneiNoonOf(dateStr));
+  const holidaySet = new Set(holidayDates);
+  const anchor = bruneiNoonOf(dateStr);
+  const end = previousCutover(anchor, holidaySet);
+  const start = previousCutover(new Date(end.getTime() - 1), holidaySet);
+  return { start, end };
 }
 
 module.exports = { currentWindow, windowForDate, nextCutover, previousCutover };
