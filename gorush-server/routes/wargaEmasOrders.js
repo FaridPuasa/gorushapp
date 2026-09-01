@@ -1,9 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const WargaEmasOrder = require('../models/WargaEmasOrder');
+const { optionalAuth } = require('../middleware/auth');
 
-router.post('/', async (req, res) => {
+router.post('/', optionalAuth, async (req, res) => {
     try {
+        if (req.userId) {
+            return res.status(403).json({ error: "Warga Emas requests are for guest submissions only." });
+        }
+
         const { receiverPhoneNumber, icPictureFront, icPictureBack } = req.body;
 
         if (!receiverPhoneNumber) {

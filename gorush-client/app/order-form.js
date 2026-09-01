@@ -466,7 +466,7 @@ export default function Order() {
 
       {step === 'form' && (
         <>
-          <WargaEmasBanner />
+          {isGuest && <WargaEmasBanner />}
           <ProductPicker product={product} onChange={handleProductChange} />
 
           {product && (

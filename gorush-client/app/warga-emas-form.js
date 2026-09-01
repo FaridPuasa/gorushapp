@@ -1,20 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Text, TextInput, View, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
+import { useRouter } from 'expo-router';
 import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
+import { useAuth } from '../context/AuthContext';
 import { COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber } from '../lib/validators';
 import { api } from '../lib/api';
 
 export default function WargaEmas() {
+  const router = useRouter();
+  const { isGuest, isAdmin, loading: authLoading } = useAuth();
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
   const formStyles = useFormStyles();
+
+  useEffect(() => {
+    if (!authLoading && !isGuest) {
+      router.replace(isAdmin ? '/admin' : '/');
+    }
+  }, [authLoading, isGuest, isAdmin]);
 
   const [phone, setPhone] = useState('');
   const [icFront, setIcFront] = useState('');
@@ -68,6 +78,8 @@ export default function WargaEmas() {
       setSubmitting(false);
     }
   };
+
+  if (authLoading || !isGuest) return null;
 
   if (submitted) {
     return (
