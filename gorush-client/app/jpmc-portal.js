@@ -126,7 +126,7 @@ function goRushStatusBadgeColors(status, colors) {
 const COLUMNS = [
   { key: 'dateTimeSubmission', label: 'Date/Time Submitted', width: 170 },
   { key: 'doTrackingNumber', label: 'Tracking No.', width: 130 },
-  { key: 'jobMethod', label: 'Delivery Type', width: 150 },
+  { key: 'jobMethod', label: 'Delivery Type', width: 170, wrap: true },
   { key: 'receiverName', label: 'Name', width: 170, bold: true },
   { key: 'patientNumber', label: 'Patient No.', width: 110 },
   { key: 'receiverAddress', label: 'Address', width: 240, wrap: true },
@@ -135,15 +135,17 @@ const COLUMNS = [
   { key: 'jpmcPharmacyStatus', label: 'JPMC Pharmacy Status', width: 170, bold: true },
   { key: 'goRushStatus', label: 'GO RUSH Status', width: 150, badge: true },
 ];
-const TABLE_WIDTH = COLUMNS.reduce((sum, c) => sum + c.width, 0);
+// A dedicated Actions column (rather than making the whole row tappable) so
+// scrolling through a long list can't accidentally open a detail card - only
+// the explicit View button does that.
+const ACTIONS_WIDTH = 90;
+const TABLE_WIDTH = COLUMNS.reduce((sum, c) => sum + c.width, 0) + ACTIONS_WIDTH;
 
-function OrderTableRow({ order, onPress, colors, isLast, isEven, scaleFont }) {
+function OrderTableRow({ order, onView, colors, isLast, isEven, scaleFont }) {
   return (
-    <AnimatedPressable
-      scaleTo={1}
-      onPress={onPress}
+    <View
       style={{
-        flexDirection: 'row', width: TABLE_WIDTH, paddingVertical: 12, paddingHorizontal: 10, alignItems: 'center',
+        flexDirection: 'row', width: TABLE_WIDTH, paddingVertical: 12, paddingHorizontal: 10, alignItems: 'flex-start',
         backgroundColor: isEven ? colors.subtleBackground : 'transparent',
         borderBottomWidth: isLast ? 0 : 1, borderBottomColor: colors.border,
       }}
@@ -168,13 +170,27 @@ function OrderTableRow({ order, onPress, colors, isLast, isEven, scaleFont }) {
           <Text
             key={c.key}
             style={{ width: c.width, paddingRight: 8, fontSize: scaleFont(13), color: colors.textPrimary, fontWeight: c.bold ? '600' : '400' }}
-            numberOfLines={c.wrap ? 2 : 1}
+            numberOfLines={c.wrap ? undefined : 1}
           >
             {value}
           </Text>
         );
       })}
-    </AnimatedPressable>
+      <View style={{ width: ACTIONS_WIDTH }}>
+        <AnimatedPressable
+          scaleTo={1.05}
+          onPress={onView}
+          style={{
+            flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
+            paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
+            backgroundColor: colors.subtleBackground, borderWidth: 1, borderColor: colors.border,
+          }}
+        >
+          <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
+          <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View</Text>
+        </AnimatedPressable>
+      </View>
+    </View>
   );
 }
 
@@ -192,12 +208,15 @@ function OrderTable({ orders, onSelect, colors, scaleFont }) {
               {c.label}
             </Text>
           ))}
+          <Text style={{ width: ACTIONS_WIDTH, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 }}>
+            Actions
+          </Text>
         </View>
         {orders.map((order, i) => (
           <OrderTableRow
             key={order.id}
             order={order}
-            onPress={() => onSelect(order.id)}
+            onView={() => onSelect(order.id)}
             colors={colors}
             isLast={i === orders.length - 1}
             isEven={i % 2 === 1}
