@@ -45,6 +45,19 @@ function toApiShape(order) {
         // Straight passthrough of currentStatus, under the "GO RUSH STATUS" name the
         // portal uses - no remapping to the old Excel sheet's invented status names.
         goRushStatus: order.currentStatus,
+        // Same OrderHistory rows grfmxstatusupdate's own Search Jobs status-history
+        // timeline reads - oldest first, so the client can render it as a timeline
+        // top-to-bottom without re-sorting.
+        goRushStatusHistory: (order.history || [])
+            .slice()
+            .sort((a, b) => new Date(a.dateUpdated || 0) - new Date(b.dateUpdated || 0))
+            .map((h) => ({
+                status: h.statusHistory,
+                dateUpdated: h.dateUpdated,
+                updatedBy: h.updatedBy,
+                lastAssignedTo: h.lastAssignedTo,
+                lastLocation: h.lastLocation,
+            })),
     };
 }
 
@@ -92,6 +105,7 @@ router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) =
             const [orders, totalCount] = await Promise.all([
                 prisma.order.findMany({
                     where,
+                    include: { history: true },
                     orderBy: { dateTimeSubmission: 'desc' },
                     skip: (page - 1) * limit,
                     take: limit,
@@ -120,6 +134,7 @@ router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) =
         where.dateTimeSubmission = { gte: windowRange.start, lte: windowRange.end };
         const orders = await prisma.order.findMany({
             where,
+            include: { history: true },
             orderBy: { dateTimeSubmission: 'desc' },
         });
 
@@ -146,7 +161,7 @@ router.patch('/orders/:id', requireRole('jpmc', 'admin'), async (req, res) => {
         data.jpmcFieldsUpdatedBy = req.userEmail;
         data.jpmcFieldsUpdatedAt = new Date();
 
-        const order = await prisma.order.update({ where: { id }, data });
+        const order = await prisma.order.update({ where: { id }, data, include: { history: true } });
         res.json(toApiShape(order));
     } catch (err) {
         console.error(err.message);

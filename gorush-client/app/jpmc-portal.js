@@ -24,13 +24,6 @@ const WIDE_MAX_WIDTH = 1300;
 
 const STATUS_OPTIONS = ['New Order', 'Entered', 'Pending Payment', 'Pending Query', 'Completed', 'Duplicate Order', 'Cancelled Order'];
 const PATIENT_INFORMED_OPTIONS = ['Yes', 'No'];
-// currentStatus values actually set by grfmxstatusupdate's Detrack sync - shown verbatim
-// under "GO RUSH STATUS", no renaming. Trimmed to the statuses JPMC staff actually care
-// about tracking against (the warehouse-internal ones - Queued for Warehouse, Return,
-// Custom Clearing, On Hold, Disposed - aren't useful filter targets for them).
-const GO_RUSH_STATUS_OPTIONS = [
-  'Info Received', 'At Warehouse', 'Out for Delivery', 'Return to Warehouse', 'Self Collect', 'Completed', 'Cancelled',
-];
 const SEARCH_DEBOUNCE_MS = 400;
 const VIEW_MODES = [
   { value: 'window', label: 'Current window' },
@@ -131,53 +124,83 @@ function goRushStatusBadgeColors(status, colors) {
 const COLUMNS = [
   { key: 'dateTimeSubmission', label: 'Date/Time Submitted', width: 170 },
   { key: 'doTrackingNumber', label: 'Tracking No.', width: 130 },
-  { key: 'receiverName', label: 'Name', width: 190 },
+  { key: 'jobMethod', label: 'Delivery Type', width: 150 },
+  { key: 'receiverName', label: 'Name', width: 170, bold: true },
   { key: 'patientNumber', label: 'Patient No.', width: 110 },
+  { key: 'receiverAddress', label: 'Address', width: 240, wrap: true },
   { key: 'appointmentPlace', label: 'Location', width: 90 },
-  { key: 'jpmcPharmacyStatus', label: 'JPMC Pharmacy Status', width: 170 },
-  { key: 'goRushStatus', label: 'GO RUSH Status', width: 150 },
+  { key: 'remarks', label: 'Remarks', width: 180, wrap: true },
+  { key: 'jpmcPharmacyStatus', label: 'JPMC Pharmacy Status', width: 170, bold: true },
+  { key: 'goRushStatus', label: 'GO RUSH Status', width: 150, badge: true },
 ];
 const TABLE_WIDTH = COLUMNS.reduce((sum, c) => sum + c.width, 0);
 
-function OrderTableRow({ order, onPress, colors, isLast, scaleFont }) {
-  const badge = goRushStatusBadgeColors(order.goRushStatus, colors);
+function OrderTableRow({ order, onPress, colors, isLast, isEven, scaleFont }) {
   return (
     <AnimatedPressable
       scaleTo={1}
       onPress={onPress}
       style={{
-        flexDirection: 'row', width: TABLE_WIDTH, paddingVertical: 12, alignItems: 'center',
+        flexDirection: 'row', width: TABLE_WIDTH, paddingVertical: 12, paddingHorizontal: 10, alignItems: 'center',
+        backgroundColor: isEven ? colors.subtleBackground : 'transparent',
         borderBottomWidth: isLast ? 0 : 1, borderBottomColor: colors.border,
       }}
     >
-      <Text style={{ width: COLUMNS[0].width, fontSize: scaleFont(13), color: colors.textPrimary }}>{formatDMYTime(order.dateTimeSubmission)}</Text>
-      <Text style={{ width: COLUMNS[1].width, fontSize: scaleFont(13), color: colors.textPrimary }}>{order.doTrackingNumber || '—'}</Text>
-      <Text style={{ width: COLUMNS[2].width, fontSize: scaleFont(13), color: colors.textPrimary, fontWeight: '600' }} numberOfLines={1}>{order.receiverName || '—'}</Text>
-      <Text style={{ width: COLUMNS[3].width, fontSize: scaleFont(13), color: colors.textPrimary }}>{order.patientNumber || '—'}</Text>
-      <Text style={{ width: COLUMNS[4].width, fontSize: scaleFont(13), color: colors.textPrimary }}>{order.appointmentPlace || '—'}</Text>
-      <Text style={{ width: COLUMNS[5].width, fontSize: scaleFont(13), color: colors.textPrimary, fontWeight: '600' }}>{order.jpmcPharmacyStatus || 'New Order'}</Text>
-      <View style={{ width: COLUMNS[6].width }}>
-        <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: badge.bg }}>
-          <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: badge.fg }}>{order.goRushStatus || '—'}</Text>
-        </View>
-      </View>
+      {COLUMNS.map((c) => {
+        if (c.badge) {
+          const badge = goRushStatusBadgeColors(order[c.key], colors);
+          return (
+            <View key={c.key} style={{ width: c.width }}>
+              <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: badge.bg }}>
+                <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: badge.fg }}>{order[c.key] || '—'}</Text>
+              </View>
+            </View>
+          );
+        }
+        const value = c.key === 'dateTimeSubmission'
+          ? formatDMYTime(order[c.key])
+          : c.key === 'jpmcPharmacyStatus'
+            ? (order[c.key] || 'New Order')
+            : (order[c.key] || '—');
+        return (
+          <Text
+            key={c.key}
+            style={{ width: c.width, paddingRight: 8, fontSize: scaleFont(13), color: colors.textPrimary, fontWeight: c.bold ? '600' : '400' }}
+            numberOfLines={c.wrap ? 2 : 1}
+          >
+            {value}
+          </Text>
+        );
+      })}
     </AnimatedPressable>
   );
 }
 
 function OrderTable({ orders, onSelect, colors, scaleFont }) {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator style={{ marginBottom: 16 }}>
-      <View style={{ width: TABLE_WIDTH }}>
-        <View style={{ flexDirection: 'row', paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: colors.border }}>
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator
+      style={{ marginBottom: 16, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}
+    >
+      <View style={{ width: TABLE_WIDTH, backgroundColor: colors.card, borderRadius: 12, overflow: 'hidden' }}>
+        <View style={{ flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, backgroundColor: colors.subtleBackground, borderBottomWidth: 1, borderBottomColor: colors.border }}>
           {COLUMNS.map((c) => (
-            <Text key={c.key} style={{ width: c.width, fontSize: scaleFont(12), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>
+            <Text key={c.key} style={{ width: c.width, paddingRight: 8, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 }}>
               {c.label}
             </Text>
           ))}
         </View>
         {orders.map((order, i) => (
-          <OrderTableRow key={order.id} order={order} onPress={() => onSelect(order.id)} colors={colors} isLast={i === orders.length - 1} scaleFont={scaleFont} />
+          <OrderTableRow
+            key={order.id}
+            order={order}
+            onPress={() => onSelect(order.id)}
+            colors={colors}
+            isLast={i === orders.length - 1}
+            isEven={i % 2 === 1}
+            scaleFont={scaleFont}
+          />
         ))}
       </View>
     </ScrollView>
@@ -222,6 +245,52 @@ function DetailField({ label, value, minWidth = 140, colors, scaleFont }) {
       </Text>
       <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary }}>{value ?? '—'}</Text>
     </View>
+  );
+}
+
+// GO RUSH status timeline - same OrderHistory data grfmxstatusupdate's own Search
+// Jobs page renders, just drawn with RN primitives (dot + connector line per step,
+// latest entry marked "Current").
+function StatusHistoryTimeline({ history, colors, scaleFont }) {
+  if (!history || history.length === 0) return null;
+  return (
+    <Section icon="🕒" title="GO RUSH Status History" colors={colors} scaleFont={scaleFont}>
+      <View style={{ width: '100%' }}>
+        {history.map((h, i) => {
+          const isCurrent = i === history.length - 1;
+          const badge = goRushStatusBadgeColors(h.status, colors);
+          const meta = [h.updatedBy, h.lastLocation].filter(Boolean).join(' · ');
+          return (
+            <View key={i} style={{ flexDirection: 'row' }}>
+              <View style={{ width: 22, alignItems: 'center' }}>
+                <View
+                  style={{
+                    width: 14, height: 14, borderRadius: 7, marginTop: 2,
+                    backgroundColor: isCurrent ? badge.fg : colors.card,
+                    borderWidth: 2, borderColor: isCurrent ? badge.fg : colors.border,
+                  }}
+                />
+                {i < history.length - 1 && <View style={{ width: 2, flex: 1, minHeight: 24, backgroundColor: colors.border, marginTop: 2 }} />}
+              </View>
+              <View style={{ flex: 1, paddingLeft: 8, paddingBottom: 16 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                  <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color: isCurrent ? badge.fg : colors.textPrimary }}>
+                    {h.status || '—'}
+                  </Text>
+                  {isCurrent && (
+                    <View style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: badge.bg }}>
+                      <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: badge.fg }}>Current</Text>
+                    </View>
+                  )}
+                </View>
+                <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 2 }}>{formatDMYTime(h.dateUpdated)}</Text>
+                {meta ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 1 }}>{meta}</Text> : null}
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    </Section>
   );
 }
 
@@ -303,11 +372,9 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
           <DetailField label="Customer Address" value={order.receiverAddress} minWidth={260} colors={colors} scaleFont={scaleFont} />
         </Section>
 
-        {order.remarks ? (
-          <Section icon="💬" title="Remarks from Patient" colors={colors} scaleFont={scaleFont}>
-            <DetailField label="Remarks" value={order.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
-          </Section>
-        ) : null}
+        <Section icon="💬" title="Remarks" colors={colors} scaleFont={scaleFont}>
+          <DetailField label="Customer Remarks" value={order.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
+        </Section>
 
         <Section icon="💊" title="JPMC Pharmacy" colors={colors} scaleFont={scaleFont}>
           <View style={{ width: '100%', flexDirection: 'row', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -356,6 +423,8 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
           </View>
         </Section>
 
+        <StatusHistoryTimeline history={order.goRushStatusHistory} colors={colors} scaleFont={scaleFont} />
+
         {error ? <Text style={formStyles.fieldError}>{error}</Text> : null}
         {canEdit && (
           <AnimatedPressable
@@ -388,7 +457,6 @@ export default function JpmcPortal() {
   const [viewMode, setViewMode] = useState('window');
   const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
-  const [goRushStatusFilter, setGoRushStatusFilter] = useState('');
   const [selectedOrderId, setSelectedOrderId] = useState(null);
 
   useEffect(() => {
@@ -398,7 +466,7 @@ export default function JpmcPortal() {
 
   // Any filter/view change should jump back to page 1 of "All time" - a stale
   // page number from a previous, larger result set could land past the end.
-  useEffect(() => { setPage(1); }, [activeTab, viewMode, dateFilter, search, goRushStatusFilter]);
+  useEffect(() => { setPage(1); }, [activeTab, viewMode, dateFilter, search]);
 
   const activeTabDef = TABS.find((t) => t.key === activeTab) || TABS[0];
 
@@ -411,7 +479,6 @@ export default function JpmcPortal() {
       const params = { view: viewMode };
       if (search) params.search = search;
       if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
-      if (goRushStatusFilter) params.goRushStatus = goRushStatusFilter;
       if (viewMode === 'date') params.date = dateFilter;
       if (viewMode === 'all') params.page = page;
       const res = await api.get('/api/jpmc/orders', { headers: authHeader, params });
@@ -421,7 +488,7 @@ export default function JpmcPortal() {
     } finally {
       setLoading(false);
     }
-  }, [token, activeTab, viewMode, dateFilter, page, search, goRushStatusFilter]);
+  }, [token, activeTab, viewMode, dateFilter, page, search]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -438,39 +505,48 @@ export default function JpmcPortal() {
     ? 'All JPMC/PJSC orders, newest first'
     : data ? `Processing window: ${formatDMYTime(data.from)} — ${formatDMYTime(data.to)}` : 'Loading…';
 
+  const captionStyle = { fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 };
+
   const pageContent = (
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
       <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>JPMC Pharmacy Orders</Text>
       <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{subtitle}</Text>
 
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {TABS.map((t) => (
-          <AnimatedPressable
-            key={t.key}
-            scaleTo={1.03}
-            onPress={() => setActiveTab(t.key)}
-            style={[
-              { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
-              activeTab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary },
-            ]}
-          >
-            <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: activeTab === t.key ? '#fff' : colors.textPrimary }}>
-              {t.label}
-            </Text>
-          </AnimatedPressable>
-        ))}
-      </View>
+      {/* One bordered panel groups every filter, visually separate from the table below.
+          The two filter rows are deliberately styled differently - solid pills for STATUS
+          (the primary, always-visible triage) vs. a light segmented control for TIME RANGE
+          (secondary, changed less often) - so they read as two distinct kinds of choice
+          rather than one long run of identical-looking buttons. */}
+      <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 20 }}>
+        <Text style={captionStyle}>Status</Text>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+          {TABS.map((t) => (
+            <AnimatedPressable
+              key={t.key}
+              scaleTo={1.03}
+              onPress={() => setActiveTab(t.key)}
+              style={[
+                { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
+                activeTab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary },
+              ]}
+            >
+              <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: activeTab === t.key ? '#fff' : colors.textPrimary }}>
+                {t.label}
+              </Text>
+            </AnimatedPressable>
+          ))}
+        </View>
 
-      <View style={{ marginBottom: 20 }}>
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+        <Text style={captionStyle}>Time Range</Text>
+        <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, borderRadius: 10, padding: 4, marginBottom: 14, alignSelf: 'flex-start' }}>
           {VIEW_MODES.map((m) => (
             <AnimatedPressable
               key={m.value}
-              scaleTo={1.03}
+              scaleTo={1.02}
               onPress={() => setViewMode(m.value)}
               style={[
-                { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 16, borderWidth: 1, borderColor: colors.border },
-                viewMode === m.value && { backgroundColor: colors.subtleBackground, borderColor: colors.primary },
+                { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 8 },
+                viewMode === m.value && { backgroundColor: colors.card, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
               ]}
             >
               <Text style={{ fontWeight: '600', fontSize: scaleFont(12), color: viewMode === m.value ? colors.primary : colors.textSecondary }}>
@@ -481,25 +557,19 @@ export default function JpmcPortal() {
         </View>
 
         {viewMode === 'date' && (
-          <View style={{ marginBottom: 12 }}>
+          <View style={{ marginBottom: 14 }}>
             <DateField value={dateFilter} onChange={setDateFilter} formStyles={formStyles} />
           </View>
         )}
 
+        <Text style={captionStyle}>Search</Text>
         <TextInput
-          style={[formStyles.input, { marginBottom: 10, fontSize: scaleFont(14) }]}
+          style={[formStyles.input, { marginBottom: 0, fontSize: scaleFont(14) }]}
           value={searchInput}
           onChangeText={setSearchInput}
           placeholder="Search by patient name, patient number, or tracking number"
           placeholderTextColor={colors.textMuted}
         />
-
-        <View style={[formStyles.pickerContainer, { maxWidth: 280 }]}>
-          <Picker style={formStyles.pickerControl} selectedValue={goRushStatusFilter} onValueChange={setGoRushStatusFilter}>
-            <Picker.Item label="All GO RUSH Statuses" value="" />
-            {GO_RUSH_STATUS_OPTIONS.map((s) => <Picker.Item key={s} label={s} value={s} />)}
-          </Picker>
-        </View>
       </View>
 
       {loading && (
