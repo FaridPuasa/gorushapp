@@ -16,11 +16,13 @@ import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
 
 // This is a data-table page, not a form - the app's normal ~900px form
-// column reads as a cramped single lane of text for a 7-column table plus a
+// column reads as a cramped single lane of text for a 10-column table plus a
 // multi-section detail modal. Passed via PageScroll's `beforeContent` (see
 // lib/formPrimitives.js), which renders outside the capped formWrapper, so
 // only this page gets the wider column instead of changing the app-wide cap.
-const WIDE_MAX_WIDTH = 1300;
+// Capped high enough (not '100%') that it stops growing on an ultra-wide
+// monitor rather than stretching the table into unreadably long rows.
+const WIDE_MAX_WIDTH = 1800;
 
 const STATUS_OPTIONS = ['New Order', 'Entered', 'Pending Payment', 'Pending Query', 'Completed', 'Duplicate Order', 'Cancelled Order'];
 const PATIENT_INFORMED_OPTIONS = ['Yes', 'No'];
@@ -441,6 +443,80 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
   );
 }
 
+// Builds a compact page-number list with '...' gaps, e.g. for page 8 of 66:
+// [1, '...', 7, 8, 9, '...', 66] - so the pager stays a fixed, scannable
+// width regardless of how many total pages there are.
+function buildPageList(current, total) {
+  if (total <= 1) return [1];
+  const delta = 1;
+  const pages = [1];
+  if (current - delta > 2) pages.push('…');
+  for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i++) pages.push(i);
+  if (current + delta < total - 1) pages.push('…');
+  if (total > 1) pages.push(total);
+  return pages;
+}
+
+function PagerButton({ label, active, disabled, onPress, colors, scaleFont }) {
+  return (
+    <AnimatedPressable
+      scaleTo={disabled ? 1 : 1.08}
+      onPress={disabled ? undefined : onPress}
+      style={{
+        minWidth: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8,
+        backgroundColor: active ? colors.primary : 'transparent',
+        borderWidth: active ? 0 : 1, borderColor: colors.border,
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: active ? '#fff' : colors.textPrimary }}>{label}</Text>
+    </AnimatedPressable>
+  );
+}
+
+// Numbered pager with first/prev/next/last jumps plus a "go to page" box -
+// a flat Previous/Next pair makes reaching page 40 of 66 take 39 taps.
+function Pagination({ page, totalPages, onChange, colors, formStyles, scaleFont }) {
+  const [jumpValue, setJumpValue] = useState('');
+  const pages = useMemo(() => buildPageList(page, totalPages), [page, totalPages]);
+
+  const jump = () => {
+    const n = parseInt(jumpValue, 10);
+    if (Number.isFinite(n) && n >= 1 && n <= totalPages) onChange(n);
+    setJumpValue('');
+  };
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap', gap: 6, marginTop: 16 }}>
+      <PagerButton label="«" disabled={page <= 1} onPress={() => onChange(1)} colors={colors} scaleFont={scaleFont} />
+      <PagerButton label="‹" disabled={page <= 1} onPress={() => onChange(page - 1)} colors={colors} scaleFont={scaleFont} />
+      {pages.map((p, i) => (
+        p === '…'
+          ? <Text key={`gap-${i}`} style={{ paddingHorizontal: 4, color: colors.textMuted, fontSize: scaleFont(13) }}>…</Text>
+          : <PagerButton key={p} label={String(p)} active={p === page} onPress={() => onChange(p)} colors={colors} scaleFont={scaleFont} />
+      ))}
+      <PagerButton label="›" disabled={page >= totalPages} onPress={() => onChange(page + 1)} colors={colors} scaleFont={scaleFont} />
+      <PagerButton label="»" disabled={page >= totalPages} onPress={() => onChange(totalPages)} colors={colors} scaleFont={scaleFont} />
+
+      <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 12, gap: 6 }}>
+        <Text style={{ fontSize: scaleFont(12), color: colors.textSecondary }}>Go to page</Text>
+        <TextInput
+          style={[formStyles.input, { width: 56, marginBottom: 0, paddingVertical: 6, textAlign: 'center' }]}
+          value={jumpValue}
+          onChangeText={setJumpValue}
+          onSubmitEditing={jump}
+          keyboardType="numeric"
+          placeholder={String(page)}
+          placeholderTextColor={colors.textMuted}
+        />
+        <AnimatedPressable scaleTo={1.05} onPress={jump} style={{ paddingVertical: 7, paddingHorizontal: 12, borderRadius: 8, backgroundColor: colors.subtleBackground }}>
+          <Text style={{ fontWeight: '600', fontSize: scaleFont(12), color: colors.textPrimary }}>Go</Text>
+        </AnimatedPressable>
+      </View>
+    </View>
+  );
+}
+
 export default function JpmcPortal() {
   const { token, isJpmc } = useAuth();
   const { colors } = useTheme();
@@ -595,25 +671,14 @@ export default function JpmcPortal() {
       )}
 
       {!loading && !error && viewMode === 'all' && data && data.totalPages > 1 && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 10, gap: 14 }}>
-          <AnimatedPressable
-            scaleTo={1.03}
-            style={[formStyles.button, { flex: 0, paddingHorizontal: 20 }, page <= 1 && formStyles.buttonDisabled]}
-            onPress={() => setPage((p) => Math.max(p - 1, 1))}
-            disabled={page <= 1}
-          >
-            <Text style={formStyles.buttonText}>Previous</Text>
-          </AnimatedPressable>
-          <Text style={formStyles.bodyText}>Page {data.page} of {data.totalPages}</Text>
-          <AnimatedPressable
-            scaleTo={1.03}
-            style={[formStyles.button, { flex: 0, paddingHorizontal: 20 }, page >= data.totalPages && formStyles.buttonDisabled]}
-            onPress={() => setPage((p) => Math.min(p + 1, data.totalPages))}
-            disabled={page >= data.totalPages}
-          >
-            <Text style={formStyles.buttonText}>Next</Text>
-          </AnimatedPressable>
-        </View>
+        <Pagination
+          page={page}
+          totalPages={data.totalPages}
+          onChange={setPage}
+          colors={colors}
+          formStyles={formStyles}
+          scaleFont={scaleFont}
+        />
       )}
     </View>
   );
