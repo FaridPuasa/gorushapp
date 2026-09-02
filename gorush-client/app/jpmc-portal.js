@@ -179,6 +179,10 @@ const FIELDS = [
   { key: 'receiverAddress', label: 'Address', minWidth: 200, maxWidth: 260, format: (o) => o.receiverAddress || '—' },
   { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
   { key: 'remarks', label: 'Remarks', minWidth: 160, maxWidth: 220, format: (o) => o.remarks || '—' },
+  { key: 'jpmcPatientInformed', label: 'Patient Informed', minWidth: 100, format: (o) => o.jpmcPatientInformed || '—' },
+  { key: 'jpmcPharmacyRemarks', label: 'Remarks from Pharmacy', minWidth: 160, maxWidth: 220, format: (o) => o.jpmcPharmacyRemarks || '—' },
+  { key: 'jpmcTotalAmount', label: 'Total $', minWidth: 80, format: (o) => (o.jpmcTotalAmount != null ? `$${o.jpmcTotalAmount}` : '—') },
+  { key: 'jpmcFinanceDateReceived', label: 'Date Received', minWidth: 100, format: (o) => (o.jpmcFinanceDateReceived ? formatDMY(o.jpmcFinanceDateReceived) : '—') },
 ];
 
 function OrderTableRow({ order, onView, colors, isEven, scaleFont }) {
