@@ -43,7 +43,9 @@ const VIEW_MODES = [
 // plain status list - see routes/jpmc.js.
 const TABS = [
   { key: 'inProcess', label: 'In Process', tabParam: 'inProcess' },
-  { key: 'completed', label: 'Completed', statuses: ['Completed'] },
+  // "Completed" means fully done on both sides - JPMC's own paperwork AND the
+  // actual delivery - not just one or the other.
+  { key: 'completed', label: 'Completed', statuses: ['Completed'], goRushStatus: 'Completed' },
   { key: 'duplicateCancelled', label: 'Duplicate/Cancelled', statuses: ['Duplicate Order', 'Cancelled Order'] },
   { key: 'all', label: 'All', statuses: null },
 ];
@@ -142,114 +144,64 @@ function goRushStatusBadgeColors(status, colors) {
   return { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
 }
 
-const COLUMNS = [
-  { key: 'processDate', label: 'Process Date', width: 120 },
-  { key: 'dateTimeSubmission', label: 'Date/Time Submitted', width: 170 },
-  { key: 'aging', label: 'Aging (Days)', width: 100 },
-  { key: 'doTrackingNumber', label: 'Tracking No.', width: 130 },
-  { key: 'jobMethod', label: 'Delivery Type', width: 170, wrap: true },
-  { key: 'receiverName', label: 'Name', width: 170, bold: true },
-  { key: 'patientNumber', label: 'Patient No.', width: 110 },
-  { key: 'receiverAddress', label: 'Address', width: 240, wrap: true },
-  { key: 'appointmentPlace', label: 'Location', width: 90 },
-  { key: 'remarks', label: 'Remarks', width: 180, wrap: true },
-  { key: 'jpmcPharmacyStatus', label: 'JPMC Pharmacy Status', width: 170, bold: true },
-  { key: 'goRushStatus', label: 'GO RUSH Status', width: 150, badge: true },
+// No fixed column widths, no horizontal ScrollView - each field is a
+// label-over-value chip (DetailField, defined below) that flex-wraps onto
+// as many lines as the row needs, so the whole list only ever scrolls
+// vertically regardless of how many fields or how narrow the screen is.
+// `minWidth` just sets each chip's natural size before wrapping kicks in.
+const FIELDS = [
+  { key: 'processDate', label: 'Process Date', minWidth: 90, format: (o) => formatDMY(o.processDate) },
+  { key: 'dateTimeSubmission', label: 'Date/Time Submitted', minWidth: 130, format: (o) => formatDMYTime(o.dateTimeSubmission) },
+  { key: 'aging', label: 'Aging', minWidth: 60, format: formatAgingDays },
+  { key: 'doTrackingNumber', label: 'Tracking No.', minWidth: 110, format: (o) => o.doTrackingNumber || '—' },
+  { key: 'jobMethod', label: 'Delivery Type', minWidth: 130, format: (o) => o.jobMethod || '—' },
+  { key: 'receiverName', label: 'Name', minWidth: 140, format: (o) => o.receiverName || '—' },
+  { key: 'patientNumber', label: 'Patient No.', minWidth: 100, format: (o) => o.patientNumber || '—' },
+  { key: 'receiverAddress', label: 'Address', minWidth: 220, format: (o) => o.receiverAddress || '—' },
+  { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
+  { key: 'remarks', label: 'Remarks', minWidth: 160, format: (o) => o.remarks || '—' },
+  { key: 'jpmcPharmacyStatus', label: 'JPMC Pharmacy Status', minWidth: 140, format: (o) => o.jpmcPharmacyStatus || 'New Order' },
 ];
-// A dedicated Actions column (rather than making the whole row tappable) so
-// scrolling through a long list can't accidentally open a detail card - only
-// the explicit View button does that.
-const ACTIONS_WIDTH = 90;
-const TABLE_WIDTH = COLUMNS.reduce((sum, c) => sum + c.width, 0) + ACTIONS_WIDTH;
 
-function OrderTableRow({ order, onView, colors, isLast, isEven, scaleFont }) {
+function OrderTableRow({ order, onView, colors, isEven, scaleFont }) {
+  const badge = goRushStatusBadgeColors(order.goRushStatus, colors);
   return (
-    <View
-      style={{
-        flexDirection: 'row', width: TABLE_WIDTH, paddingVertical: 12, paddingHorizontal: 10, alignItems: 'flex-start',
-        backgroundColor: isEven ? colors.subtleBackground : 'transparent',
-        borderBottomWidth: isLast ? 0 : 1, borderBottomColor: colors.border,
-      }}
-    >
-      <View style={{ width: ACTIONS_WIDTH }}>
+    <View style={{ padding: 14, backgroundColor: isEven ? colors.subtleBackground : colors.card }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
         <AnimatedPressable
           scaleTo={1.05}
           onPress={onView}
           style={{
-            flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
+            flexDirection: 'row', alignItems: 'center', gap: 4,
             paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
-            backgroundColor: colors.subtleBackground, borderWidth: 1, borderColor: colors.border,
+            backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
           }}
         >
           <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
           <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View</Text>
         </AnimatedPressable>
+        <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: badge.bg }}>
+          <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: badge.fg }}>GO RUSH: {order.goRushStatus || '—'}</Text>
+        </View>
       </View>
-      {COLUMNS.map((c) => {
-        if (c.badge) {
-          const badge = goRushStatusBadgeColors(order[c.key], colors);
-          return (
-            <View key={c.key} style={{ width: c.width }}>
-              <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: badge.bg }}>
-                <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: badge.fg }}>{order[c.key] || '—'}</Text>
-              </View>
-            </View>
-          );
-        }
-        const value = c.key === 'dateTimeSubmission'
-          ? formatDMYTime(order[c.key])
-          : c.key === 'processDate'
-            ? formatDMY(order[c.key])
-            : c.key === 'aging'
-              ? formatAgingDays(order)
-              : c.key === 'jpmcPharmacyStatus'
-                ? (order[c.key] || 'New Order')
-                : (order[c.key] || '—');
-        return (
-          <Text
-            key={c.key}
-            style={{ width: c.width, paddingRight: 8, fontSize: scaleFont(13), color: colors.textPrimary, fontWeight: c.bold ? '600' : '400' }}
-            numberOfLines={c.wrap ? undefined : 1}
-          >
-            {value}
-          </Text>
-        );
-      })}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 }}>
+        {FIELDS.map((f) => (
+          <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} colors={colors} scaleFont={scaleFont} />
+        ))}
+      </View>
     </View>
   );
 }
 
 function OrderTable({ orders, onSelect, colors, scaleFont }) {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator
-      style={{ marginBottom: 16, borderWidth: 1, borderColor: colors.border, borderRadius: 12 }}
-    >
-      <View style={{ width: TABLE_WIDTH, backgroundColor: colors.card, borderRadius: 12, overflow: 'hidden' }}>
-        <View style={{ flexDirection: 'row', paddingVertical: 10, paddingHorizontal: 10, backgroundColor: colors.subtleBackground, borderBottomWidth: 1, borderBottomColor: colors.border }}>
-          <Text style={{ width: ACTIONS_WIDTH, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-            Actions
-          </Text>
-          {COLUMNS.map((c) => (
-            <Text key={c.key} style={{ width: c.width, paddingRight: 8, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3 }}>
-              {c.label}
-            </Text>
-          ))}
+    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+      {orders.map((order, i) => (
+        <View key={order.id} style={{ borderBottomWidth: i === orders.length - 1 ? 0 : 1, borderBottomColor: colors.border }}>
+          <OrderTableRow order={order} onView={() => onSelect(order)} colors={colors} isEven={i % 2 === 1} scaleFont={scaleFont} />
         </View>
-        {orders.map((order, i) => (
-          <OrderTableRow
-            key={order.id}
-            order={order}
-            onView={() => onSelect(order)}
-            colors={colors}
-            isLast={i === orders.length - 1}
-            isEven={i % 2 === 1}
-            scaleFont={scaleFont}
-          />
-        ))}
-      </View>
-    </ScrollView>
+      ))}
+    </View>
   );
 }
 
@@ -617,6 +569,7 @@ export default function JpmcPortal() {
       if (search) params.search = search;
       if (activeTabDef.tabParam) params.tab = activeTabDef.tabParam;
       else if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
+      if (activeTabDef.goRushStatus) params.goRushStatus = activeTabDef.goRushStatus;
       if (viewMode === 'date') params.date = dateFilter;
       if (viewMode === 'all') params.page = page;
       const res = await api.get('/api/jpmc/orders', { headers: authHeader, params });
