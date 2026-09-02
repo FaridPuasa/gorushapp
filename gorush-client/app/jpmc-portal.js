@@ -379,24 +379,28 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
   };
 
   const goRushBadge = goRushStatusBadgeColors(order.goRushStatus, colors);
+  const jpmcBadge = jpmcStatusBadgeColors(order.jpmcPharmacyStatus, colors);
   const neutralBadge = { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
 
   return (
     <View style={{ maxHeight: '100%' }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
-        <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12, marginBottom: 14 }}>
+        <View>
           <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{order.doTrackingNumber || 'No tracking yet'}</Text>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
             <Badge label="Process Date" value={formatDMY(order.processDate)} bg={neutralBadge.bg} fg={neutralBadge.fg} scaleFont={scaleFont} />
             {isActiveGoRushStatus(order.goRushStatus) && (
               <Badge label="Aging" value={formatAgingDays(order)} bg={neutralBadge.bg} fg={neutralBadge.fg} scaleFont={scaleFont} />
             )}
-            <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
           </View>
         </View>
-        <AnimatedPressable scaleTo={1.1} onPress={onClose} style={{ padding: 4 }}>
-          <Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text>
-        </AnimatedPressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
+          <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
+          <AnimatedPressable scaleTo={1.1} onPress={onClose} style={{ padding: 4 }}>
+            <Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text>
+          </AnimatedPressable>
+        </View>
       </View>
       <ScrollView>
         <Section icon="📦" title="Order Info" colors={colors} scaleFont={scaleFont}>
@@ -795,7 +799,7 @@ export default function JpmcPortal() {
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 820, maxHeight: '92%' }}
+            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 960, maxHeight: '92%' }}
           >
             {selectedOrder && (
               <OrderDetail
