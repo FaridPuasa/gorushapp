@@ -21,8 +21,8 @@ import { AnimatedPressable } from '../lib/animations';
 const BAR_HEIGHT = NAVBAR_HEIGHT;
 
 export default function Navbar() {
-  const { user, isGuest, isAdmin, isJpmc, isGorush, loading, logout } = useAuth();
-  const isJpmcPortalRole = isJpmc || isGorush;
+  const { user, isGuest, isAdmin, isJpmc, loading, logout } = useAuth();
+  const isJpmcPortalRole = isJpmc;
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
@@ -81,7 +81,7 @@ export default function Navbar() {
     { label: t('nav.logOut'), onPress: handleLogout },
   ];
 
-  // jpmc/gorush staff only ever need the portal link + change password + log out -
+  // jpmc staff only ever need the portal link + change password + log out -
   // everything else on this consumer-facing app (ordering, tracking, company info,
   // language switching) is irrelevant to them.
   const jpmcUserItems = [

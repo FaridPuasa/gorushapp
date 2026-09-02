@@ -214,8 +214,8 @@ function PasswordSection({ headers, scrollRef }) {
 }
 
 export default function EditProfile() {
-  const { isGuest, isJpmc, isGorush, loading: authLoading, token, refreshProfile } = useAuth();
-  const isJpmcPortalStaff = isJpmc || isGorush;
+  const { isGuest, isJpmc, loading: authLoading, token, refreshProfile } = useAuth();
+  const isJpmcPortalStaff = isJpmc;
   const router = useRouter();
   const { colors } = useTheme();
   const { t } = useLanguage();
@@ -271,7 +271,7 @@ export default function EditProfile() {
 
   const headers = { headers: { Authorization: `Bearer ${token}` } };
 
-  // jpmc/gorush are staff accounts with no delivery-address/personal-detail data of
+  // jpmc is a staff account with no delivery-address/personal-detail data of
   // their own kind (see setUserRoles.js/the direct-insert script) - only a password
   // to manage.
   if (isJpmcPortalStaff) {

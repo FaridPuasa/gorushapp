@@ -2,14 +2,13 @@
 // to a staff role. There's no admin UI for this yet - run manually whenever
 // a new email list comes in:
 //   node scripts/setUserRoles.js jpmc alice@jpmc.gov.bn bob@jpmc.gov.bn
-//   node scripts/setUserRoles.js gorush carol@gorush.com.bn
 // Every email listed must already have registered a normal account first -
 // this only changes `role` on an existing doc, it doesn't create accounts.
 require('dotenv').config();
 const mongoose = require('mongoose');
 const User = require('../models/User');
 
-const VALID_ROLES = ['customer', 'admin', 'jpmc', 'gorush'];
+const VALID_ROLES = ['customer', 'admin', 'jpmc'];
 
 async function run() {
     const [role, ...emails] = process.argv.slice(2);

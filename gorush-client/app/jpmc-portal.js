@@ -1,9 +1,8 @@
 // Role-scoped view of JPMC/PJSC pharmacy orders (product 'pharmacyjpmc') -
-// replaces the manual "JPMC PJSC Forms.xlsx" workbook. `jpmc` role can edit
-// the JPMC Pharmacy + JPMC Finance fields; `gorush` (and `admin`, for
-// support) see the identical list read-only. Route access itself is gated
-// globally by AdminGuard in app/_layout.js - this page assumes it's already
-// been let through.
+// replaces the manual "JPMC PJSC Forms.xlsx" workbook. `jpmc` and `admin`
+// (the latter for support) can both view and edit the JPMC Pharmacy + JPMC
+// Finance fields. Route access itself is gated globally by AdminGuard in
+// app/_layout.js - this page assumes it's already been let through.
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Text, TextInput, View, ActivityIndicator, Platform, ScrollView, Modal, Pressable } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -170,7 +169,10 @@ function Badge({ label, value, bg, fg, scaleFont }) {
 // `minWidth` sets each chip's natural size before wrapping; `maxWidth` caps
 // it so a long name/address/remark wraps onto more lines instead of
 // stretching the row wide on a large screen.
-const FIELDS = [
+// Two groups so the row can visually separate "the order itself" from "what
+// JPMC has done with it" - order fields on the left, JPMC-owned fields on
+// the right, divided by a border rather than mixed into one long run.
+const ORDER_FIELDS = [
   { key: 'dateTimeSubmission', label: 'Date/Time Submitted', minWidth: 130, format: (o) => formatDMYTime(o.dateTimeSubmission) },
   { key: 'doTrackingNumber', label: 'Tracking No.', minWidth: 110, format: (o) => o.doTrackingNumber || '—' },
   { key: 'jobMethod', label: 'Delivery Type', minWidth: 130, maxWidth: 180, format: (o) => o.jobMethod || '—' },
@@ -179,36 +181,25 @@ const FIELDS = [
   { key: 'receiverAddress', label: 'Address', minWidth: 200, maxWidth: 260, format: (o) => o.receiverAddress || '—' },
   { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
   { key: 'remarks', label: 'Remarks', minWidth: 160, maxWidth: 220, format: (o) => o.remarks || '—' },
+];
+const JPMC_FIELDS = [
   { key: 'jpmcPatientInformed', label: 'Patient Informed', minWidth: 100, format: (o) => o.jpmcPatientInformed || '—' },
   { key: 'jpmcPharmacyRemarks', label: 'Remarks from Pharmacy', minWidth: 160, maxWidth: 220, format: (o) => o.jpmcPharmacyRemarks || '—' },
   { key: 'jpmcTotalAmount', label: 'Total $', minWidth: 80, format: (o) => (o.jpmcTotalAmount != null ? `$${o.jpmcTotalAmount}` : '—') },
   { key: 'jpmcFinanceDateReceived', label: 'Date Received', minWidth: 100, format: (o) => (o.jpmcFinanceDateReceived ? formatDMY(o.jpmcFinanceDateReceived) : '—') },
 ];
 
-function OrderTableRow({ order, onView, colors, isEven, scaleFont }) {
+function OrderTableRow({ order, onView, canEdit, colors, isEven, scaleFont }) {
   const goRushBadge = goRushStatusBadgeColors(order.goRushStatus, colors);
   const jpmcBadge = jpmcStatusBadgeColors(order.jpmcPharmacyStatus, colors);
   return (
     <View style={{ padding: 14, backgroundColor: isEven ? colors.subtleBackground : colors.card }}>
-      {/* Everything needed to triage an order at a glance, in one row: open
-          it, when it's due, how old it is, and both statuses. Statuses are
-          pinned to the right (justify-content: space-between across the two
-          groups) so they land in the same spot on every row, regardless of
-          how many badges the left side has. */}
+      {/* Order-identifying badges on the left, both statuses pinned to the
+          right - the Edit/View button lives further down, grouped with the
+          JPMC fields it actually opens/edits, not up here with the
+          order-level info. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <AnimatedPressable
-            scaleTo={1.05}
-            onPress={onView}
-            style={{
-              flexDirection: 'row', alignItems: 'center', gap: 4,
-              paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
-              backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
-            }}
-          >
-            <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
-            <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View</Text>
-          </AnimatedPressable>
           <Badge label="Process Date" value={formatDMY(order.processDate)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
           {isActiveGoRushStatus(order.goRushStatus) && (
             <Badge label="Aging" value={formatAgingDays(order)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
@@ -219,21 +210,42 @@ function OrderTableRow({ order, onView, colors, isEven, scaleFont }) {
           <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
         </View>
       </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 }}>
-        {FIELDS.map((f) => (
-          <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} maxWidth={f.maxWidth} colors={colors} scaleFont={scaleFont} />
-        ))}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
+        <View style={{ flex: 3, minWidth: 260, flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 }}>
+          {ORDER_FIELDS.map((f) => (
+            <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} maxWidth={f.maxWidth} colors={colors} scaleFont={scaleFont} />
+          ))}
+        </View>
+        <View style={{ flex: 2, minWidth: 220, borderLeftWidth: 1, borderLeftColor: colors.border, paddingLeft: 20 }}>
+          <AnimatedPressable
+            scaleTo={1.05}
+            onPress={onView}
+            style={{
+              flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
+              paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, marginBottom: 10,
+              backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+            }}
+          >
+            <Text style={{ fontSize: scaleFont(13) }}>{canEdit ? '✏️' : '👁️'}</Text>
+            <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>{canEdit ? 'Edit' : 'View'} JPMC Fields</Text>
+          </AnimatedPressable>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 }}>
+            {JPMC_FIELDS.map((f) => (
+              <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} maxWidth={f.maxWidth} colors={colors} scaleFont={scaleFont} />
+            ))}
+          </View>
+        </View>
       </View>
     </View>
   );
 }
 
-function OrderTable({ orders, onSelect, colors, scaleFont }) {
+function OrderTable({ orders, onSelect, canEdit, colors, scaleFont }) {
   return (
     <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
       {orders.map((order, i) => (
         <View key={order.id} style={{ borderBottomWidth: i === orders.length - 1 ? 0 : 1, borderBottomColor: colors.border }}>
-          <OrderTableRow order={order} onView={() => onSelect(order)} colors={colors} isEven={i % 2 === 1} scaleFont={scaleFont} />
+          <OrderTableRow order={order} onView={() => onSelect(order)} canEdit={canEdit} colors={colors} isEven={i % 2 === 1} scaleFont={scaleFont} />
         </View>
       ))}
     </View>
@@ -406,27 +418,10 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
           </AnimatedPressable>
         </View>
       </View>
+      {/* Order/customer/remarks info is already fully visible in the table row
+          itself now - this card's only job is editing the JPMC-owned fields,
+          so it stays focused on just that instead of repeating everything. */}
       <ScrollView>
-        <Section icon="📦" title="Order Info" colors={colors} scaleFont={scaleFont}>
-          <DetailField label="Date/Time Submitted" value={formatDMYTime(order.dateTimeSubmission)} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Payment Method" value={order.paymentMethod} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Delivery Type" value={order.jobMethod} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Total Price" value={order.totalPrice ? `$${order.totalPrice}` : null} colors={colors} scaleFont={scaleFont} />
-        </Section>
-
-        <Section icon="👤" title="Customer Info" colors={colors} scaleFont={scaleFont}>
-          <DetailField label="Name" value={order.receiverName} minWidth={180} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Patient No." value={order.patientNumber} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Location" value={order.appointmentPlace} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Main Phone No." value={order.receiverPhoneNumber} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Additional Phone No." value={order.additionalPhoneNumber} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Customer Address" value={order.receiverAddress} minWidth={260} colors={colors} scaleFont={scaleFont} />
-        </Section>
-
-        <Section icon="💬" title="Remarks" colors={colors} scaleFont={scaleFont}>
-          <DetailField label="Customer Remarks" value={order.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
-        </Section>
-
         <Section icon="💊" title="JPMC Pharmacy" colors={colors} scaleFont={scaleFont}>
           <View style={{ width: '100%', flexDirection: 'row', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
             <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 160 }]}>
@@ -567,7 +562,8 @@ function Pagination({ page, totalPages, onChange, colors, formStyles, scaleFont 
 }
 
 export default function JpmcPortal() {
-  const { token, isJpmc } = useAuth();
+  const { token, isJpmc, isAdmin } = useAuth();
+  const canEdit = isJpmc || isAdmin;
   const { colors } = useTheme();
   const { scaleFont } = useFontScale();
   const formStyles = useFormStyles();
@@ -776,7 +772,7 @@ export default function JpmcPortal() {
       )}
 
       {!loading && !error && data?.orders.length > 0 && (
-        <OrderTable orders={data.orders} onSelect={setSelectedOrder} colors={colors} scaleFont={scaleFont} />
+        <OrderTable orders={data.orders} onSelect={setSelectedOrder} canEdit={canEdit} colors={colors} scaleFont={scaleFont} />
       )}
 
       {!loading && !error && viewMode === 'all' && data && data.totalPages > 1 && (
@@ -808,7 +804,7 @@ export default function JpmcPortal() {
             {selectedOrder && (
               <OrderDetail
                 order={selectedOrder}
-                canEdit={isJpmc}
+                canEdit={canEdit}
                 authHeader={authHeader}
                 onSaved={handleSaved}
                 onClose={() => setSelectedOrder(null)}

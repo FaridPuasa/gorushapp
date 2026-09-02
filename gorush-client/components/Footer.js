@@ -17,8 +17,8 @@ export default function Footer() {
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
-  const { isJpmc, isGorush, isAdmin } = useAuth();
-  const isJpmcPortalRole = isJpmc || isGorush || isAdmin;
+  const { isJpmc, isAdmin } = useAuth();
+  const isJpmcPortalRole = isJpmc || isAdmin;
   const isMobile = useIsMobile();
   const styles = useMemo(() => makeStyles(colors, scaleFont), [colors, scaleFont]);
 
@@ -26,7 +26,7 @@ export default function Footer() {
   // footer's links/social/clock become redundant screen-space there.
   if (isMobile) return null;
 
-  // jpmc/gorush staff have no use for the marketing links or social icons - just
+  // jpmc/admin staff have no use for the marketing links or social icons - just
   // the Brunei time reference (relevant to the noon-cutover processing window)
   // and the copyright line.
   if (isJpmcPortalRole) {

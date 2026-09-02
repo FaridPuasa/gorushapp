@@ -63,9 +63,9 @@ export function AuthProvider({ children }) {
     isGuest: !token,
     isAdmin: user?.role === 'admin',
     isJpmc: user?.role === 'jpmc',
-    isGorush: user?.role === 'gorush',
-    // Anyone allowed onto the JPMC portal page - admin can see it too, for support.
-    canViewJpmcPortal: ['jpmc', 'gorush', 'admin'].includes(user?.role),
+    // Anyone allowed onto the JPMC portal page - admin can see it too, for support
+    // (view-only - only isJpmc can actually edit, see jpmc-portal.js).
+    canViewJpmcPortal: ['jpmc', 'admin'].includes(user?.role),
     loading,
     login,
     logout,

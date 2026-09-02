@@ -1,6 +1,6 @@
 // JPMC pharmacy client portal - replaces the manual "JPMC PJSC Forms.xlsx"
 // workbook. `jpmc` staff can view + edit the 5 JPMC-owned fields on their own
-// orders; `gorush` staff get the identical list read-only. Reads/writes go
+// orders; `admin` gets the identical list read-only (for support). Reads/writes go
 // straight to the shared Postgres `orders` table gorushapp already uses for
 // pharmacyjpmc order intake (see lib/postgresOrders.js) - grfmxstatusupdate's
 // schema.prisma is the source of truth for the column set (see its comment).
@@ -87,7 +87,7 @@ function toApiShape(order, holidayDates) {
 // - pharmacyStatus/goRushStatus filter on top of either view (used by the
 //   Completed / Duplicate&Cancelled tabs, and the free-standing GO RUSH
 //   filter).
-router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) => {
+router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
     try {
         const where = { product: 'pharmacyjpmc' };
         if (req.query.search) {
@@ -163,9 +163,9 @@ router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) =
     }
 });
 
-// PATCH /api/jpmc/orders/:id - jpmc/admin only, gorush is read-only.
-// Only the 5 JPMC-owned fields are ever written here, regardless of what
-// else is in the request body.
+// PATCH /api/jpmc/orders/:id - jpmc and admin can both edit. Only the 5
+// JPMC-owned fields are ever written here, regardless of what else is in
+// the request body.
 router.patch('/orders/:id', requireRole('jpmc', 'admin'), async (req, res) => {
     try {
         const id = BigInt(req.params.id);
