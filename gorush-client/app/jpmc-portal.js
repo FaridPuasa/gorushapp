@@ -179,6 +179,8 @@ const ORDER_FIELDS = [
   { key: 'receiverName', label: 'Name', minWidth: 140, maxWidth: 200, format: (o) => o.receiverName || '—' },
   { key: 'patientNumber', label: 'Patient No.', minWidth: 100, format: (o) => o.patientNumber || '—' },
   { key: 'receiverAddress', label: 'Address', minWidth: 200, maxWidth: 260, format: (o) => o.receiverAddress || '—' },
+  { key: 'receiverPhoneNumber', label: 'Main Phone No.', minWidth: 110, format: (o) => o.receiverPhoneNumber || '—' },
+  { key: 'additionalPhoneNumber', label: 'Additional Phone No.', minWidth: 110, format: (o) => o.additionalPhoneNumber || '—' },
   { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
   { key: 'remarks', label: 'Remarks', minWidth: 160, maxWidth: 220, format: (o) => o.remarks || '—' },
 ];
