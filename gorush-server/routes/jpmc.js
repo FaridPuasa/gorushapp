@@ -10,6 +10,11 @@ const PublicHoliday = require('../models/PublicHoliday');
 const { requireRole } = require('../middleware/auth');
 const { currentWindow, windowForDate } = require('../lib/jpmcWindow');
 
+function toDateOnlyString(d) {
+    if (!d) return null;
+    return new Date(d).toISOString().slice(0, 10);
+}
+
 const ALL_ORDERS_PAGE_SIZE = 25;
 
 const router = express.Router();
@@ -22,8 +27,14 @@ const EDITABLE_FIELDS = [
     'jpmcFinanceDateReceived',
 ];
 
-function toApiShape(order) {
+// "Process Date" - which cutover window (the portal's equivalent of the old
+// Excel sheet's per-cutover date tab) this order's submission falls into,
+// named by the date its window ends on (see lib/jpmcWindow.js). Shown as its
+// own column/field so staff can tell at a glance which date's batch an order
+// belongs to even when browsing "All time".
+function toApiShape(order, holidayDates) {
     return {
+        processDate: toDateOnlyString(currentWindow(holidayDates, order.dateTimeSubmission).end),
         id: order.id.toString(),
         doTrackingNumber: order.doTrackingNumber,
         dateTimeSubmission: order.dateTimeSubmission,
@@ -61,14 +72,21 @@ function toApiShape(order) {
     };
 }
 
-// GET /api/jpmc/orders?view=window|all|date&date=&search=&pharmacyStatus=&goRushStatus=&page=&limit=
-// - view=window (default): the currently open processing window (noon-to-noon
-//   Brunei time, rolling forward past Sundays/public holidays).
-// - view=date&date=YYYY-MM-DD: the processing window that starts on that date
-//   (the portal's equivalent of the old Excel sheet's per-cutover date tab).
-// - view=all: every JPMC/PJSC order, newest submission first, paginated - no
-//   date filtering, for browsing/searching across every window at once.
-// - pharmacyStatus/goRushStatus filter on top of any of the 3 views above.
+// GET /api/jpmc/orders?view=all|date&date=&tab=&search=&pharmacyStatus=&goRushStatus=&page=&limit=
+// - view=all (default): every JPMC/PJSC order, newest submission first,
+//   paginated - no date filtering, for browsing/searching across every
+//   window at once.
+// - view=date&date=YYYY-MM-DD: just the processing window ending on that
+//   date (the portal's equivalent of the old Excel sheet's per-cutover date
+//   tab / this response's own `processDate` field on each order).
+// - tab=inProcess: the "In Process" tab's actual rule - anything NOT (JPMC
+//   Pharmacy Status Completed AND GO RUSH Status Completed) and GO RUSH
+//   Status not Cancelled/Disposed, across every window - overrides
+//   pharmacyStatus for this one tab, which needs a compound condition the
+//   plain OR-of-values filter below can't express.
+// - pharmacyStatus/goRushStatus filter on top of either view (used by the
+//   Completed / Duplicate&Cancelled tabs, and the free-standing GO RUSH
+//   filter).
 router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) => {
     try {
         const where = { product: 'pharmacyjpmc' };
@@ -80,9 +98,16 @@ router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) =
                 { doTrackingNumber: { contains: search, mode: 'insensitive' } },
             ];
         }
-        if (req.query.pharmacyStatus) {
-            // Comma-separated - lets the portal's tabs (In Process/Completed/
-            // Duplicate&Cancelled/All) ask for a whole status group in one request,
+
+        if (req.query.tab === 'inProcess') {
+            where.AND = [
+                ...(where.AND || []),
+                { NOT: { AND: [{ jpmcPharmacyStatus: 'Completed' }, { currentStatus: 'Completed' }] } },
+                { currentStatus: { notIn: ['Cancelled', 'Disposed'] } },
+            ];
+        } else if (req.query.pharmacyStatus) {
+            // Comma-separated - lets the portal's other tabs (Completed/
+            // Duplicate&Cancelled) ask for a whole status group in one request,
             // not just a single value. 'New Order' is the default/unset state -
             // matches rows that haven't been touched yet (null) as well as ones
             // explicitly saved as such. Prisma's `in` filter doesn't accept null as
@@ -96,49 +121,42 @@ router.get('/orders', requireRole('jpmc', 'gorush', 'admin'), async (req, res) =
             where.currentStatus = req.query.goRushStatus;
         }
 
-        const view = req.query.view || 'window';
-        let windowRange = null;
-
-        if (view === 'all') {
-            const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
-            const limit = Math.min(parseInt(req.query.limit, 10) || ALL_ORDERS_PAGE_SIZE, 100);
-            const [orders, totalCount] = await Promise.all([
-                prisma.order.findMany({
-                    where,
-                    include: { history: true },
-                    orderBy: { dateTimeSubmission: 'desc' },
-                    skip: (page - 1) * limit,
-                    take: limit,
-                }),
-                prisma.order.count({ where }),
-            ]);
-            return res.json({
-                view: 'all',
-                page,
-                totalPages: Math.max(Math.ceil(totalCount / limit), 1),
-                totalCount,
-                orders: orders.map(toApiShape),
-            });
-        }
-
         const holidayDates = (await PublicHoliday.find().lean()).map((h) => h.date);
+        const view = req.query.view || 'all';
+
         if (view === 'date') {
             if (!req.query.date) {
                 return res.status(400).json({ error: "'date' query param is required for view=date." });
             }
-            windowRange = windowForDate(req.query.date, holidayDates);
-        } else {
-            windowRange = currentWindow(holidayDates);
+            const windowRange = windowForDate(req.query.date, holidayDates);
+            where.dateTimeSubmission = { gte: windowRange.start, lte: windowRange.end };
+            const orders = await prisma.order.findMany({
+                where,
+                include: { history: true },
+                orderBy: { dateTimeSubmission: 'desc' },
+            });
+            return res.json({ view, from: windowRange.start, to: windowRange.end, orders: orders.map((o) => toApiShape(o, holidayDates)) });
         }
 
-        where.dateTimeSubmission = { gte: windowRange.start, lte: windowRange.end };
-        const orders = await prisma.order.findMany({
-            where,
-            include: { history: true },
-            orderBy: { dateTimeSubmission: 'desc' },
+        const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
+        const limit = Math.min(parseInt(req.query.limit, 10) || ALL_ORDERS_PAGE_SIZE, 100);
+        const [orders, totalCount] = await Promise.all([
+            prisma.order.findMany({
+                where,
+                include: { history: true },
+                orderBy: { dateTimeSubmission: 'desc' },
+                skip: (page - 1) * limit,
+                take: limit,
+            }),
+            prisma.order.count({ where }),
+        ]);
+        res.json({
+            view: 'all',
+            page,
+            totalPages: Math.max(Math.ceil(totalCount / limit), 1),
+            totalCount,
+            orders: orders.map((o) => toApiShape(o, holidayDates)),
         });
-
-        res.json({ view, from: windowRange.start, to: windowRange.end, orders: orders.map(toApiShape) });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Failed to load JPMC orders.' });
@@ -162,7 +180,8 @@ router.patch('/orders/:id', requireRole('jpmc', 'admin'), async (req, res) => {
         data.jpmcFieldsUpdatedAt = new Date();
 
         const order = await prisma.order.update({ where: { id }, data, include: { history: true } });
-        res.json(toApiShape(order));
+        const holidayDates = (await PublicHoliday.find().lean()).map((h) => h.date);
+        res.json(toApiShape(order, holidayDates));
     } catch (err) {
         console.error(err.message);
         if (err.code === 'P2025') {

@@ -27,18 +27,22 @@ const WIDE_MAX_WIDTH = 1800;
 const STATUS_OPTIONS = ['New Order', 'Entered', 'Pending Payment', 'Pending Query', 'Completed', 'Duplicate Order', 'Cancelled Order'];
 const PATIENT_INFORMED_OPTIONS = ['Yes', 'No'];
 const SEARCH_DEBOUNCE_MS = 400;
+// "Current window" removed - staff triage across every window by default now
+// (see the "In Process" tab below), so "All time" is the default/primary
+// choice, with "Specific date" (the old per-cutover date tab) as the only
+// other option.
 const VIEW_MODES = [
-  { value: 'window', label: 'Current window' },
-  { value: 'date', label: 'Specific date' },
   { value: 'all', label: 'All time' },
+  { value: 'date', label: 'Specific date' },
 ];
 
 // The 4 landing tabs - this is the primary way JPMC staff triage their queue,
-// grouping the 7 possible pharmacy statuses into what still needs attention
-// vs. what's done vs. what's dead. `statuses: null` means no filter (every
-// status, including any legacy row that predates this feature entirely).
+// grouping orders into what still needs attention vs. what's done vs. what's
+// dead. `statuses: null` means no filter (every status). "In Process" is a
+// compound rule the server computes itself (tab=inProcess) rather than a
+// plain status list - see routes/jpmc.js.
 const TABS = [
-  { key: 'inProcess', label: 'In Process', statuses: ['New Order', 'Pending Query', 'Pending Payment', 'Entered'] },
+  { key: 'inProcess', label: 'In Process', tabParam: 'inProcess' },
   { key: 'completed', label: 'Completed', statuses: ['Completed'] },
   { key: 'duplicateCancelled', label: 'Duplicate/Cancelled', statuses: ['Duplicate Order', 'Cancelled Order'] },
   { key: 'all', label: 'All', statuses: null },
@@ -114,6 +118,21 @@ function DateField({ value, onChange, formStyles }) {
   );
 }
 
+const INACTIVE_GO_RUSH_STATUSES = ['completed', 'cancelled', 'disposed'];
+function isActiveGoRushStatus(status) {
+  return !INACTIVE_GO_RUSH_STATUSES.includes((status || '').toLowerCase());
+}
+
+// Days since submission - only meaningful while the job is still moving;
+// a completed/cancelled/disposed job's age stops mattering once it's done.
+function formatAgingDays(order) {
+  if (!isActiveGoRushStatus(order.goRushStatus)) return '—';
+  const submitted = new Date(order.dateTimeSubmission);
+  if (Number.isNaN(submitted.getTime())) return '—';
+  const days = Math.max(Math.floor((Date.now() - submitted.getTime()) / 86400000), 0);
+  return `${days}d`;
+}
+
 function goRushStatusBadgeColors(status, colors) {
   const s = (status || '').toLowerCase();
   if (s === 'completed') return { bg: colors.primaryLight || '#e6f4ea', fg: colors.primary };
@@ -124,7 +143,9 @@ function goRushStatusBadgeColors(status, colors) {
 }
 
 const COLUMNS = [
+  { key: 'processDate', label: 'Process Date', width: 120 },
   { key: 'dateTimeSubmission', label: 'Date/Time Submitted', width: 170 },
+  { key: 'aging', label: 'Aging (Days)', width: 100 },
   { key: 'doTrackingNumber', label: 'Tracking No.', width: 130 },
   { key: 'jobMethod', label: 'Delivery Type', width: 170, wrap: true },
   { key: 'receiverName', label: 'Name', width: 170, bold: true },
@@ -177,9 +198,13 @@ function OrderTableRow({ order, onView, colors, isLast, isEven, scaleFont }) {
         }
         const value = c.key === 'dateTimeSubmission'
           ? formatDMYTime(order[c.key])
-          : c.key === 'jpmcPharmacyStatus'
-            ? (order[c.key] || 'New Order')
-            : (order[c.key] || '—');
+          : c.key === 'processDate'
+            ? formatDMY(order[c.key])
+            : c.key === 'aging'
+              ? formatAgingDays(order)
+              : c.key === 'jpmcPharmacyStatus'
+                ? (order[c.key] || 'New Order')
+                : (order[c.key] || '—');
         return (
           <Text
             key={c.key}
@@ -384,7 +409,11 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
       </View>
       <ScrollView>
         <Section icon="📦" title="Order Info" colors={colors} scaleFont={scaleFont}>
+          <DetailField label="Process Date" value={formatDMY(order.processDate)} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Date/Time Submitted" value={formatDMYTime(order.dateTimeSubmission)} colors={colors} scaleFont={scaleFont} />
+          {isActiveGoRushStatus(order.goRushStatus) && (
+            <DetailField label="Aging" value={formatAgingDays(order)} colors={colors} scaleFont={scaleFont} />
+          )}
           <DetailField label="Payment Method" value={order.paymentMethod} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Delivery Type" value={order.jobMethod} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Total Price" value={order.totalPrice ? `$${order.totalPrice}` : null} colors={colors} scaleFont={scaleFont} />
@@ -555,7 +584,7 @@ export default function JpmcPortal() {
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
   const [activeTab, setActiveTab] = useState('inProcess');
-  const [viewMode, setViewMode] = useState('window');
+  const [viewMode, setViewMode] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
   // Set either from tapping a table row (the matching object from `data.orders`)
@@ -586,7 +615,8 @@ export default function JpmcPortal() {
     try {
       const params = { view: viewMode };
       if (search) params.search = search;
-      if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
+      if (activeTabDef.tabParam) params.tab = activeTabDef.tabParam;
+      else if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
       if (viewMode === 'date') params.date = dateFilter;
       if (viewMode === 'all') params.page = page;
       const res = await api.get('/api/jpmc/orders', { headers: authHeader, params });
