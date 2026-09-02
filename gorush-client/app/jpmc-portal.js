@@ -187,26 +187,33 @@ function OrderTableRow({ order, onView, colors, isEven, scaleFont }) {
   return (
     <View style={{ padding: 14, backgroundColor: isEven ? colors.subtleBackground : colors.card }}>
       {/* Everything needed to triage an order at a glance, in one row: open
-          it, when it's due, how old it is, and both statuses. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-        <AnimatedPressable
-          scaleTo={1.05}
-          onPress={onView}
-          style={{
-            flexDirection: 'row', alignItems: 'center', gap: 4,
-            paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
-            backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
-          }}
-        >
-          <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
-          <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View</Text>
-        </AnimatedPressable>
-        <Badge label="Process Date" value={formatDMY(order.processDate)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
-        {isActiveGoRushStatus(order.goRushStatus) && (
-          <Badge label="Aging" value={formatAgingDays(order)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
-        )}
-        <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
-        <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
+          it, when it's due, how old it is, and both statuses. Statuses are
+          pinned to the right (justify-content: space-between across the two
+          groups) so they land in the same spot on every row, regardless of
+          how many badges the left side has. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <AnimatedPressable
+            scaleTo={1.05}
+            onPress={onView}
+            style={{
+              flexDirection: 'row', alignItems: 'center', gap: 4,
+              paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
+              backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+            }}
+          >
+            <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
+            <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View</Text>
+          </AnimatedPressable>
+          <Badge label="Process Date" value={formatDMY(order.processDate)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
+          {isActiveGoRushStatus(order.goRushStatus) && (
+            <Badge label="Aging" value={formatAgingDays(order)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
+          )}
+        </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
+          <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
+          <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
+        </View>
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 }}>
         {FIELDS.map((f) => (
