@@ -144,30 +144,51 @@ function goRushStatusBadgeColors(status, colors) {
   return { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
 }
 
+function jpmcStatusBadgeColors(status, colors) {
+  const s = (status || 'new order').toLowerCase();
+  if (s === 'completed') return { bg: colors.primaryLight || '#e6f4ea', fg: colors.primary };
+  if (s === 'duplicate order' || s === 'cancelled order') return { bg: colors.errorLight || '#fdecea', fg: colors.error };
+  if (s === 'new order') return { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
+  return { bg: '#fdf1e3', fg: '#e67e22' }; // Entered / Pending Payment / Pending Query - still being worked
+}
+
+// The row's small colored pill, used for every quick-glance status/date at
+// the top of the row - same visual language as GO RUSH's badge so all 4
+// read as "the same kind of thing" at a glance.
+function Badge({ label, value, bg, fg, scaleFont }) {
+  return (
+    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: bg }}>
+      <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: fg }}>{label}: {value || '—'}</Text>
+    </View>
+  );
+}
+
 // No fixed column widths, no horizontal ScrollView - each field is a
-// label-over-value chip (DetailField, defined below) that flex-wraps onto
+// label-over-value chip (DetailField, defined above) that flex-wraps onto
 // as many lines as the row needs, so the whole list only ever scrolls
 // vertically regardless of how many fields or how narrow the screen is.
-// `minWidth` just sets each chip's natural size before wrapping kicks in.
+// `minWidth` sets each chip's natural size before wrapping; `maxWidth` caps
+// it so a long name/address/remark wraps onto more lines instead of
+// stretching the row wide on a large screen.
 const FIELDS = [
-  { key: 'processDate', label: 'Process Date', minWidth: 90, format: (o) => formatDMY(o.processDate) },
   { key: 'dateTimeSubmission', label: 'Date/Time Submitted', minWidth: 130, format: (o) => formatDMYTime(o.dateTimeSubmission) },
-  { key: 'aging', label: 'Aging', minWidth: 60, format: formatAgingDays },
   { key: 'doTrackingNumber', label: 'Tracking No.', minWidth: 110, format: (o) => o.doTrackingNumber || '—' },
-  { key: 'jobMethod', label: 'Delivery Type', minWidth: 130, format: (o) => o.jobMethod || '—' },
-  { key: 'receiverName', label: 'Name', minWidth: 140, format: (o) => o.receiverName || '—' },
+  { key: 'jobMethod', label: 'Delivery Type', minWidth: 130, maxWidth: 180, format: (o) => o.jobMethod || '—' },
+  { key: 'receiverName', label: 'Name', minWidth: 140, maxWidth: 200, format: (o) => o.receiverName || '—' },
   { key: 'patientNumber', label: 'Patient No.', minWidth: 100, format: (o) => o.patientNumber || '—' },
-  { key: 'receiverAddress', label: 'Address', minWidth: 220, format: (o) => o.receiverAddress || '—' },
+  { key: 'receiverAddress', label: 'Address', minWidth: 200, maxWidth: 260, format: (o) => o.receiverAddress || '—' },
   { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
-  { key: 'remarks', label: 'Remarks', minWidth: 160, format: (o) => o.remarks || '—' },
-  { key: 'jpmcPharmacyStatus', label: 'JPMC Pharmacy Status', minWidth: 140, format: (o) => o.jpmcPharmacyStatus || 'New Order' },
+  { key: 'remarks', label: 'Remarks', minWidth: 160, maxWidth: 220, format: (o) => o.remarks || '—' },
 ];
 
 function OrderTableRow({ order, onView, colors, isEven, scaleFont }) {
-  const badge = goRushStatusBadgeColors(order.goRushStatus, colors);
+  const goRushBadge = goRushStatusBadgeColors(order.goRushStatus, colors);
+  const jpmcBadge = jpmcStatusBadgeColors(order.jpmcPharmacyStatus, colors);
   return (
     <View style={{ padding: 14, backgroundColor: isEven ? colors.subtleBackground : colors.card }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
+      {/* Everything needed to triage an order at a glance, in one row: open
+          it, when it's due, how old it is, and both statuses. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
         <AnimatedPressable
           scaleTo={1.05}
           onPress={onView}
@@ -180,13 +201,16 @@ function OrderTableRow({ order, onView, colors, isEven, scaleFont }) {
           <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
           <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View</Text>
         </AnimatedPressable>
-        <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: badge.bg }}>
-          <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: badge.fg }}>GO RUSH: {order.goRushStatus || '—'}</Text>
-        </View>
+        <Badge label="Process Date" value={formatDMY(order.processDate)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
+        {isActiveGoRushStatus(order.goRushStatus) && (
+          <Badge label="Aging" value={formatAgingDays(order)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
+        )}
+        <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
+        <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
       </View>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 }}>
         {FIELDS.map((f) => (
-          <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} colors={colors} scaleFont={scaleFont} />
+          <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} maxWidth={f.maxWidth} colors={colors} scaleFont={scaleFont} />
         ))}
       </View>
     </View>
@@ -235,13 +259,16 @@ function Section({ icon, title, children, colors, scaleFont, style }) {
 
 // One label/value pair within a Section - the small uppercase grey label over a
 // bold value, same convention as the reference tracking-search card's grid.
-function DetailField({ label, value, minWidth = 140, colors, scaleFont }) {
+function DetailField({ label, value, minWidth = 140, maxWidth = '100%', colors, scaleFont }) {
   return (
     // flexShrink + maxWidth stop a long value (a full address, a long name)
     // from growing the box past the section's width - without them a plain
     // flexGrow item keeps expanding to fit its unwrapped text instead of
-    // wrapping, and the whole card overflows sideways.
-    <View style={{ minWidth, maxWidth: '100%', flexGrow: 1, flexShrink: 1 }}>
+    // wrapping, and the whole card overflows sideways. In the table (which
+    // passes a real pixel maxWidth instead of the modal's '100%'), this is
+    // what actually forces long names/addresses onto multiple lines instead
+    // of stretching the row wide.
+    <View style={{ minWidth, maxWidth, flexGrow: 1, flexShrink: 1 }}>
       <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>
         {label}
       </Text>
@@ -344,15 +371,20 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
     }
   };
 
-  const badge = goRushStatusBadgeColors(order.goRushStatus, colors);
+  const goRushBadge = goRushStatusBadgeColors(order.goRushStatus, colors);
+  const neutralBadge = { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
 
   return (
     <View style={{ maxHeight: '100%' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <View style={{ flex: 1 }}>
           <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{order.doTrackingNumber || 'No tracking yet'}</Text>
-          <View style={{ alignSelf: 'flex-start', marginTop: 6, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: badge.bg }}>
-            <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: badge.fg }}>{order.goRushStatus || '—'}</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+            <Badge label="Process Date" value={formatDMY(order.processDate)} bg={neutralBadge.bg} fg={neutralBadge.fg} scaleFont={scaleFont} />
+            {isActiveGoRushStatus(order.goRushStatus) && (
+              <Badge label="Aging" value={formatAgingDays(order)} bg={neutralBadge.bg} fg={neutralBadge.fg} scaleFont={scaleFont} />
+            )}
+            <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
           </View>
         </View>
         <AnimatedPressable scaleTo={1.1} onPress={onClose} style={{ padding: 4 }}>
@@ -361,11 +393,7 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
       </View>
       <ScrollView>
         <Section icon="📦" title="Order Info" colors={colors} scaleFont={scaleFont}>
-          <DetailField label="Process Date" value={formatDMY(order.processDate)} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Date/Time Submitted" value={formatDMYTime(order.dateTimeSubmission)} colors={colors} scaleFont={scaleFont} />
-          {isActiveGoRushStatus(order.goRushStatus) && (
-            <DetailField label="Aging" value={formatAgingDays(order)} colors={colors} scaleFont={scaleFont} />
-          )}
           <DetailField label="Payment Method" value={order.paymentMethod} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Delivery Type" value={order.jobMethod} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Total Price" value={order.totalPrice ? `$${order.totalPrice}` : null} colors={colors} scaleFont={scaleFont} />
