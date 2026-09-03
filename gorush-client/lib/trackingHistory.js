@@ -37,6 +37,33 @@ export function isInternalNote(entry) {
   return !entry.statusHistory && historyReason(entry) && INTERNAL_NOTE_RE.test(entry.reason);
 }
 
+// The allowlist of genuine, customer-facing delivery statuses a history entry's
+// statusHistory field can carry. Anything else is an internal audit note logged by the
+// admin backend (grfmxstatusupdate) against the same shared history array — e.g.
+// "Weight Updated", "Payment Method Updated", "Area Updated", "Address Updated",
+// "Phone Number Updated", "Customer Name Updated", "Job Date Updated", "Postal Code
+// Updated", "Job Method Updated", "Warehouse Location Updated", "Go Rush Remark
+// Updated", "Remark Updated", and dispatcher assignment/change entries. Those aren't
+// delivery events at all, so unlike isInternalNote() above (which only catches
+// reason-only entries with no statusHistory), this must gate on statusHistory itself —
+// canonicalStatus() returns entry.statusHistory verbatim whenever it's set, so without
+// this allowlist any audit label logged there leaks straight into the customer-facing
+// timeline and "Current Status" as if it were a real delivery step. Matched
+// case-insensitively, same as getStatusStyle() and the dedupe/collapse logic below.
+const ALLOWED_DELIVERY_STATUSES = new Set([
+  'info received', 'at warehouse', 'out for delivery',
+  'failed delivery', 'failed', 'return to warehouse', 'completed',
+  // Both spellings: real data has shown up as "Custom Clearing" (see getStatusStyle below),
+  // but "Custom Clearance" is also used (STATUS_ORDER, translations, EARLIEST_ONLY_STATUSES).
+  'custom clearance', 'custom clearing',
+  'on hold', 'in sorting area', 'self collect', 'cancelled',
+  'disposed', 'return',
+]);
+
+export function isDisallowedStatusHistory(entry) {
+  return Boolean(entry.statusHistory) && !ALLOWED_DELIVERY_STATUSES.has(entry.statusHistory.toLowerCase());
+}
+
 export function canonicalStatus(entry, fallback) {
   if (entry.statusHistory) return entry.statusHistory;
   if (historyReason(entry)) return 'Failed';
@@ -149,7 +176,7 @@ export function displayStatusLabel(status, t) {
 // derive the current status from whatever's left (falling back to the order's own top-level
 // status if there's no usable history at all).
 export function buildHistoryTimeline(rawHistory, fallbackLabel, topLevelStatus) {
-  const filtered = (rawHistory || []).filter((entry) => !isInternalNote(entry));
+  const filtered = (rawHistory || []).filter((entry) => !isInternalNote(entry) && !isDisallowedStatusHistory(entry));
   const historyEntries = truncateAfterCompleted(
     keepEarliestOccurrenceOnly(dedupeHistory(filtered, fallbackLabel), fallbackLabel),
     fallbackLabel
