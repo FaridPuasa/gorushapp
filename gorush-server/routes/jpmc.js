@@ -9,7 +9,7 @@ const prisma = require('../lib/prismaClient');
 const PublicHoliday = require('../models/PublicHoliday');
 const { requireRole } = require('../middleware/auth');
 const { currentWindow, windowForDate } = require('../lib/jpmcWindow');
-const { uploadPaymentProof, getPaymentProofSignedUrl } = require('../lib/jpmcPaymentStorage');
+const { getPaymentProofSignedUrl } = require('../lib/jpmcPaymentStorage');
 
 function toDateOnlyString(d) {
     if (!d) return null;
@@ -216,32 +216,9 @@ router.get('/orders/:id/payment-proof', requireRole('jpmc', 'admin'), async (req
     }
 });
 
-// POST /api/jpmc/orders/:id/payment-proof - jpmc and admin. Body:
-// { imageBase64: "data:image/jpeg;base64,..." } - same convention as this
-// app's other image uploads (see components/careers/DocumentUploads.js),
-// not multipart. Uploading again (reupload) just points the order at the
-// new file - the old one is left orphaned in storage rather than deleted,
-// same tradeoff already made for this app's POD images.
-router.post('/orders/:id/payment-proof', requireRole('jpmc', 'admin'), async (req, res) => {
-    try {
-        if (!req.body.imageBase64) return res.status(400).json({ error: 'No image uploaded.' });
-        const id = BigInt(req.params.id);
-
-        const path = await uploadPaymentProof(req.params.id, req.body.imageBase64);
-        const order = await prisma.order.update({
-            where: { id },
-            data: { jpmcPaymentProofPath: path, jpmcFieldsUpdatedBy: req.userEmail, jpmcFieldsUpdatedAt: new Date() },
-            include: { history: true },
-        });
-        const holidayDates = (await PublicHoliday.find().lean()).map((h) => h.date);
-        res.json(toApiShape(order, holidayDates));
-    } catch (err) {
-        console.error(err.message);
-        if (err.code === 'P2025') {
-            return res.status(404).json({ error: 'Order not found.' });
-        }
-        res.status(500).json({ error: 'Failed to upload payment proof.' });
-    }
-});
+// No POST /payment-proof here - uploading/reuploading/removing the payment
+// proof is only done from grfmxstatusupdate's JPMC Paying Patient page, not
+// this app. This portal is view/download-only for the payment proof
+// (see the GET route above).
 
 module.exports = router;

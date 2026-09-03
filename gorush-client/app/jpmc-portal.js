@@ -14,7 +14,6 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Text, TextInput, View, Image, ActivityIndicator, Platform, ScrollView, Modal, Pressable, Linking } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import * as ImagePicker from 'expo-image-picker';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
@@ -283,17 +282,16 @@ function StatusHistoryTimeline({ history, colors, scaleFont }) {
   );
 }
 
-// Payment-proof picture control - shared between the read-only table row
-// (canUpload=false) and the JPMC edit card (canUpload=true). Three states:
-// hidden entirely (no Paying Patient Total set), "No payment uploaded yet"
-// (an amount is set but nothing's been uploaded), or a "View Payment"
-// button that lazily fetches a short-lived signed URL and opens it in a
-// lightbox with a download/open action - the raw storage path never reaches
-// the client directly (private bucket).
-function PaymentProofControl({ order, canUpload, authHeader, onUploaded, colors, scaleFont, formStyles }) {
+// Payment-proof picture, view-only in this app - uploading/reuploading is
+// only done from grfmxstatusupdate's JPMC Paying Patient page, not here.
+// Three states: hidden entirely (no Paying Patient Total set), "No payment
+// uploaded yet" (an amount is set but nothing's been uploaded), or a "View
+// Payment" button that lazily fetches a short-lived signed URL and opens it
+// in a lightbox with a download/open action - the raw storage path never
+// reaches the client directly (private bucket).
+function PaymentProofControl({ order, authHeader, colors, scaleFont, formStyles }) {
   const [viewerUrl, setViewerUrl] = useState(null);
   const [loadingView, setLoadingView] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
   const amount = order.jpmcTotalAmount != null ? Number(order.jpmcTotalAmount) : 0;
@@ -309,31 +307,6 @@ function PaymentProofControl({ order, canUpload, authHeader, onUploaded, colors,
       setError(e.response?.data?.error || 'Failed to load payment proof.');
     } finally {
       setLoadingView(false);
-    }
-  };
-
-  const pickAndUpload = async () => {
-    if (Platform.OS !== 'web') {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.6 });
-    if (result.canceled || !result.assets?.[0]?.base64) return;
-    const asset = result.assets[0];
-    const mime = asset.mimeType || 'image/jpeg';
-    setUploading(true);
-    setError('');
-    try {
-      const res = await api.post(
-        `/api/jpmc/orders/${order.id}/payment-proof`,
-        { imageBase64: `data:${mime};base64,${asset.base64}` },
-        { headers: authHeader }
-      );
-      onUploaded(order.id, res.data);
-    } catch (e) {
-      setError(e.response?.data?.error || 'Upload failed.');
-    } finally {
-      setUploading(false);
     }
   };
 
@@ -354,16 +327,6 @@ function PaymentProofControl({ order, canUpload, authHeader, onUploaded, colors,
           </AnimatedPressable>
         ) : (
           <Text style={{ fontSize: scaleFont(13), color: colors.textMuted, fontStyle: 'italic' }}>No payment uploaded yet</Text>
-        )}
-        {canUpload && (
-          <AnimatedPressable
-            scaleTo={1.04}
-            onPress={pickAndUpload}
-            disabled={uploading}
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.subtleBackground, borderWidth: 1, borderColor: colors.border }}
-          >
-            {uploading ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>⬆️ {order.hasPaymentProof ? 'Reupload' : 'Upload'}</Text>}
-          </AnimatedPressable>
         )}
       </View>
       {error ? <Text style={[formStyles.fieldError, { marginTop: 4 }]}>{error}</Text> : null}
@@ -403,7 +366,7 @@ const ROW_ORDER_FIELDS = [
   { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
 ];
 
-function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, onUploaded, colors, isEven, scaleFont, formStyles }) {
+function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, colors, isEven, scaleFont, formStyles }) {
   const goRushBadge = goRushStatusBadgeColors(order.goRushStatus, colors);
   const jpmcBadge = jpmcStatusBadgeColors(order.jpmcPharmacyStatus, colors);
   return (
@@ -449,7 +412,7 @@ function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, onUploa
           <GroupLabel colors={colors} scaleFont={scaleFont}>🧾 JPMC Finance</GroupLabel>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10, marginBottom: 14 }}>
             <DetailField label="Paying Patient Total ($)" value={order.jpmcTotalAmount != null ? `$${order.jpmcTotalAmount}` : '—'} minWidth={130} colors={colors} scaleFont={scaleFont} />
-            <PaymentProofControl order={order} canUpload={false} authHeader={authHeader} onUploaded={onUploaded} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
+            <PaymentProofControl order={order} authHeader={authHeader} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
           </View>
 
           {/* Grouped apart from the two display groups above - reads as "the
@@ -474,7 +437,7 @@ function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, onUploa
   );
 }
 
-function OrderTable({ orders, onViewMore, onEdit, canEdit, authHeader, onUploaded, colors, scaleFont, formStyles }) {
+function OrderTable({ orders, onViewMore, onEdit, canEdit, authHeader, colors, scaleFont, formStyles }) {
   return (
     <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
       {orders.map((order, i) => (
@@ -485,7 +448,6 @@ function OrderTable({ orders, onViewMore, onEdit, canEdit, authHeader, onUploade
             onEdit={() => onEdit(order)}
             canEdit={canEdit}
             authHeader={authHeader}
-            onUploaded={onUploaded}
             colors={colors}
             isEven={i % 2 === 1}
             scaleFont={scaleFont}
@@ -647,7 +609,7 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
               Paying Patient Total ($)
             </Text>
             <TextInput
-              style={[formStyles.input, { width: 140, marginBottom: 14 }]}
+              style={[formStyles.input, { width: 140, marginBottom: 0 }]}
               placeholder="0.00"
               placeholderTextColor={colors.textMuted}
               value={String(totalAmount)}
@@ -655,7 +617,6 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
               editable={canEdit}
               keyboardType="numeric"
             />
-            <PaymentProofControl order={order} canUpload={canEdit} authHeader={authHeader} onUploaded={onSaved} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
           </View>
         </Section>
 
@@ -969,7 +930,6 @@ export default function JpmcPortal() {
           onEdit={setEditOrder}
           canEdit={canEdit}
           authHeader={authHeader}
-          onUploaded={handleSaved}
           colors={colors}
           scaleFont={scaleFont}
           formStyles={formStyles}
