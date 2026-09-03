@@ -3,10 +3,18 @@
 // (the latter for support) can both view and edit the JPMC Pharmacy + JPMC
 // Finance fields. Route access itself is gated globally by AdminGuard in
 // app/_layout.js - this page assumes it's already been let through.
+//
+// Each row splits into a GO RUSH side (left - order/delivery info, a "View
+// More" button opens the full read-only detail card) and a JPMC side (right
+// - JPMC Pharmacy/Finance fields, a separate "Edit" button opens the
+// JPMC-only edit card). The two are deliberately different modals: viewing
+// the order's own details and editing JPMC's fields are different tasks for
+// different moments, and splitting them keeps each card focused.
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Text, TextInput, View, ActivityIndicator, Platform, ScrollView, Modal, Pressable } from 'react-native';
+import { Text, TextInput, View, Image, ActivityIndicator, Platform, ScrollView, Modal, Pressable, Linking } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import * as ImagePicker from 'expo-image-picker';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
@@ -15,8 +23,8 @@ import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
 
 // This is a data-table page, not a form - the app's normal ~900px form
-// column reads as a cramped single lane of text for a 10-column table plus a
-// multi-section detail modal. Passed via PageScroll's `beforeContent` (see
+// column reads as a cramped single lane of text for a wide table plus
+// multi-section detail cards. Passed via PageScroll's `beforeContent` (see
 // lib/formPrimitives.js), which renders outside the capped formWrapper, so
 // only this page gets the wider column instead of changing the app-wide cap.
 // Capped high enough (not '100%') that it stops growing on an ultra-wide
@@ -78,13 +86,6 @@ function formatDMYTime(value) {
   return `${formatDMY(value)} ${formatTime12(value)}`;
 }
 
-function toDateOnly(value) {
-  if (!value) return '';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toISOString().slice(0, 10);
-}
-
 // Same pattern as admin.js's IsoDateField (not exported from there, so
 // reimplemented locally rather than reaching into that file).
 function DateField({ value, onChange, formStyles }) {
@@ -134,122 +135,42 @@ function formatAgingDays(order) {
   return `${days}d`;
 }
 
+// Shared palette across both status badges, so "the same kind of thing"
+// (done, dead, just-received, actively-in-progress) always reads as the
+// same color regardless of which status field it's on.
+const BADGE_GREEN = { bg: '#e6f4ea', fg: '#219653' };   // Completed
+const BADGE_ORANGE = { bg: '#fdf1e3', fg: '#e67e22' };  // just received, nothing done yet
+const BADGE_YELLOW = { bg: '#fff8e1', fg: '#f9a825' };  // waiting on payment/query
+function badgeInProgress(colors) {
+  return { bg: colors.primaryLight || '#e8f1f8', fg: colors.primary }; // actively moving
+}
+
 function goRushStatusBadgeColors(status, colors) {
   const s = (status || '').toLowerCase();
-  if (s === 'completed') return { bg: colors.primaryLight || '#e6f4ea', fg: colors.primary };
+  if (s === 'completed') return BADGE_GREEN;
   if (s === 'cancelled' || s === 'disposed') return { bg: colors.errorLight || '#fdecea', fg: colors.error };
-  if (s === 'out for delivery') return { bg: '#fdf1e3', fg: '#e67e22' };
-  if (s === 'at warehouse') return { bg: '#eee6fb', fg: '#7c4dff' };
-  return { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
+  if (s === 'info received') return BADGE_ORANGE;
+  // Queued for Warehouse / At Warehouse / Out for Delivery / Return to
+  // Warehouse / Return / Custom Clearing / On Hold / Self Collect.
+  return badgeInProgress(colors);
 }
 
 function jpmcStatusBadgeColors(status, colors) {
   const s = (status || 'new order').toLowerCase();
-  if (s === 'completed') return { bg: colors.primaryLight || '#e6f4ea', fg: colors.primary };
+  if (s === 'completed') return BADGE_GREEN;
   if (s === 'duplicate order' || s === 'cancelled order') return { bg: colors.errorLight || '#fdecea', fg: colors.error };
-  if (s === 'new order') return { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
-  return { bg: '#fdf1e3', fg: '#e67e22' }; // Entered / Pending Payment / Pending Query - still being worked
+  if (s === 'new order') return BADGE_ORANGE;
+  if (s === 'pending payment' || s === 'pending query') return BADGE_YELLOW;
+  return badgeInProgress(colors); // Entered
 }
 
-// The row's small colored pill, used for every quick-glance status/date at
-// the top of the row - same visual language as GO RUSH's badge so all 4
-// read as "the same kind of thing" at a glance.
+// The row's small colored pill, used for every quick-glance status/date -
+// same visual language everywhere so they all read as "the same kind of
+// thing" at a glance.
 function Badge({ label, value, bg, fg, scaleFont }) {
   return (
     <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: bg }}>
       <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: fg }}>{label}: {value || '—'}</Text>
-    </View>
-  );
-}
-
-// No fixed column widths, no horizontal ScrollView - each field is a
-// label-over-value chip (DetailField, defined above) that flex-wraps onto
-// as many lines as the row needs, so the whole list only ever scrolls
-// vertically regardless of how many fields or how narrow the screen is.
-// `minWidth` sets each chip's natural size before wrapping; `maxWidth` caps
-// it so a long name/address/remark wraps onto more lines instead of
-// stretching the row wide on a large screen.
-// Two groups so the row can visually separate "the order itself" from "what
-// JPMC has done with it" - order fields on the left, JPMC-owned fields on
-// the right, divided by a border rather than mixed into one long run.
-const ORDER_FIELDS = [
-  { key: 'dateTimeSubmission', label: 'Date/Time Submitted', minWidth: 130, format: (o) => formatDMYTime(o.dateTimeSubmission) },
-  { key: 'doTrackingNumber', label: 'Tracking No.', minWidth: 110, format: (o) => o.doTrackingNumber || '—' },
-  { key: 'jobMethod', label: 'Delivery Type', minWidth: 130, maxWidth: 180, format: (o) => o.jobMethod || '—' },
-  { key: 'receiverName', label: 'Name', minWidth: 140, maxWidth: 200, format: (o) => o.receiverName || '—' },
-  { key: 'patientNumber', label: 'Patient No.', minWidth: 100, format: (o) => o.patientNumber || '—' },
-  { key: 'receiverAddress', label: 'Address', minWidth: 200, maxWidth: 260, format: (o) => o.receiverAddress || '—' },
-  { key: 'receiverPhoneNumber', label: 'Main Phone No.', minWidth: 110, format: (o) => o.receiverPhoneNumber || '—' },
-  { key: 'additionalPhoneNumber', label: 'Additional Phone No.', minWidth: 110, format: (o) => o.additionalPhoneNumber || '—' },
-  { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
-  { key: 'remarks', label: 'Remarks', minWidth: 160, maxWidth: 220, format: (o) => o.remarks || '—' },
-];
-const JPMC_FIELDS = [
-  { key: 'jpmcPatientInformed', label: 'Patient Informed', minWidth: 100, format: (o) => o.jpmcPatientInformed || '—' },
-  { key: 'jpmcPharmacyRemarks', label: 'Remarks from Pharmacy', minWidth: 160, maxWidth: 220, format: (o) => o.jpmcPharmacyRemarks || '—' },
-  { key: 'jpmcTotalAmount', label: 'Total $', minWidth: 80, format: (o) => (o.jpmcTotalAmount != null ? `$${o.jpmcTotalAmount}` : '—') },
-  { key: 'jpmcFinanceDateReceived', label: 'Date Received', minWidth: 100, format: (o) => (o.jpmcFinanceDateReceived ? formatDMY(o.jpmcFinanceDateReceived) : '—') },
-];
-
-function OrderTableRow({ order, onView, canEdit, colors, isEven, scaleFont }) {
-  const goRushBadge = goRushStatusBadgeColors(order.goRushStatus, colors);
-  const jpmcBadge = jpmcStatusBadgeColors(order.jpmcPharmacyStatus, colors);
-  return (
-    <View style={{ padding: 14, backgroundColor: isEven ? colors.subtleBackground : colors.card }}>
-      {/* Order-identifying badges on the left, both statuses pinned to the
-          right - the Edit/View button lives further down, grouped with the
-          JPMC fields it actually opens/edits, not up here with the
-          order-level info. */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, marginBottom: 12 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <Badge label="Process Date" value={formatDMY(order.processDate)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
-          {isActiveGoRushStatus(order.goRushStatus) && (
-            <Badge label="Aging" value={formatAgingDays(order)} bg={colors.subtleBackground || colors.background} fg={colors.textSecondary} scaleFont={scaleFont} />
-          )}
-        </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 8 }}>
-          <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
-          <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
-        </View>
-      </View>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
-        <View style={{ flex: 3, minWidth: 260, flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 }}>
-          {ORDER_FIELDS.map((f) => (
-            <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} maxWidth={f.maxWidth} colors={colors} scaleFont={scaleFont} />
-          ))}
-        </View>
-        <View style={{ flex: 2, minWidth: 220, borderLeftWidth: 1, borderLeftColor: colors.border, paddingLeft: 20 }}>
-          <AnimatedPressable
-            scaleTo={1.05}
-            onPress={onView}
-            style={{
-              flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
-              paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, marginBottom: 10,
-              backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
-            }}
-          >
-            <Text style={{ fontSize: scaleFont(13) }}>{canEdit ? '✏️' : '👁️'}</Text>
-            <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>{canEdit ? 'Edit' : 'View'} JPMC Fields</Text>
-          </AnimatedPressable>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10 }}>
-            {JPMC_FIELDS.map((f) => (
-              <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} maxWidth={f.maxWidth} colors={colors} scaleFont={scaleFont} />
-            ))}
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function OrderTable({ orders, onSelect, canEdit, colors, scaleFont }) {
-  return (
-    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
-      {orders.map((order, i) => (
-        <View key={order.id} style={{ borderBottomWidth: i === orders.length - 1 ? 0 : 1, borderBottomColor: colors.border }}>
-          <OrderTableRow order={order} onView={() => onSelect(order)} canEdit={canEdit} colors={colors} isEven={i % 2 === 1} scaleFont={scaleFont} />
-        </View>
-      ))}
     </View>
   );
 }
@@ -282,8 +203,19 @@ function Section({ icon, title, children, colors, scaleFont, style }) {
   );
 }
 
-// One label/value pair within a Section - the small uppercase grey label over a
-// bold value, same convention as the reference tracking-search card's grid.
+// A lighter-weight version of Section's header, used inline within a table
+// row (JPMC Pharmacy / JPMC Finance) where a full bordered box per group
+// would be too heavy for something that's supposed to stay compact.
+function GroupLabel({ children, colors, scaleFont, style }) {
+  return (
+    <Text style={[{ fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 8 }, style]}>
+      {children}
+    </Text>
+  );
+}
+
+// One label/value pair - the small uppercase grey label over a bold value,
+// same convention as the reference tracking-search card's grid.
 function DetailField({ label, value, minWidth = 140, maxWidth = '100%', colors, scaleFont }) {
   return (
     // flexShrink + maxWidth stop a long value (a full address, a long name)
@@ -350,54 +282,225 @@ function StatusHistoryTimeline({ history, colors, scaleFont }) {
   );
 }
 
-// Full-detail card shown inside the modal when a row is tapped - both the
-// read-only context (submission info, address, remarks from patient) and the
-// 5 JPMC-owned editable fields, in one place.
-function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles, colors, scaleFont }) {
-  const [status, setStatus] = useState(order.jpmcPharmacyStatus || 'New Order');
-  const [patientInformed, setPatientInformed] = useState(order.jpmcPatientInformed || '');
-  const [remarks, setRemarks] = useState(order.jpmcPharmacyRemarks || '');
-  const [totalAmount, setTotalAmount] = useState(order.jpmcTotalAmount || '');
-  const [dateReceived, setDateReceived] = useState(toDateOnly(order.jpmcFinanceDateReceived));
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+// Payment-proof picture control - shared between the read-only table row
+// (canUpload=false) and the JPMC edit card (canUpload=true). Three states:
+// hidden entirely (no Paying Patient Total set), "No payment uploaded yet"
+// (an amount is set but nothing's been uploaded), or a "View Payment"
+// button that lazily fetches a short-lived signed URL and opens it in a
+// lightbox with a download/open action - the raw storage path never reaches
+// the client directly (private bucket).
+function PaymentProofControl({ order, canUpload, authHeader, onUploaded, colors, scaleFont, formStyles }) {
+  const [viewerUrl, setViewerUrl] = useState(null);
+  const [loadingView, setLoadingView] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
 
-  const dirty = (
-    status !== (order.jpmcPharmacyStatus || 'New Order')
-    || patientInformed !== (order.jpmcPatientInformed || '')
-    || remarks !== (order.jpmcPharmacyRemarks || '')
-    || totalAmount !== (order.jpmcTotalAmount || '')
-    || dateReceived !== toDateOnly(order.jpmcFinanceDateReceived)
-  );
+  const amount = order.jpmcTotalAmount != null ? Number(order.jpmcTotalAmount) : 0;
+  if (!(amount > 0)) return null;
 
-  const save = async () => {
-    if (totalAmount && !Number.isFinite(Number(totalAmount))) {
-      setError('Total $ must be a number.');
-      return;
-    }
-    setSaving(true);
+  const openViewer = async () => {
+    setLoadingView(true);
     setError('');
     try {
-      const res = await api.patch(`/api/jpmc/orders/${order.id}`, {
-        jpmcPharmacyStatus: status,
-        jpmcPatientInformed: patientInformed,
-        jpmcPharmacyRemarks: remarks,
-        jpmcTotalAmount: totalAmount === '' ? null : Number(totalAmount),
-        jpmcFinanceDateReceived: dateReceived || null,
-      }, { headers: authHeader });
-      onSaved(order.id, res.data);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 1500);
+      const res = await api.get(`/api/jpmc/orders/${order.id}/payment-proof`, { headers: authHeader });
+      setViewerUrl(res.data.url);
     } catch (e) {
-      setError(e.response?.data?.error || 'Something went wrong.');
+      setError(e.response?.data?.error || 'Failed to load payment proof.');
     } finally {
-      setSaving(false);
+      setLoadingView(false);
     }
   };
 
+  const pickAndUpload = async () => {
+    if (Platform.OS !== 'web') {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.6 });
+    if (result.canceled || !result.assets?.[0]?.base64) return;
+    const asset = result.assets[0];
+    const mime = asset.mimeType || 'image/jpeg';
+    setUploading(true);
+    setError('');
+    try {
+      const res = await api.post(
+        `/api/jpmc/orders/${order.id}/payment-proof`,
+        { imageBase64: `data:${mime};base64,${asset.base64}` },
+        { headers: authHeader }
+      );
+      onUploaded(order.id, res.data);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Upload failed.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <View>
+      <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>
+        Payment Proof
+      </Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        {order.hasPaymentProof ? (
+          <AnimatedPressable
+            scaleTo={1.04}
+            onPress={openViewer}
+            disabled={loadingView}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }}
+          >
+            {loadingView ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>🖼️ View Payment</Text>}
+          </AnimatedPressable>
+        ) : (
+          <Text style={{ fontSize: scaleFont(13), color: colors.textMuted, fontStyle: 'italic' }}>No payment uploaded yet</Text>
+        )}
+        {canUpload && (
+          <AnimatedPressable
+            scaleTo={1.04}
+            onPress={pickAndUpload}
+            disabled={uploading}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.subtleBackground, borderWidth: 1, borderColor: colors.border }}
+          >
+            {uploading ? <ActivityIndicator size="small" color={colors.primary} /> : <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>⬆️ {order.hasPaymentProof ? 'Reupload' : 'Upload'}</Text>}
+          </AnimatedPressable>
+        )}
+      </View>
+      {error ? <Text style={[formStyles.fieldError, { marginTop: 4 }]}>{error}</Text> : null}
+
+      <Modal visible={!!viewerUrl} transparent animationType="fade" onRequestClose={() => setViewerUrl(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'center', alignItems: 'center', padding: 16 }} onPress={() => setViewerUrl(null)}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, width: '100%', maxWidth: 560 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <Text style={{ fontSize: scaleFont(15), fontWeight: '700', color: colors.textPrimary }}>Payment Proof</Text>
+              <AnimatedPressable scaleTo={1.1} onPress={() => setViewerUrl(null)} style={{ padding: 4 }}>
+                <Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text>
+              </AnimatedPressable>
+            </View>
+            {viewerUrl && <Image source={{ uri: viewerUrl }} style={{ width: '100%', height: 360, borderRadius: 8, backgroundColor: colors.subtleBackground }} resizeMode="contain" />}
+            <AnimatedPressable
+              scaleTo={1.03}
+              onPress={() => viewerUrl && Linking.openURL(viewerUrl)}
+              style={[formStyles.button, { alignSelf: 'flex-start', paddingHorizontal: 20, marginTop: 12 }]}
+            >
+              <Text style={formStyles.buttonText}>Download</Text>
+            </AnimatedPressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </View>
+  );
+}
+
+// Fields shown directly on the GO RUSH (left) side of the row - the rest
+// (address, phone numbers, tracking no., remarks) live in the "View More"
+// detail card instead of crowding the row.
+const ROW_ORDER_FIELDS = [
+  { key: 'dateTimeSubmission', label: 'Date/Time Submitted', minWidth: 130, format: (o) => formatDMYTime(o.dateTimeSubmission) },
+  { key: 'jobMethod', label: 'Delivery Type', minWidth: 130, maxWidth: 180, format: (o) => o.jobMethod || '—' },
+  { key: 'receiverName', label: 'Name', minWidth: 140, maxWidth: 200, format: (o) => o.receiverName || '—' },
+  { key: 'patientNumber', label: 'Patient No.', minWidth: 100, format: (o) => o.patientNumber || '—' },
+  { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
+];
+
+function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, onUploaded, colors, isEven, scaleFont, formStyles }) {
   const goRushBadge = goRushStatusBadgeColors(order.goRushStatus, colors);
   const jpmcBadge = jpmcStatusBadgeColors(order.jpmcPharmacyStatus, colors);
+  return (
+    <View style={{ padding: 14, backgroundColor: isEven ? colors.subtleBackground : colors.card }}>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>
+        {/* GO RUSH side */}
+        <View style={{ flex: 3, minWidth: 260 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+            <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
+          </View>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10, marginBottom: 12 }}>
+            {ROW_ORDER_FIELDS.map((f) => (
+              <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} maxWidth={f.maxWidth} colors={colors} scaleFont={scaleFont} />
+            ))}
+          </View>
+          <AnimatedPressable
+            scaleTo={1.05}
+            onPress={onViewMore}
+            style={{
+              flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
+              paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
+              backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+            }}
+          >
+            <Text style={{ fontSize: scaleFont(13) }}>👁️</Text>
+            <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>View More</Text>
+          </AnimatedPressable>
+        </View>
+
+        {/* JPMC side */}
+        <View style={{ flex: 2, minWidth: 240, borderLeftWidth: 1, borderLeftColor: colors.border, paddingLeft: 20 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
+          </View>
+
+          <GroupLabel colors={colors} scaleFont={scaleFont}>💊 JPMC Pharmacy</GroupLabel>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10, marginBottom: 14 }}>
+            <DetailField label="Patient Informed" value={order.jpmcPatientInformed || '—'} minWidth={100} colors={colors} scaleFont={scaleFont} />
+            <DetailField label="Remarks from Pharmacy" value={order.jpmcPharmacyRemarks || '—'} minWidth={160} maxWidth={220} colors={colors} scaleFont={scaleFont} />
+          </View>
+
+          <GroupLabel colors={colors} scaleFont={scaleFont}>🧾 JPMC Finance</GroupLabel>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10, marginBottom: 14 }}>
+            <DetailField label="Paying Patient Total ($)" value={order.jpmcTotalAmount != null ? `$${order.jpmcTotalAmount}` : '—'} minWidth={130} colors={colors} scaleFont={scaleFont} />
+            <PaymentProofControl order={order} canUpload={false} authHeader={authHeader} onUploaded={onUploaded} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
+          </View>
+
+          {/* Grouped apart from the two display groups above - reads as "the
+              action that edits this section", not part of what it's editing. */}
+          <View style={{ borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 }}>
+            <AnimatedPressable
+              scaleTo={1.05}
+              onPress={onEdit}
+              style={{
+                flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 4,
+                paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8,
+                backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border,
+              }}
+            >
+              <Text style={{ fontSize: scaleFont(13) }}>{canEdit ? '✏️' : '👁️'}</Text>
+              <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary }}>{canEdit ? 'Edit' : 'View'} JPMC Fields</Text>
+            </AnimatedPressable>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+function OrderTable({ orders, onViewMore, onEdit, canEdit, authHeader, onUploaded, colors, scaleFont, formStyles }) {
+  return (
+    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 12, overflow: 'hidden', marginBottom: 16 }}>
+      {orders.map((order, i) => (
+        <View key={order.id} style={{ borderBottomWidth: i === orders.length - 1 ? 0 : 1, borderBottomColor: colors.border }}>
+          <OrderTableRow
+            order={order}
+            onViewMore={() => onViewMore(order)}
+            onEdit={() => onEdit(order)}
+            canEdit={canEdit}
+            authHeader={authHeader}
+            onUploaded={onUploaded}
+            colors={colors}
+            isEven={i % 2 === 1}
+            scaleFont={scaleFont}
+            formStyles={formStyles}
+          />
+        </View>
+      ))}
+    </View>
+  );
+}
+
+// "View More" - the GO RUSH side's full read-only detail card: everything
+// about the order itself plus its GO RUSH status history. No editable
+// fields at all - editing JPMC's own fields is a separate card (JpmcEditCard
+// below), opened from a separate button.
+function GoRushDetailCard({ order, onClose, colors, scaleFont }) {
+  const goRushBadge = goRushStatusBadgeColors(order.goRushStatus, colors);
   const neutralBadge = { bg: colors.subtleBackground || colors.background, fg: colors.textSecondary };
 
   return (
@@ -410,19 +513,98 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
             {isActiveGoRushStatus(order.goRushStatus) && (
               <Badge label="Aging" value={formatAgingDays(order)} bg={neutralBadge.bg} fg={neutralBadge.fg} scaleFont={scaleFont} />
             )}
+            <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
           </View>
         </View>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
-          <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
-          <AnimatedPressable scaleTo={1.1} onPress={onClose} style={{ padding: 4 }}>
-            <Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text>
-          </AnimatedPressable>
-        </View>
+        <AnimatedPressable scaleTo={1.1} onPress={onClose} style={{ padding: 4 }}>
+          <Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text>
+        </AnimatedPressable>
       </View>
-      {/* Order/customer/remarks info is already fully visible in the table row
-          itself now - this card's only job is editing the JPMC-owned fields,
-          so it stays focused on just that instead of repeating everything. */}
+      <ScrollView>
+        <Section icon="📦" title="Order Info" colors={colors} scaleFont={scaleFont}>
+          <DetailField label="Date/Time Submitted" value={formatDMYTime(order.dateTimeSubmission)} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Tracking No." value={order.doTrackingNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Delivery Type" value={order.jobMethod} colors={colors} scaleFont={scaleFont} />
+        </Section>
+
+        <Section icon="👤" title="Customer Info" colors={colors} scaleFont={scaleFont}>
+          <DetailField label="Name" value={order.receiverName} minWidth={180} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Patient No." value={order.patientNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Location" value={order.appointmentPlace} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Main Phone No." value={order.receiverPhoneNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Additional Phone No." value={order.additionalPhoneNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Address" value={order.receiverAddress} minWidth={260} colors={colors} scaleFont={scaleFont} />
+        </Section>
+
+        <Section icon="💬" title="Remarks" colors={colors} scaleFont={scaleFont}>
+          <DetailField label="Customer Remarks" value={order.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
+        </Section>
+
+        <StatusHistoryTimeline history={order.goRushStatusHistory} colors={colors} scaleFont={scaleFont} />
+      </ScrollView>
+    </View>
+  );
+}
+
+// "Edit" - the JPMC side's edit card: just the 5 JPMC-owned fields (Status,
+// Patient Informed, Remarks from Pharmacy, Paying Patient Total, and the
+// payment-proof upload/reupload), nothing about the order itself - that's
+// already fully visible in the row and the View More card.
+function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles, colors, scaleFont }) {
+  const [status, setStatus] = useState(order.jpmcPharmacyStatus || 'New Order');
+  const [patientInformed, setPatientInformed] = useState(order.jpmcPatientInformed || '');
+  const [remarks, setRemarks] = useState(order.jpmcPharmacyRemarks || '');
+  const [totalAmount, setTotalAmount] = useState(order.jpmcTotalAmount || '');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  const dirty = (
+    status !== (order.jpmcPharmacyStatus || 'New Order')
+    || patientInformed !== (order.jpmcPatientInformed || '')
+    || remarks !== (order.jpmcPharmacyRemarks || '')
+    || totalAmount !== (order.jpmcTotalAmount || '')
+  );
+
+  const save = async () => {
+    if (totalAmount && !Number.isFinite(Number(totalAmount))) {
+      setError('Paying Patient Total must be a number.');
+      return;
+    }
+    setSaving(true);
+    setError('');
+    try {
+      const res = await api.patch(`/api/jpmc/orders/${order.id}`, {
+        jpmcPharmacyStatus: status,
+        jpmcPatientInformed: patientInformed,
+        jpmcPharmacyRemarks: remarks,
+        jpmcTotalAmount: totalAmount === '' ? null : Number(totalAmount),
+      }, { headers: authHeader });
+      onSaved(order.id, res.data);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 1500);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Something went wrong.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const jpmcBadge = jpmcStatusBadgeColors(order.jpmcPharmacyStatus, colors);
+
+  return (
+    <View style={{ maxHeight: '100%' }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{order.doTrackingNumber || 'No tracking yet'}</Text>
+          <View style={{ alignSelf: 'flex-start', marginTop: 8 }}>
+            <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
+          </View>
+        </View>
+        <AnimatedPressable scaleTo={1.1} onPress={onClose} style={{ padding: 4 }}>
+          <Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text>
+        </AnimatedPressable>
+      </View>
       <ScrollView>
         <Section icon="💊" title="JPMC Pharmacy" colors={colors} scaleFont={scaleFont}>
           <View style={{ width: '100%', flexDirection: 'row', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
@@ -439,7 +621,7 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
             </View>
           </View>
           <TextInput
-            style={[formStyles.input, { width: '100%', marginBottom: 10 }]}
+            style={[formStyles.input, { width: '100%', marginBottom: 0 }]}
             placeholder="Remarks from Pharmacy"
             placeholderTextColor={colors.textMuted}
             value={remarks}
@@ -447,31 +629,25 @@ function OrderDetail({ order, canEdit, authHeader, onSaved, onClose, formStyles,
             editable={canEdit}
             multiline
           />
-          <TextInput
-            style={[formStyles.input, { width: 120, marginBottom: 0 }]}
-            placeholder="Total $"
-            placeholderTextColor={colors.textMuted}
-            value={String(totalAmount)}
-            onChangeText={setTotalAmount}
-            editable={canEdit}
-            keyboardType="numeric"
-          />
         </Section>
 
         <Section icon="🧾" title="JPMC Finance" colors={colors} scaleFont={scaleFont}>
-          <View>
+          <View style={{ width: '100%' }}>
             <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 6 }}>
-              Date Received
+              Paying Patient Total ($)
             </Text>
-            {canEdit ? (
-              <DateField value={dateReceived} onChange={setDateReceived} formStyles={formStyles} />
-            ) : (
-              <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary }}>{dateReceived ? formatDMY(dateReceived) : '—'}</Text>
-            )}
+            <TextInput
+              style={[formStyles.input, { width: 140, marginBottom: 14 }]}
+              placeholder="0.00"
+              placeholderTextColor={colors.textMuted}
+              value={String(totalAmount)}
+              onChangeText={setTotalAmount}
+              editable={canEdit}
+              keyboardType="numeric"
+            />
+            <PaymentProofControl order={order} canUpload={canEdit} authHeader={authHeader} onUploaded={onSaved} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
           </View>
         </Section>
-
-        <StatusHistoryTimeline history={order.goRushStatusHistory} colors={colors} scaleFont={scaleFont} />
 
         {error ? <Text style={formStyles.fieldError}>{error}</Text> : null}
         {canEdit && (
@@ -580,11 +756,13 @@ export default function JpmcPortal() {
   const [viewMode, setViewMode] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
-  // Set either from tapping a table row (the matching object from `data.orders`)
-  // or from the tracking-number lookup below (a standalone fetch, independent
-  // of whatever tab/window is currently selected) - so it holds the full order
-  // object directly rather than just an id to look up.
-  const [selectedOrder, setSelectedOrder] = useState(null);
+  // Two separate modal states - View More (GO RUSH, read-only) and Edit
+  // (JPMC fields) are different cards now, opened by different buttons.
+  // Each holds the full order object directly (not just an id to look up),
+  // set either from a table row or from the tracking-number lookup below
+  // (a standalone fetch, independent of whatever tab/window is selected).
+  const [viewOrder, setViewOrder] = useState(null);
+  const [editOrder, setEditOrder] = useState(null);
   const [trackingQuery, setTrackingQuery] = useState('');
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [trackingError, setTrackingError] = useState('');
@@ -626,14 +804,15 @@ export default function JpmcPortal() {
 
   const handleSaved = (id, updatedOrder) => {
     setData((prev) => (prev ? { ...prev, orders: prev.orders.map((o) => (o.id === id ? updatedOrder : o)) } : prev));
-    // Keep the open modal in sync too - it may be showing a tracking-lookup
-    // result that isn't part of `data.orders` at all.
-    setSelectedOrder((prev) => (prev && prev.id === id ? updatedOrder : prev));
+    // Keep whichever modal is open in sync too - it may be showing a
+    // tracking-lookup result that isn't part of `data.orders` at all.
+    setViewOrder((prev) => (prev && prev.id === id ? updatedOrder : prev));
+    setEditOrder((prev) => (prev && prev.id === id ? updatedOrder : prev));
   };
 
   // Quick tracking-number lookup (same idea as gorushfmxupdate's dashboard search) -
   // independent of whatever tab/window/page is currently selected, so staff can jump
-  // straight to one order's card without hunting for it in the table.
+  // straight to editing one order without hunting for it in the table.
   const handleTrackingLookup = async () => {
     const query = trackingQuery.trim();
     if (!query) return;
@@ -643,7 +822,7 @@ export default function JpmcPortal() {
       const res = await api.get('/api/jpmc/orders', { headers: authHeader, params: { view: 'all', search: query, limit: 5 } });
       const match = res.data.orders.find((o) => (o.doTrackingNumber || '').toLowerCase() === query.toLowerCase()) || res.data.orders[0];
       if (match) {
-        setSelectedOrder(match);
+        setEditOrder(match);
       } else {
         setTrackingError(`No JPMC order found for "${query}".`);
       }
@@ -666,7 +845,7 @@ export default function JpmcPortal() {
       <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{subtitle}</Text>
 
       {/* Same idea as gorushfmxupdate's dashboard tracking search - a direct lookup that
-          pops the order straight into the detail card, bypassing whatever tab/window/page
+          pops the order straight into the edit card, bypassing whatever tab/window/page
           is currently selected in the table below. */}
       <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 16 }}>
         <Text style={captionStyle}>Search Tracking Number</Text>
@@ -774,7 +953,17 @@ export default function JpmcPortal() {
       )}
 
       {!loading && !error && data?.orders.length > 0 && (
-        <OrderTable orders={data.orders} onSelect={setSelectedOrder} canEdit={canEdit} colors={colors} scaleFont={scaleFont} />
+        <OrderTable
+          orders={data.orders}
+          onViewMore={setViewOrder}
+          onEdit={setEditOrder}
+          canEdit={canEdit}
+          authHeader={authHeader}
+          onUploaded={handleSaved}
+          colors={colors}
+          scaleFont={scaleFont}
+          formStyles={formStyles}
+        />
       )}
 
       {!loading && !error && viewMode === 'all' && data && data.totalPages > 1 && (
@@ -794,22 +983,36 @@ export default function JpmcPortal() {
     <>
       <PageScroll title="JPMC Pharmacy Orders" beforeContent={pageContent} />
 
-      <Modal visible={!!selectedOrder} transparent animationType="fade" onRequestClose={() => setSelectedOrder(null)}>
+      <Modal visible={!!viewOrder} transparent animationType="fade" onRequestClose={() => setViewOrder(null)}>
         <Pressable
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 }}
-          onPress={() => setSelectedOrder(null)}
+          onPress={() => setViewOrder(null)}
         >
           <Pressable
             onPress={(e) => e.stopPropagation()}
-            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 960, maxHeight: '92%' }}
+            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 800, maxHeight: '92%' }}
           >
-            {selectedOrder && (
-              <OrderDetail
-                order={selectedOrder}
+            {viewOrder && <GoRushDetailCard order={viewOrder} onClose={() => setViewOrder(null)} colors={colors} scaleFont={scaleFont} />}
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={!!editOrder} transparent animationType="fade" onRequestClose={() => setEditOrder(null)}>
+        <Pressable
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 }}
+          onPress={() => setEditOrder(null)}
+        >
+          <Pressable
+            onPress={(e) => e.stopPropagation()}
+            style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 640, maxHeight: '92%' }}
+          >
+            {editOrder && (
+              <JpmcEditCard
+                order={editOrder}
                 canEdit={canEdit}
                 authHeader={authHeader}
                 onSaved={handleSaved}
-                onClose={() => setSelectedOrder(null)}
+                onClose={() => setEditOrder(null)}
                 formStyles={formStyles}
                 colors={colors}
                 scaleFont={scaleFont}

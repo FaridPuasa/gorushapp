@@ -145,6 +145,7 @@ model Order {
   jpmcPharmacyRemarks     String?   @map("jpmc_pharmacy_remarks")
   jpmcTotalAmount         Decimal?  @map("jpmc_total_amount") @db.Decimal(12, 2)
   jpmcFinanceDateReceived DateTime? @map("jpmc_finance_date_received")
+  jpmcPaymentProofPath    String?   @map("jpmc_payment_proof_path")
   jpmcFieldsUpdatedBy     String?   @map("jpmc_fields_updated_by")
   jpmcFieldsUpdatedAt     DateTime? @map("jpmc_fields_updated_at")
 
