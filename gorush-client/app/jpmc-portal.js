@@ -33,6 +33,7 @@ const WIDE_MAX_WIDTH = 1800;
 
 const STATUS_OPTIONS = ['New Order', 'Entered', 'Pending Payment', 'Pending Query', 'Completed', 'Duplicate Order', 'Cancelled Order'];
 const PATIENT_INFORMED_OPTIONS = ['Yes', 'No'];
+const FRIDGE_ITEM_OPTIONS = ['No', 'Yes'];
 const SEARCH_DEBOUNCE_MS = 400;
 // "Current window" removed - staff triage across every window by default now
 // (see the "In Process" tab below), so "All time" is the default/primary
@@ -440,6 +441,7 @@ function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, onUploa
 
           <GroupLabel colors={colors} scaleFont={scaleFont}>💊 JPMC Pharmacy</GroupLabel>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10, marginBottom: 14 }}>
+            <DetailField label="Fridge Item" value={order.jpmcFridgeItem || 'No'} minWidth={90} colors={colors} scaleFont={scaleFont} />
             <DetailField label="Patient Informed" value={order.jpmcPatientInformed || '—'} minWidth={100} colors={colors} scaleFont={scaleFont} />
             <DetailField label="Remarks from Pharmacy" value={order.jpmcPharmacyRemarks || '—'} minWidth={160} maxWidth={220} colors={colors} scaleFont={scaleFont} />
           </View>
@@ -552,6 +554,7 @@ function GoRushDetailCard({ order, onClose, colors, scaleFont }) {
 // already fully visible in the row and the View More card.
 function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles, colors, scaleFont }) {
   const [status, setStatus] = useState(order.jpmcPharmacyStatus || 'New Order');
+  const [fridgeItem, setFridgeItem] = useState(order.jpmcFridgeItem || 'No');
   const [patientInformed, setPatientInformed] = useState(order.jpmcPatientInformed || '');
   const [remarks, setRemarks] = useState(order.jpmcPharmacyRemarks || '');
   const [totalAmount, setTotalAmount] = useState(order.jpmcTotalAmount || '');
@@ -561,6 +564,7 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
 
   const dirty = (
     status !== (order.jpmcPharmacyStatus || 'New Order')
+    || fridgeItem !== (order.jpmcFridgeItem || 'No')
     || patientInformed !== (order.jpmcPatientInformed || '')
     || remarks !== (order.jpmcPharmacyRemarks || '')
     || totalAmount !== (order.jpmcTotalAmount || '')
@@ -576,6 +580,7 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
     try {
       const res = await api.patch(`/api/jpmc/orders/${order.id}`, {
         jpmcPharmacyStatus: status,
+        jpmcFridgeItem: fridgeItem,
         jpmcPatientInformed: patientInformed,
         jpmcPharmacyRemarks: remarks,
         jpmcTotalAmount: totalAmount === '' ? null : Number(totalAmount),
@@ -611,6 +616,11 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
             <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 160 }]}>
               <Picker enabled={canEdit} style={formStyles.pickerControl} selectedValue={status} onValueChange={setStatus}>
                 {STATUS_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
+              </Picker>
+            </View>
+            <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 120 }]}>
+              <Picker enabled={canEdit} style={formStyles.pickerControl} selectedValue={fridgeItem} onValueChange={setFridgeItem}>
+                {FRIDGE_ITEM_OPTIONS.map((opt) => <Picker.Item key={opt} label={`Fridge Item: ${opt}`} value={opt} />)}
               </Picker>
             </View>
             <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 140 }]}>

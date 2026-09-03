@@ -22,6 +22,7 @@ const router = express.Router();
 
 const EDITABLE_FIELDS = [
     'jpmcPharmacyStatus',
+    'jpmcFridgeItem',
     'jpmcPatientInformed',
     'jpmcPharmacyRemarks',
     'jpmcTotalAmount',
@@ -50,6 +51,7 @@ function toApiShape(order, holidayDates) {
         totalPrice: order.totalPrice != null ? order.totalPrice.toString() : null,
         remarks: order.remarks,
         jpmcPharmacyStatus: order.jpmcPharmacyStatus,
+        jpmcFridgeItem: order.jpmcFridgeItem,
         jpmcPatientInformed: order.jpmcPatientInformed,
         jpmcPharmacyRemarks: order.jpmcPharmacyRemarks,
         jpmcTotalAmount: order.jpmcTotalAmount != null ? order.jpmcTotalAmount.toString() : null,

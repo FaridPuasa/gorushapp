@@ -141,6 +141,7 @@ model Order {
   // read by gorush-client's /jpmc-portal. See grfmxstatusupdate's
   // schema.prisma (source of truth) for the authoritative column definitions.
   jpmcPharmacyStatus      String?   @map("jpmc_pharmacy_status")
+  jpmcFridgeItem          String?   @map("jpmc_fridge_item")
   jpmcPatientInformed     String?   @map("jpmc_patient_informed")
   jpmcPharmacyRemarks     String?   @map("jpmc_pharmacy_remarks")
   jpmcTotalAmount         Decimal?  @map("jpmc_total_amount") @db.Decimal(12, 2)
