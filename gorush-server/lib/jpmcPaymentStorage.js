@@ -9,7 +9,21 @@ const { createClient } = require('@supabase/supabase-js');
 const BUCKET = 'jpmc-payment-proofs';
 const SIGNED_URL_TTL_SECONDS = 60 * 10; // 10 minutes - long enough to view/download, not a standing link
 
-const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+// Lazy, not created at module load - this file is required eagerly by
+// routes/jpmc.js, so a missing/misconfigured SUPABASE_URL or
+// SUPABASE_SERVICE_ROLE_KEY (createClient throws synchronously on either)
+// would otherwise crash the entire server on boot, not just this feature -
+// confirmed the hard way: it took down "/" and every other route too.
+let supabase = null;
+function getSupabaseClient() {
+    if (!supabase) {
+        if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+            throw new Error('SUPABASE_URL/SUPABASE_SERVICE_ROLE_KEY are not configured - payment proof upload/view is unavailable.');
+        }
+        supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    }
+    return supabase;
+}
 
 // Path convention: <orderId>/<timestamp>.<ext> - timestamped so a reupload
 // doesn't collide with (or require deleting) the previous file; only the
@@ -40,7 +54,7 @@ function parseDataUri(dataUri) {
 async function uploadPaymentProof(orderId, dataUri) {
     const { mimeType, buffer } = parseDataUri(dataUri);
     const path = `${orderId}/${Date.now()}.${extFromMimeType(mimeType)}`;
-    const { error } = await supabase.storage.from(BUCKET).upload(path, buffer, {
+    const { error } = await getSupabaseClient().storage.from(BUCKET).upload(path, buffer, {
         contentType: mimeType,
         upsert: false,
     });
@@ -49,7 +63,7 @@ async function uploadPaymentProof(orderId, dataUri) {
 }
 
 async function getPaymentProofSignedUrl(path) {
-    const { data, error } = await supabase.storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+    const { data, error } = await getSupabaseClient().storage.from(BUCKET).createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
     if (error) throw error;
     return data.signedUrl;
 }
