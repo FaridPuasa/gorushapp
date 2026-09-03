@@ -40,6 +40,15 @@ export function ThemeProvider({ children }) {
   // covered by our `color` style — on web the actual <input>/<textarea> placeholder is
   // styled via CSS `::placeholder`, so inject/update one global rule here rather than
   // threading placeholderTextColor through every TextInput call site in the app.
+  //
+  // Also covers every @react-native-picker/picker instance (District, country codes,
+  // JPMC Status, etc. - it renders a real <select>/<option> on web, see Picker.web.js) -
+  // the `document.documentElement.style.colorScheme = mode` above is the standard fix for
+  // native dropdown popups, but it's not reliably honored by every browser on its own
+  // (confirmed still illegible in production). Firefox in particular DOES respect explicit
+  // background-color/color on <option>, which Chromium/Edge mostly ignore in favor of
+  // color-scheme - so both are set here as a belt-and-suspenders fix rather than relying on
+  // just one mechanism.
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof document === 'undefined') return;
     let styleEl = document.getElementById('theme-placeholder-color');
@@ -48,8 +57,15 @@ export function ThemeProvider({ children }) {
       styleEl.id = 'theme-placeholder-color';
       document.head.appendChild(styleEl);
     }
-    styleEl.textContent = `::placeholder { color: ${colors.textMuted} !important; opacity: 1 !important; }`;
-  }, [colors]);
+    styleEl.textContent = `
+      ::placeholder { color: ${colors.textMuted} !important; opacity: 1 !important; }
+      select { color-scheme: ${mode}; }
+      select option {
+        background-color: ${colors.inputBackground} !important;
+        color: ${colors.textPrimary} !important;
+      }
+    `;
+  }, [colors, mode]);
 
   return (
     <ThemeContext.Provider value={{ mode, colors, setMode, toggleMode }}>
