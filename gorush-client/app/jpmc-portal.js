@@ -137,19 +137,31 @@ function formatAgingDays(order) {
 
 // Shared palette across both status badges, so "the same kind of thing"
 // (done, dead, just-received, actively-in-progress) always reads as the
-// same color regardless of which status field it's on.
-const BADGE_GREEN = { bg: '#e6f4ea', fg: '#219653' };   // Completed
-const BADGE_ORANGE = { bg: '#fdf1e3', fg: '#e67e22' };  // just received, nothing done yet
-const BADGE_YELLOW = { bg: '#fff8e1', fg: '#f9a825' };  // waiting on payment/query
+// same color regardless of which status field it's on. Pulled from the
+// active theme (lib/theme.js) rather than fixed hex, since a light pastel
+// background hardcoded here looked like a mismatched light-mode leftover
+// sitting on a dark card in dark mode.
+function badgeGreen(colors) {
+  return { bg: colors.successLight, fg: colors.success }; // Completed
+}
+function badgeOrange(colors) {
+  return { bg: colors.tertiaryLight, fg: colors.tertiary }; // just received, nothing done yet
+}
+function badgeYellow(colors) {
+  return { bg: colors.warningLight, fg: colors.warning }; // waiting on payment/query
+}
+function badgeRed(colors) {
+  return { bg: colors.errorLight, fg: colors.error };
+}
 function badgeInProgress(colors) {
-  return { bg: colors.primaryLight || '#e8f1f8', fg: colors.primary }; // actively moving
+  return { bg: colors.primaryLight, fg: colors.primary }; // actively moving
 }
 
 function goRushStatusBadgeColors(status, colors) {
   const s = (status || '').toLowerCase();
-  if (s === 'completed') return BADGE_GREEN;
-  if (s === 'cancelled' || s === 'disposed') return { bg: colors.errorLight || '#fdecea', fg: colors.error };
-  if (s === 'info received') return BADGE_ORANGE;
+  if (s === 'completed') return badgeGreen(colors);
+  if (s === 'cancelled' || s === 'disposed') return badgeRed(colors);
+  if (s === 'info received') return badgeOrange(colors);
   // Queued for Warehouse / At Warehouse / Out for Delivery / Return to
   // Warehouse / Return / Custom Clearing / On Hold / Self Collect.
   return badgeInProgress(colors);
@@ -157,10 +169,10 @@ function goRushStatusBadgeColors(status, colors) {
 
 function jpmcStatusBadgeColors(status, colors) {
   const s = (status || 'new order').toLowerCase();
-  if (s === 'completed') return BADGE_GREEN;
-  if (s === 'duplicate order' || s === 'cancelled order') return { bg: colors.errorLight || '#fdecea', fg: colors.error };
-  if (s === 'new order') return BADGE_ORANGE;
-  if (s === 'pending payment' || s === 'pending query') return BADGE_YELLOW;
+  if (s === 'completed') return badgeGreen(colors);
+  if (s === 'duplicate order' || s === 'cancelled order') return badgeRed(colors);
+  if (s === 'new order') return badgeOrange(colors);
+  if (s === 'pending payment' || s === 'pending query') return badgeYellow(colors);
   return badgeInProgress(colors); // Entered
 }
 
