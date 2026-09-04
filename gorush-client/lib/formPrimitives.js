@@ -10,7 +10,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { useLanguage } from '../context/LanguageContext';
 import Footer from '../components/Footer';
-import { AnimatedPressable, FadeIn, FadeInUp, RevealProvider, useRevealRegistry } from './animations';
+import { AnimatedPressable, FadeIn, FadeInUp, RevealProvider, useRevealOnResize, useRevealRegistry } from './animations';
 
 // All three platforms render as a solid-color circular badge with a white glyph on top —
 // Instagram needs its signature gradient (via expo-linear-gradient) since a flat color
@@ -79,6 +79,7 @@ export function SocialIcon({ platform, url, size = 32 }) {
 export const PageScroll = forwardRef(function PageScroll({ children, title, beforeContent, scrollToTopKey }, forwardedScrollRef) {
   const formStyles = useFormStyles();
   const revealRegistry = useRevealRegistry();
+  useRevealOnResize(revealRegistry);
   const ownScrollRef = useRef(null);
   const scrollRef = forwardedScrollRef || ownScrollRef;
   const isFirstRender = useRef(true);

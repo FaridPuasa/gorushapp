@@ -145,8 +145,25 @@ export function useRevealRegistry() {
         lastCheckRef.current = now;
         runCheck(false);
       },
+      recheck: () => {
+        if (!everCheckedRef.current) return;
+        runCheck(false);
+      },
     };
   }, []);
+}
+
+// On mobile web, opening/closing the on-screen keyboard resizes `window.innerHeight`
+// without firing a scroll event. A Card that measured as "below the fold" while the
+// keyboard was open (and so was never revealed) would otherwise stay invisible forever
+// even after the keyboard closes and it would now fit on screen — this re-runs the
+// check whenever the viewport itself changes size, not just when the user scrolls.
+export function useRevealOnResize(registry) {
+  useEffect(() => {
+    if (!registry) return undefined;
+    const subscription = Dimensions.addEventListener('change', () => registry.recheck());
+    return () => subscription?.remove?.();
+  }, [registry]);
 }
 
 export function RevealProvider({ registry, children }) {
