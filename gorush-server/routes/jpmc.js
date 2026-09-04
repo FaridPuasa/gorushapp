@@ -5,6 +5,7 @@
 // pharmacyjpmc order intake (see lib/postgresOrders.js) - grfmxstatusupdate's
 // schema.prisma is the source of truth for the column set (see its comment).
 const express = require('express');
+const XLSX = require('xlsx');
 const prisma = require('../lib/prismaClient');
 const PublicHoliday = require('../models/PublicHoliday');
 const { requireRole } = require('../middleware/auth');
@@ -135,6 +136,60 @@ function toApiShape(order, holidayDates) {
     };
 }
 
+// Shared by GET /orders and GET /orders/export - both need the exact same
+// product/search/status/date filtering, so the export can never silently
+// diverge from what the table itself is showing.
+async function buildFilteredWhere(req) {
+    // Kept separate from `where` below (which goes on to accumulate the
+    // active tab's own filter) - baseWhere is product+search only, the
+    // common scope every tab's count is measured against.
+    const baseWhere = { product: 'pharmacyjpmc' };
+    if (req.query.search) {
+        const search = req.query.search;
+        baseWhere.OR = [
+            { receiverName: { contains: search, mode: 'insensitive' } },
+            { patientNumber: { contains: search, mode: 'insensitive' } },
+            { doTrackingNumber: { contains: search, mode: 'insensitive' } },
+            { receiverPhoneNumber: { contains: search, mode: 'insensitive' } },
+            { additionalPhoneNumber: { contains: search, mode: 'insensitive' } },
+        ];
+    }
+    const where = { ...baseWhere };
+
+    if (req.query.pharmacyStatus) {
+        // Comma-separated - lets a tab ask for a whole status group (e.g.
+        // Duplicate/Cancelled) in one request, not just a single value.
+        // 'New Order' is the default/unset state - matches rows that haven't
+        // been touched yet (null) as well as ones explicitly saved as such.
+        // Prisma's `in` filter doesn't accept null as a member, hence the OR.
+        const statuses = req.query.pharmacyStatus.split(',');
+        const orClauses = statuses.map((s) => ({ jpmcPharmacyStatus: s }));
+        if (statuses.includes('New Order')) orClauses.push({ jpmcPharmacyStatus: null });
+        where.AND = [...(where.AND || []), { OR: orClauses }];
+    }
+    if (req.query.goRushStatus) {
+        where.currentStatus = req.query.goRushStatus;
+    }
+
+    const holidayDates = (await PublicHoliday.find().lean()).map((h) => h.date);
+    const view = req.query.view || 'all';
+
+    let windowRange = null;
+    if (view === 'date') {
+        if (!req.query.date) {
+            const err = new Error("'date' query param is required for view=date.");
+            err.status = 400;
+            throw err;
+        }
+        // windowForDate (lib/jpmcWindow.js) is the same Brunei-noon-to-noon,
+        // Sunday/holiday-aware boundary used everywhere else in this portal.
+        windowRange = windowForDate(req.query.date, holidayDates);
+        where.dateTimeSubmission = { gte: windowRange.start, lte: windowRange.end };
+    }
+
+    return { baseWhere, where, holidayDates, view, windowRange };
+}
+
 // GET /api/jpmc/orders?view=all|date&date=&search=&pharmacyStatus=&goRushStatus=&page=&limit=
 // - view=all (default): every JPMC/PJSC order, newest submission first,
 //   paginated - no date filtering, for browsing/searching across every
@@ -147,51 +202,10 @@ function toApiShape(order, holidayDates) {
 //   and the free-standing GO RUSH filter).
 router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
     try {
-        // Kept separate from `where` below (which goes on to accumulate the
-        // active tab's own filter) - baseWhere is product+search only, the
-        // common scope every tab's count is measured against.
-        const baseWhere = { product: 'pharmacyjpmc' };
-        if (req.query.search) {
-            const search = req.query.search;
-            baseWhere.OR = [
-                { receiverName: { contains: search, mode: 'insensitive' } },
-                { patientNumber: { contains: search, mode: 'insensitive' } },
-                { doTrackingNumber: { contains: search, mode: 'insensitive' } },
-                { receiverPhoneNumber: { contains: search, mode: 'insensitive' } },
-                { additionalPhoneNumber: { contains: search, mode: 'insensitive' } },
-            ];
-        }
-        const where = { ...baseWhere };
-
-        if (req.query.pharmacyStatus) {
-            // Comma-separated - lets a tab ask for a whole status group (e.g.
-            // Duplicate/Cancelled) in one request, not just a single value.
-            // 'New Order' is the default/unset state - matches rows that haven't
-            // been touched yet (null) as well as ones explicitly saved as such.
-            // Prisma's `in` filter doesn't accept null as a member, hence the OR.
-            const statuses = req.query.pharmacyStatus.split(',');
-            const orClauses = statuses.map((s) => ({ jpmcPharmacyStatus: s }));
-            if (statuses.includes('New Order')) orClauses.push({ jpmcPharmacyStatus: null });
-            where.AND = [...(where.AND || []), { OR: orClauses }];
-        }
-        if (req.query.goRushStatus) {
-            where.currentStatus = req.query.goRushStatus;
-        }
-
-        const holidayDates = (await PublicHoliday.find().lean()).map((h) => h.date);
-        const view = req.query.view || 'all';
+        const { baseWhere, where, holidayDates, view, windowRange } = await buildFilteredWhere(req);
 
         if (view === 'date') {
-            if (!req.query.date) {
-                return res.status(400).json({ error: "'date' query param is required for view=date." });
-            }
-            // windowForDate (lib/jpmcWindow.js) is the same Brunei-noon-to-noon,
-            // Sunday/holiday-aware boundary used everywhere else in this portal -
-            // the date-scoped counts below must use the exact same window the
-            // list itself is filtered to, not a naive calendar-day boundary.
-            const windowRange = windowForDate(req.query.date, holidayDates);
-            const dateWhere = { AND: [baseWhere, { dateTimeSubmission: { gte: windowRange.start, lte: windowRange.end } }] };
-            where.dateTimeSubmission = { gte: windowRange.start, lte: windowRange.end };
+            const dateWhere = { AND: [baseWhere, { dateTimeSubmission: where.dateTimeSubmission }] };
             const [orders, allTimeCounts, dateCounts] = await Promise.all([
                 prisma.order.findMany({
                     where,
@@ -233,7 +247,66 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
         });
     } catch (err) {
         console.error(err.message);
-        res.status(500).json({ error: 'Failed to load JPMC orders.' });
+        res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to load JPMC orders.' });
+    }
+});
+
+// GET /api/jpmc/orders/export?<same filters as GET /orders> - every order
+// matching the current tab/time-range/search (ignoring pagination entirely -
+// this is "export everything filtered", not just the current page) as an
+// .xlsx download. Columns go beyond what's in the table row itself (address,
+// phone numbers, remarks, GO RUSH status history, etc. - the same fields the
+// "View More" card shows) since the point of exporting is to hand someone
+// the full record, not just what fits on screen.
+router.get('/orders/export', requireRole('jpmc', 'admin'), async (req, res) => {
+    try {
+        const { where, holidayDates } = await buildFilteredWhere(req);
+        const orders = await prisma.order.findMany({
+            where,
+            include: { history: true },
+            orderBy: { dateTimeSubmission: 'desc' },
+        });
+        const shaped = orders.map((o) => toApiShape(o, holidayDates));
+
+        const rows = shaped.map((o) => ({
+            'Process Date': o.processDate || '',
+            'Tracking Number': o.doTrackingNumber || '',
+            'Date/Time Submitted': o.dateTimeSubmission ? new Date(o.dateTimeSubmission) : '',
+            'Delivery Type': o.jobMethod || '',
+            'Payment Method': o.paymentMethod || '',
+            'Name': o.receiverName || '',
+            'Patient No.': o.patientNumber || '',
+            'Location': o.appointmentPlace || '',
+            'Address': o.receiverAddress || '',
+            'Main Phone': o.receiverPhoneNumber || '',
+            'Additional Phone': o.additionalPhoneNumber || '',
+            'Price': o.totalPrice || '',
+            'Customer Remarks': o.remarks || '',
+            'JPMC Status': o.jpmcPharmacyStatus || 'New Order',
+            'Fridge Item': o.jpmcFridgeItem || 'No',
+            'Patient Informed': o.jpmcPatientInformed || '',
+            'Remarks From Pharmacy': o.jpmcPharmacyRemarks || '',
+            'Paying Patient Total ($)': o.jpmcTotalAmount || '',
+            'Payment Proof Uploaded': o.hasPaymentProof ? 'Yes' : 'No',
+            'Finance Date Received': o.jpmcFinanceDateReceived ? new Date(o.jpmcFinanceDateReceived) : '',
+            'GO RUSH Status': o.goRushStatus || '',
+            'GO RUSH Status History': o.goRushStatusHistory
+                .map((h) => `${h.status || '—'} (${h.dateUpdated ? new Date(h.dateUpdated).toLocaleString('en-GB') : '—'})`)
+                .join(' | '),
+        }));
+
+        const worksheet = XLSX.utils.json_to_sheet(rows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, 'JPMC Orders');
+        const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+
+        const filename = `jpmc-orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.send(buffer);
+    } catch (err) {
+        console.error(err.message);
+        res.status(err.status || 500).json({ error: err.status ? err.message : 'Failed to export JPMC orders.' });
     }
 });
 

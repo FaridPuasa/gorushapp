@@ -11,7 +11,7 @@
 // the order's own details and editing JPMC's fields are different tasks for
 // different moments, and splitting them keeps each card focused.
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { Text, TextInput, View, Image, ActivityIndicator, Platform, ScrollView, Modal, Pressable, Linking } from 'react-native';
+import { Text, TextInput, View, Image, ActivityIndicator, Platform, ScrollView, Modal, Pressable, Linking, Alert } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../lib/api';
@@ -751,6 +751,7 @@ export default function JpmcPortal() {
   // set from whichever table row's button opened it.
   const [viewOrder, setViewOrder] = useState(null);
   const [editOrder, setEditOrder] = useState(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
@@ -784,6 +785,58 @@ export default function JpmcPortal() {
   }, [token, activeTab, viewMode, dateFilter, page, search]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  async function blobErrorMessage(err) {
+    try {
+      if (err.response?.data instanceof Blob) {
+        const text = await err.response.data.text();
+        return JSON.parse(text).error;
+      }
+    } catch { /* fall through to the generic message below */ }
+    return err.response?.data?.error;
+  }
+
+  // Exports every record matching the current tab/time-range/search - not
+  // just the current page - via a dedicated unpaginated server endpoint (see
+  // GET /orders/export in routes/jpmc.js), so a filtered set spanning many
+  // pages of "All time" still comes out complete in one file. Web-only for
+  // now (Blob + object-URL download is a browser API); native builds don't
+  // have a file-saving package wired up yet.
+  const handleExport = async () => {
+    if (viewMode === 'date' && !dateFilter) return;
+    if (Platform.OS !== 'web') {
+      Alert.alert('Export unavailable', 'Excel export is currently only supported from the web version of this portal.');
+      return;
+    }
+    setExporting(true);
+    try {
+      const params = { view: viewMode };
+      if (search) params.search = search;
+      if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
+      if (viewMode === 'date') params.date = dateFilter;
+      const res = await api.get('/api/jpmc/orders/export', { headers: authHeader, params, responseType: 'blob' });
+
+      // 'YYYY-MM-DD' -> 'DD.MM.YYYY', matching this page's other date displays
+      // (formatDMY) without routing a plain filter string through a Date object.
+      const dateLabel = (viewMode === 'date' && dateFilter) ? dateFilter.split('-').reverse().join('.') : 'All';
+      const filename = `JPMC Pharmacy Orders ${activeTabDef.label} ${dateLabel}.xlsx`;
+
+      const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      const msg = await blobErrorMessage(e);
+      Alert.alert('Export failed', msg || 'Failed to export JPMC orders.');
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleSaved = (id, updatedOrder) => {
     setData((prev) => (prev ? { ...prev, orders: prev.orders.map((o) => (o.id === id ? updatedOrder : o)) } : prev));
@@ -877,6 +930,23 @@ export default function JpmcPortal() {
           placeholder="Search by patient name, patient number, tracking number, or phone number"
           placeholderTextColor={colors.textMuted}
         />
+      </View>
+
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <AnimatedPressable
+          scaleTo={1.03}
+          onPress={handleExport}
+          disabled={exporting || (viewMode === 'date' && !dateFilter)}
+          style={[
+            { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingVertical: 9, paddingHorizontal: 16 },
+            (exporting || (viewMode === 'date' && !dateFilter)) && { opacity: 0.5 },
+          ]}
+        >
+          {exporting ? <ActivityIndicator size="small" color={colors.primary} /> : null}
+          <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: colors.primary }}>
+            {exporting ? 'Exporting…' : `⬇ Export ${activeTabDef.label} to Excel`}
+          </Text>
+        </AnimatedPressable>
       </View>
 
       {loading && (
