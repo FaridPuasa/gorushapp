@@ -46,9 +46,10 @@ const VIEW_MODES = [
 // The landing tabs - this is the primary way JPMC staff triage their queue,
 // one per JPMC Pharmacy Status value (previously "New Order"/"Entered"/
 // "Pending Payment"/"Pending Query" were lumped into a single "In Process"
-// tab - split out so staff can see each stage's own count/queue directly)
-// plus Completed, Duplicate/Cancelled, and All. `statuses: null` means no
-// filter (every status).
+// tab, and "Duplicate Order"/"Cancelled Order" into a single
+// "Duplicate/Cancelled" tab - both split out so staff can see each status's
+// own count/queue directly) plus Completed and All. `statuses: null` means
+// no filter (every status).
 const TABS = [
   { key: 'newOrder', label: 'New Order', statuses: ['New Order'] },
   { key: 'entered', label: 'Entered', statuses: ['Entered'] },
@@ -57,7 +58,8 @@ const TABS = [
   // JPMC's own paperwork being Completed is what this tab means - it doesn't
   // wait on GO RUSH's own delivery status too.
   { key: 'completed', label: 'Completed', statuses: ['Completed'] },
-  { key: 'duplicateCancelled', label: 'Duplicate/Cancelled', statuses: ['Duplicate Order', 'Cancelled Order'] },
+  { key: 'duplicateOrder', label: 'Duplicate Order', statuses: ['Duplicate Order'] },
+  { key: 'cancelledOrder', label: 'Cancelled Order', statuses: ['Cancelled Order'] },
   { key: 'all', label: 'All', statuses: null },
 ];
 

@@ -21,18 +21,19 @@ const ALL_ORDERS_PAGE_SIZE = 25;
 const router = express.Router();
 
 // Same landing tabs as gorush-client's TABS constant, one per
-// jpmcPharmacyStatus value (plus Duplicate/Cancelled grouping both dead
-// statuses, and All with no filter) - kept in one place so the tab-count
-// query below can never drift from the actual list-filtering logic below it.
-// 'New Order' is the default/unset state, so it also matches untouched (null)
-// rows - Prisma's `in` filter doesn't accept null as a member, hence the OR.
+// jpmcPharmacyStatus value (plus All with no filter) - kept in one place so
+// the tab-count query below can never drift from the actual list-filtering
+// logic below it. 'New Order' is the default/unset state, so it also matches
+// untouched (null) rows - Prisma's `in` filter doesn't accept null as a
+// member, hence the OR.
 const TAB_STATUSES = {
     newOrder: ['New Order'],
     entered: ['Entered'],
     pendingPayment: ['Pending Payment'],
     pendingQuery: ['Pending Query'],
     completed: ['Completed'],
-    duplicateCancelled: ['Duplicate Order', 'Cancelled Order'],
+    duplicateOrder: ['Duplicate Order'],
+    cancelledOrder: ['Cancelled Order'],
 };
 const TAB_KEYS = [...Object.keys(TAB_STATUSES), 'all'];
 
