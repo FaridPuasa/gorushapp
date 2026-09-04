@@ -742,13 +742,9 @@ export default function JpmcPortal() {
   // Two separate modal states - View More (GO RUSH, read-only) and Edit
   // (JPMC fields) are different cards now, opened by different buttons.
   // Each holds the full order object directly (not just an id to look up),
-  // set either from a table row or from the tracking-number lookup below
-  // (a standalone fetch, independent of whatever tab/window is selected).
+  // set from whichever table row's button opened it.
   const [viewOrder, setViewOrder] = useState(null);
   const [editOrder, setEditOrder] = useState(null);
-  const [trackingQuery, setTrackingQuery] = useState('');
-  const [trackingLoading, setTrackingLoading] = useState(false);
-  const [trackingError, setTrackingError] = useState('');
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
@@ -793,29 +789,6 @@ export default function JpmcPortal() {
     setEditOrder((prev) => (prev && prev.id === id ? updatedOrder : prev));
   };
 
-  // Quick tracking-number lookup (same idea as gorushfmxupdate's dashboard search) -
-  // independent of whatever tab/window/page is currently selected, so staff can jump
-  // straight to editing one order without hunting for it in the table.
-  const handleTrackingLookup = async () => {
-    const query = trackingQuery.trim();
-    if (!query) return;
-    setTrackingLoading(true);
-    setTrackingError('');
-    try {
-      const res = await api.get('/api/jpmc/orders', { headers: authHeader, params: { view: 'all', search: query, limit: 5 } });
-      const match = res.data.orders.find((o) => (o.doTrackingNumber || '').toLowerCase() === query.toLowerCase()) || res.data.orders[0];
-      if (match) {
-        setEditOrder(match);
-      } else {
-        setTrackingError(`No JPMC order found for "${query}".`);
-      }
-    } catch (e) {
-      setTrackingError(e.response?.data?.error || 'Lookup failed.');
-    } finally {
-      setTrackingLoading(false);
-    }
-  };
-
   const subtitle = viewMode === 'all'
     ? 'All JPMC/PJSC orders, newest first'
     : data ? `Processing window: ${formatDMYTime(data.from)} — ${formatDMYTime(data.to)}` : 'Loading…';
@@ -827,36 +800,6 @@ export default function JpmcPortal() {
       <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>JPMC Pharmacy Orders</Text>
       <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{subtitle}</Text>
 
-      {/* Same idea as gorushfmxupdate's dashboard tracking search - a direct lookup that
-          pops the order straight into the edit card, bypassing whatever tab/window/page
-          is currently selected in the table below. */}
-      <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 16 }}>
-        <Text style={captionStyle}>Search Tracking Number</Text>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TextInput
-            style={[formStyles.input, { flex: 1, marginBottom: 0, fontSize: scaleFont(14) }]}
-            value={trackingQuery}
-            onChangeText={(v) => { setTrackingQuery(v); if (trackingError) setTrackingError(''); }}
-            onSubmitEditing={handleTrackingLookup}
-            placeholder="e.g. GR200056701JP"
-            placeholderTextColor={colors.textMuted}
-            autoCapitalize="characters"
-          />
-          <AnimatedPressable
-            scaleTo={1.03}
-            onPress={handleTrackingLookup}
-            disabled={trackingLoading || !trackingQuery.trim()}
-            style={[
-              { backgroundColor: colors.primary, borderRadius: 8, paddingHorizontal: 20, alignItems: 'center', justifyContent: 'center' },
-              (trackingLoading || !trackingQuery.trim()) && { opacity: 0.5 },
-            ]}
-          >
-            {trackingLoading ? <ActivityIndicator color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '700', fontSize: scaleFont(13) }}>Search</Text>}
-          </AnimatedPressable>
-        </View>
-        {trackingError ? <Text style={[formStyles.fieldError, { marginTop: 8, marginBottom: 0 }]}>{trackingError}</Text> : null}
-      </View>
-
       {/* One bordered panel groups every filter, visually separate from the table below.
           The two filter rows are deliberately styled differently - solid pills for STATUS
           (the primary, always-visible triage) vs. a light segmented control for TIME RANGE
@@ -865,40 +808,55 @@ export default function JpmcPortal() {
       <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 20 }}>
         <Text style={captionStyle}>Status</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-          {TABS.map((t) => (
-            <AnimatedPressable
-              key={t.key}
-              scaleTo={1.03}
-              onPress={() => setActiveTab(t.key)}
-              style={[
-                { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
-                activeTab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary },
-              ]}
-            >
-              <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: activeTab === t.key ? '#fff' : colors.textPrimary }}>
-                {t.label}
-              </Text>
-            </AnimatedPressable>
-          ))}
+          {TABS.map((t) => {
+            // Counts always reflect whichever Time Range is currently active -
+            // the same window (all time, or the selected date's Brunei
+            // noon-to-noon cutover) the table itself is filtered to, not a
+            // separate/independent count. `data.counts.date` is null until a
+            // date is actually picked, so the date-view tabs briefly fall back
+            // to allTime's numbers rather than showing nothing.
+            const tabCounts = (viewMode === 'date' && data?.counts?.date) ? data.counts.date : data?.counts?.allTime;
+            const count = tabCounts ? tabCounts[t.key] : null;
+            return (
+              <AnimatedPressable
+                key={t.key}
+                scaleTo={1.03}
+                onPress={() => setActiveTab(t.key)}
+                style={[
+                  { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
+                  activeTab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary },
+                ]}
+              >
+                <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: activeTab === t.key ? '#fff' : colors.textPrimary }}>
+                  {t.label}{count != null ? ` (${count})` : ''}
+                </Text>
+              </AnimatedPressable>
+            );
+          })}
         </View>
 
         <Text style={captionStyle}>Time Range</Text>
         <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, borderRadius: 10, padding: 4, marginBottom: 14, alignSelf: 'flex-start' }}>
-          {VIEW_MODES.map((m) => (
-            <AnimatedPressable
-              key={m.value}
-              scaleTo={1.02}
-              onPress={() => setViewMode(m.value)}
-              style={[
-                { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 8 },
-                viewMode === m.value && { backgroundColor: colors.card, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
-              ]}
-            >
-              <Text style={{ fontWeight: '600', fontSize: scaleFont(12), color: viewMode === m.value ? colors.primary : colors.textSecondary }}>
-                {m.label}
-              </Text>
-            </AnimatedPressable>
-          ))}
+          {VIEW_MODES.map((m) => {
+            // "All time"'s count is always known; "Specific date"'s count only
+            // exists once a date has actually been queried (data.counts.date).
+            const modeCount = m.value === 'all' ? data?.counts?.allTime?.all : data?.counts?.date?.all;
+            return (
+              <AnimatedPressable
+                key={m.value}
+                scaleTo={1.02}
+                onPress={() => setViewMode(m.value)}
+                style={[
+                  { paddingVertical: 7, paddingHorizontal: 16, borderRadius: 8 },
+                  viewMode === m.value && { backgroundColor: colors.card, shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 3, shadowOffset: { width: 0, height: 1 }, elevation: 1 },
+                ]}
+              >
+                <Text style={{ fontWeight: '600', fontSize: scaleFont(12), color: viewMode === m.value ? colors.primary : colors.textSecondary }}>
+                  {m.label}{modeCount != null ? ` (${modeCount})` : ''}
+                </Text>
+              </AnimatedPressable>
+            );
+          })}
         </View>
 
         {viewMode === 'date' && (

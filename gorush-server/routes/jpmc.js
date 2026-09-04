@@ -20,6 +20,60 @@ const ALL_ORDERS_PAGE_SIZE = 25;
 
 const router = express.Router();
 
+// Same 4 landing tabs as gorush-client's TABS constant - kept in one place so
+// the tab-count query below can never drift from the actual list-filtering
+// logic above/below it.
+function tabWhereClause(tabKey) {
+    if (tabKey === 'inProcess') {
+        return {
+            AND: [
+                { NOT: { AND: [{ jpmcPharmacyStatus: 'Completed' }, { currentStatus: 'Completed' }] } },
+                { currentStatus: { notIn: ['Cancelled', 'Disposed'] } },
+                { OR: [{ jpmcPharmacyStatus: null }, { jpmcPharmacyStatus: { notIn: ['Duplicate Order', 'Cancelled Order'] } }] },
+            ],
+        };
+    }
+    if (tabKey === 'completed') {
+        return { jpmcPharmacyStatus: 'Completed', currentStatus: 'Completed' };
+    }
+    if (tabKey === 'duplicateCancelled') {
+        return { jpmcPharmacyStatus: { in: ['Duplicate Order', 'Cancelled Order'] } };
+    }
+    return {}; // 'all'
+}
+
+const TAB_KEYS = ['inProcess', 'completed', 'duplicateCancelled', 'all'];
+
+// One count per tab, all scoped to the same base where (product + search +,
+// optionally, a date window) - baseWhere itself must NOT already carry a
+// tab/status restriction, only product/search/date, or these would double up.
+async function countByTab(baseWhere) {
+    const entries = await Promise.all(
+        TAB_KEYS.map(async (key) => [key, await prisma.order.count({ where: { AND: [baseWhere, tabWhereClause(key)] } })])
+    );
+    return Object.fromEntries(entries);
+}
+
+// Same rules gorush-client's lib/trackingHistory.js uses for the Home page's
+// tracking-number search - an OrderHistory row can be a genuine delivery
+// event OR an internal audit note logged against the same shared history
+// array (a field being edited, a dispatcher reassignment, etc.), and only the
+// former belongs on a customer/staff-facing status timeline. Duplicated here
+// (not imported) since this is a separate Node app (gorush-server, CommonJS)
+// from gorush-client's bundle.
+const INTERNAL_NOTE_RE = /\bupdated\b/i;
+const ALLOWED_DELIVERY_STATUSES = new Set([
+    'info received', 'at warehouse', 'out for delivery',
+    'failed delivery', 'failed', 'return to warehouse', 'completed',
+    'custom clearance', 'custom clearing',
+    'on hold', 'in sorting area', 'self collect', 'cancelled',
+    'disposed', 'return',
+]);
+function isInternalHistoryNote(h) {
+    if (h.statusHistory) return !ALLOWED_DELIVERY_STATUSES.has(h.statusHistory.toLowerCase());
+    return Boolean(h.reason) && h.reason.toUpperCase() !== 'N/A' && INTERNAL_NOTE_RE.test(h.reason);
+}
+
 const EDITABLE_FIELDS = [
     'jpmcPharmacyStatus',
     'jpmcFridgeItem',
@@ -67,6 +121,7 @@ function toApiShape(order, holidayDates) {
         // timeline reads - oldest first, so the client can render it as a timeline
         // top-to-bottom without re-sorting.
         goRushStatusHistory: (order.history || [])
+            .filter((h) => !isInternalHistoryNote(h))
             .slice()
             .sort((a, b) => new Date(a.dateUpdated || 0) - new Date(b.dateUpdated || 0))
             .map((h) => ({
@@ -96,21 +151,31 @@ function toApiShape(order, holidayDates) {
 //   filter).
 router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
     try {
-        const where = { product: 'pharmacyjpmc' };
+        // Kept separate from `where` below (which goes on to accumulate the
+        // active tab's own filter) - baseWhere is product+search only, the
+        // common scope every tab's count is measured against.
+        const baseWhere = { product: 'pharmacyjpmc' };
         if (req.query.search) {
             const search = req.query.search;
-            where.OR = [
+            baseWhere.OR = [
                 { receiverName: { contains: search, mode: 'insensitive' } },
                 { patientNumber: { contains: search, mode: 'insensitive' } },
                 { doTrackingNumber: { contains: search, mode: 'insensitive' } },
             ];
         }
+        const where = { ...baseWhere };
 
         if (req.query.tab === 'inProcess') {
             where.AND = [
                 ...(where.AND || []),
                 { NOT: { AND: [{ jpmcPharmacyStatus: 'Completed' }, { currentStatus: 'Completed' }] } },
                 { currentStatus: { notIn: ['Cancelled', 'Disposed'] } },
+                // A duplicate/cancelled JPMC order belongs in the Duplicate/Cancelled
+                // tab, not In Process, regardless of GO RUSH's own status. Written as
+                // an OR-with-null rather than a plain `notIn` - Postgres' NOT IN
+                // excludes NULL rows entirely (three-valued logic), which would
+                // otherwise wrongly hide untouched "New Order" (null status) rows.
+                { OR: [{ jpmcPharmacyStatus: null }, { jpmcPharmacyStatus: { notIn: ['Duplicate Order', 'Cancelled Order'] } }] },
             ];
         } else if (req.query.pharmacyStatus) {
             // Comma-separated - lets the portal's other tabs (Completed/
@@ -135,19 +200,34 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
             if (!req.query.date) {
                 return res.status(400).json({ error: "'date' query param is required for view=date." });
             }
+            // windowForDate (lib/jpmcWindow.js) is the same Brunei-noon-to-noon,
+            // Sunday/holiday-aware boundary used everywhere else in this portal -
+            // the date-scoped counts below must use the exact same window the
+            // list itself is filtered to, not a naive calendar-day boundary.
             const windowRange = windowForDate(req.query.date, holidayDates);
+            const dateWhere = { AND: [baseWhere, { dateTimeSubmission: { gte: windowRange.start, lte: windowRange.end } }] };
             where.dateTimeSubmission = { gte: windowRange.start, lte: windowRange.end };
-            const orders = await prisma.order.findMany({
-                where,
-                include: { history: true },
-                orderBy: { dateTimeSubmission: 'desc' },
+            const [orders, allTimeCounts, dateCounts] = await Promise.all([
+                prisma.order.findMany({
+                    where,
+                    include: { history: true },
+                    orderBy: { dateTimeSubmission: 'desc' },
+                }),
+                countByTab(baseWhere),
+                countByTab(dateWhere),
+            ]);
+            return res.json({
+                view,
+                from: windowRange.start,
+                to: windowRange.end,
+                orders: orders.map((o) => toApiShape(o, holidayDates)),
+                counts: { allTime: allTimeCounts, date: dateCounts },
             });
-            return res.json({ view, from: windowRange.start, to: windowRange.end, orders: orders.map((o) => toApiShape(o, holidayDates)) });
         }
 
         const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
         const limit = Math.min(parseInt(req.query.limit, 10) || ALL_ORDERS_PAGE_SIZE, 100);
-        const [orders, totalCount] = await Promise.all([
+        const [orders, totalCount, allTimeCounts] = await Promise.all([
             prisma.order.findMany({
                 where,
                 include: { history: true },
@@ -156,6 +236,7 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
                 take: limit,
             }),
             prisma.order.count({ where }),
+            countByTab(baseWhere),
         ]);
         res.json({
             view: 'all',
@@ -163,6 +244,7 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
             totalPages: Math.max(Math.ceil(totalCount / limit), 1),
             totalCount,
             orders: orders.map((o) => toApiShape(o, holidayDates)),
+            counts: { allTime: allTimeCounts, date: null },
         });
     } catch (err) {
         console.error(err.message);
@@ -182,6 +264,23 @@ router.patch('/orders/:id', requireRole('jpmc', 'admin'), async (req, res) => {
         }
         if (data.jpmcFinanceDateReceived) data.jpmcFinanceDateReceived = new Date(data.jpmcFinanceDateReceived);
         if (data.jpmcTotalAmount != null) data.jpmcTotalAmount = String(data.jpmcTotalAmount);
+
+        // jpmcCompletedAt ("Date/Time Ready" on grfmxstatusupdate's JPMC
+        // Collection page, which ages orders off it) is server-derived, not
+        // client-editable - stamp it the moment jpmcPharmacyStatus actually
+        // transitions TO Completed, and clear it if later edited away from
+        // Completed. The edit form always resends the current status even
+        // when unchanged, so this has to compare against the stored value -
+        // otherwise saving an unrelated field while already Completed would
+        // reset the timestamp on every save.
+        if ('jpmcPharmacyStatus' in data) {
+            const existing = await prisma.order.findUnique({ where: { id }, select: { jpmcPharmacyStatus: true } });
+            if (!existing) return res.status(404).json({ error: 'Order not found.' });
+            const wasCompleted = existing.jpmcPharmacyStatus === 'Completed';
+            const nowCompleted = data.jpmcPharmacyStatus === 'Completed';
+            if (nowCompleted && !wasCompleted) data.jpmcCompletedAt = new Date();
+            else if (!nowCompleted && wasCompleted) data.jpmcCompletedAt = null;
+        }
 
         data.jpmcFieldsUpdatedBy = req.userEmail;
         data.jpmcFieldsUpdatedAt = new Date();
