@@ -157,6 +157,8 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
                 { receiverName: { contains: search, mode: 'insensitive' } },
                 { patientNumber: { contains: search, mode: 'insensitive' } },
                 { doTrackingNumber: { contains: search, mode: 'insensitive' } },
+                { receiverPhoneNumber: { contains: search, mode: 'insensitive' } },
+                { additionalPhoneNumber: { contains: search, mode: 'insensitive' } },
             ];
         }
         const where = { ...baseWhere };

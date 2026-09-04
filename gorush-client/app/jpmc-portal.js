@@ -874,7 +874,7 @@ export default function JpmcPortal() {
           style={[formStyles.input, { marginBottom: 0, fontSize: scaleFont(14) }]}
           value={searchInput}
           onChangeText={setSearchInput}
-          placeholder="Search by patient name, patient number, or tracking number"
+          placeholder="Search by patient name, patient number, tracking number, or phone number"
           placeholderTextColor={colors.textMuted}
         />
       </View>
