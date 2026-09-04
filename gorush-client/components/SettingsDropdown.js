@@ -36,12 +36,12 @@ export default function SettingsDropdown({ isOpen, onToggle, align = 'left', lab
 
           {showLanguage && (
             <>
-              <Text style={[styles.groupLabel, { color: colors.textMuted, marginTop: 14, fontSize: scaleFont(11) }]}>{t('languagePicker.english')}/{t('languagePicker.malay')}</Text>
+              <Text style={[styles.groupLabel, { color: colors.textMuted, marginTop: 14, fontSize: scaleFont(11) }]}>{t('languagePicker.groupLabel')}</Text>
               <LanguagePicker />
             </>
           )}
 
-          <Text style={[styles.groupLabel, { color: colors.textMuted, marginTop: 14, fontSize: scaleFont(11) }]}>{t('fontScale.small')}/{t('fontScale.regular')}/{t('fontScale.large')}</Text>
+          <Text style={[styles.groupLabel, { color: colors.textMuted, marginTop: 14, fontSize: scaleFont(11) }]}>{t('fontScale.groupLabel')}</Text>
           <FontScalePicker />
 
           {extraItems.length > 0 && (

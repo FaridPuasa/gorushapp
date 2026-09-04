@@ -106,6 +106,7 @@ export default {
     copyright: '© {year} Go Rush. Hak cipta terpelihara.',
   },
   languagePicker: {
+    groupLabel: 'Bahasa',
     english: 'EN',
     malay: 'BM',
   },
@@ -114,6 +115,7 @@ export default {
     dark: 'Gelap',
   },
   fontScale: {
+    groupLabel: 'Saiz Teks',
     small: 'K',
     regular: 'S',
     large: 'B',
