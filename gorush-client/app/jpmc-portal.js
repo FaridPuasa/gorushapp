@@ -50,9 +50,9 @@ const VIEW_MODES = [
 // plain status list - see routes/jpmc.js.
 const TABS = [
   { key: 'inProcess', label: 'In Process', tabParam: 'inProcess' },
-  // "Completed" means fully done on both sides - JPMC's own paperwork AND the
-  // actual delivery - not just one or the other.
-  { key: 'completed', label: 'Completed', statuses: ['Completed'], goRushStatus: 'Completed' },
+  // JPMC's own paperwork being Completed is what this tab means - it doesn't
+  // wait on GO RUSH's own delivery status too.
+  { key: 'completed', label: 'Completed', statuses: ['Completed'] },
   { key: 'duplicateCancelled', label: 'Duplicate/Cancelled', statuses: ['Duplicate Order', 'Cancelled Order'] },
   { key: 'all', label: 'All', statuses: null },
 ];

@@ -27,14 +27,19 @@ function tabWhereClause(tabKey) {
     if (tabKey === 'inProcess') {
         return {
             AND: [
-                { NOT: { AND: [{ jpmcPharmacyStatus: 'Completed' }, { currentStatus: 'Completed' }] } },
                 { currentStatus: { notIn: ['Cancelled', 'Disposed'] } },
-                { OR: [{ jpmcPharmacyStatus: null }, { jpmcPharmacyStatus: { notIn: ['Duplicate Order', 'Cancelled Order'] } }] },
+                // In Process is everything NOT already claimed by the Completed or
+                // Duplicate/Cancelled tabs - keeps the 4 tabs a clean partition
+                // (every order lands in exactly one) now that Completed no longer
+                // also requires GO RUSH's own status to be Completed.
+                { OR: [{ jpmcPharmacyStatus: null }, { jpmcPharmacyStatus: { notIn: ['Completed', 'Duplicate Order', 'Cancelled Order'] } }] },
             ],
         };
     }
     if (tabKey === 'completed') {
-        return { jpmcPharmacyStatus: 'Completed', currentStatus: 'Completed' };
+        // JPMC's own paperwork being done is what "Completed" means here -
+        // no longer gated on GO RUSH's delivery status too.
+        return { jpmcPharmacyStatus: 'Completed' };
     }
     if (tabKey === 'duplicateCancelled') {
         return { jpmcPharmacyStatus: { in: ['Duplicate Order', 'Cancelled Order'] } };
@@ -141,11 +146,11 @@ function toApiShape(order, holidayDates) {
 // - view=date&date=YYYY-MM-DD: just the processing window ending on that
 //   date (the portal's equivalent of the old Excel sheet's per-cutover date
 //   tab / this response's own `processDate` field on each order).
-// - tab=inProcess: the "In Process" tab's actual rule - anything NOT (JPMC
-//   Pharmacy Status Completed AND GO RUSH Status Completed) and GO RUSH
-//   Status not Cancelled/Disposed, across every window - overrides
-//   pharmacyStatus for this one tab, which needs a compound condition the
-//   plain OR-of-values filter below can't express.
+// - tab=inProcess: the "In Process" tab's actual rule - JPMC Pharmacy Status
+//   not yet Completed/Duplicate Order/Cancelled Order, and GO RUSH Status not
+//   Cancelled/Disposed, across every window (see tabWhereClause above) -
+//   overrides pharmacyStatus for this one tab, which needs a compound
+//   condition the plain OR-of-values filter below can't express.
 // - pharmacyStatus/goRushStatus filter on top of either view (used by the
 //   Completed / Duplicate&Cancelled tabs, and the free-standing GO RUSH
 //   filter).
@@ -166,17 +171,9 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
         const where = { ...baseWhere };
 
         if (req.query.tab === 'inProcess') {
-            where.AND = [
-                ...(where.AND || []),
-                { NOT: { AND: [{ jpmcPharmacyStatus: 'Completed' }, { currentStatus: 'Completed' }] } },
-                { currentStatus: { notIn: ['Cancelled', 'Disposed'] } },
-                // A duplicate/cancelled JPMC order belongs in the Duplicate/Cancelled
-                // tab, not In Process, regardless of GO RUSH's own status. Written as
-                // an OR-with-null rather than a plain `notIn` - Postgres' NOT IN
-                // excludes NULL rows entirely (three-valued logic), which would
-                // otherwise wrongly hide untouched "New Order" (null status) rows.
-                { OR: [{ jpmcPharmacyStatus: null }, { jpmcPharmacyStatus: { notIn: ['Duplicate Order', 'Cancelled Order'] } }] },
-            ];
+            // Reuses the exact same rule the count helper (tabWhereClause above)
+            // uses, so the list and its own tab count can never drift apart.
+            where.AND = [...(where.AND || []), tabWhereClause('inProcess')];
         } else if (req.query.pharmacyStatus) {
             // Comma-separated - lets the portal's other tabs (Completed/
             // Duplicate&Cancelled) ask for a whole status group in one request,
