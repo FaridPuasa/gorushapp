@@ -43,13 +43,17 @@ const VIEW_MODES = [
   { value: 'date', label: 'Specific date' },
 ];
 
-// The 4 landing tabs - this is the primary way JPMC staff triage their queue,
-// grouping orders into what still needs attention vs. what's done vs. what's
-// dead. `statuses: null` means no filter (every status). "In Process" is a
-// compound rule the server computes itself (tab=inProcess) rather than a
-// plain status list - see routes/jpmc.js.
+// The landing tabs - this is the primary way JPMC staff triage their queue,
+// one per JPMC Pharmacy Status value (previously "New Order"/"Entered"/
+// "Pending Payment"/"Pending Query" were lumped into a single "In Process"
+// tab - split out so staff can see each stage's own count/queue directly)
+// plus Completed, Duplicate/Cancelled, and All. `statuses: null` means no
+// filter (every status).
 const TABS = [
-  { key: 'inProcess', label: 'In Process', tabParam: 'inProcess' },
+  { key: 'newOrder', label: 'New Order', statuses: ['New Order'] },
+  { key: 'entered', label: 'Entered', statuses: ['Entered'] },
+  { key: 'pendingPayment', label: 'Pending Payment', statuses: ['Pending Payment'] },
+  { key: 'pendingQuery', label: 'Pending Query', statuses: ['Pending Query'] },
   // JPMC's own paperwork being Completed is what this tab means - it doesn't
   // wait on GO RUSH's own delivery status too.
   { key: 'completed', label: 'Completed', statuses: ['Completed'] },
@@ -735,7 +739,7 @@ export default function JpmcPortal() {
   const [error, setError] = useState(null);
   const [searchInput, setSearchInput] = useState('');
   const [search, setSearch] = useState('');
-  const [activeTab, setActiveTab] = useState('inProcess');
+  const [activeTab, setActiveTab] = useState('newOrder');
   const [viewMode, setViewMode] = useState('all');
   const [dateFilter, setDateFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -765,9 +769,7 @@ export default function JpmcPortal() {
     try {
       const params = { view: viewMode };
       if (search) params.search = search;
-      if (activeTabDef.tabParam) params.tab = activeTabDef.tabParam;
-      else if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
-      if (activeTabDef.goRushStatus) params.goRushStatus = activeTabDef.goRushStatus;
+      if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
       if (viewMode === 'date') params.date = dateFilter;
       if (viewMode === 'all') params.page = page;
       const res = await api.get('/api/jpmc/orders', { headers: authHeader, params });

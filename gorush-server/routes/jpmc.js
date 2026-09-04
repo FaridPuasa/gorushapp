@@ -20,34 +20,29 @@ const ALL_ORDERS_PAGE_SIZE = 25;
 
 const router = express.Router();
 
-// Same 4 landing tabs as gorush-client's TABS constant - kept in one place so
-// the tab-count query below can never drift from the actual list-filtering
-// logic above/below it.
-function tabWhereClause(tabKey) {
-    if (tabKey === 'inProcess') {
-        return {
-            AND: [
-                { currentStatus: { notIn: ['Cancelled', 'Disposed'] } },
-                // In Process is everything NOT already claimed by the Completed or
-                // Duplicate/Cancelled tabs - keeps the 4 tabs a clean partition
-                // (every order lands in exactly one) now that Completed no longer
-                // also requires GO RUSH's own status to be Completed.
-                { OR: [{ jpmcPharmacyStatus: null }, { jpmcPharmacyStatus: { notIn: ['Completed', 'Duplicate Order', 'Cancelled Order'] } }] },
-            ],
-        };
-    }
-    if (tabKey === 'completed') {
-        // JPMC's own paperwork being done is what "Completed" means here -
-        // no longer gated on GO RUSH's delivery status too.
-        return { jpmcPharmacyStatus: 'Completed' };
-    }
-    if (tabKey === 'duplicateCancelled') {
-        return { jpmcPharmacyStatus: { in: ['Duplicate Order', 'Cancelled Order'] } };
-    }
-    return {}; // 'all'
-}
+// Same landing tabs as gorush-client's TABS constant, one per
+// jpmcPharmacyStatus value (plus Duplicate/Cancelled grouping both dead
+// statuses, and All with no filter) - kept in one place so the tab-count
+// query below can never drift from the actual list-filtering logic below it.
+// 'New Order' is the default/unset state, so it also matches untouched (null)
+// rows - Prisma's `in` filter doesn't accept null as a member, hence the OR.
+const TAB_STATUSES = {
+    newOrder: ['New Order'],
+    entered: ['Entered'],
+    pendingPayment: ['Pending Payment'],
+    pendingQuery: ['Pending Query'],
+    completed: ['Completed'],
+    duplicateCancelled: ['Duplicate Order', 'Cancelled Order'],
+};
+const TAB_KEYS = [...Object.keys(TAB_STATUSES), 'all'];
 
-const TAB_KEYS = ['inProcess', 'completed', 'duplicateCancelled', 'all'];
+function tabWhereClause(tabKey) {
+    const statuses = TAB_STATUSES[tabKey];
+    if (!statuses) return {}; // 'all'
+    const orClauses = statuses.map((s) => ({ jpmcPharmacyStatus: s }));
+    if (statuses.includes('New Order')) orClauses.push({ jpmcPharmacyStatus: null });
+    return { OR: orClauses };
+}
 
 // One count per tab, all scoped to the same base where (product + search +,
 // optionally, a date window) - baseWhere itself must NOT already carry a
@@ -139,21 +134,16 @@ function toApiShape(order, holidayDates) {
     };
 }
 
-// GET /api/jpmc/orders?view=all|date&date=&tab=&search=&pharmacyStatus=&goRushStatus=&page=&limit=
+// GET /api/jpmc/orders?view=all|date&date=&search=&pharmacyStatus=&goRushStatus=&page=&limit=
 // - view=all (default): every JPMC/PJSC order, newest submission first,
 //   paginated - no date filtering, for browsing/searching across every
 //   window at once.
 // - view=date&date=YYYY-MM-DD: just the processing window ending on that
 //   date (the portal's equivalent of the old Excel sheet's per-cutover date
 //   tab / this response's own `processDate` field on each order).
-// - tab=inProcess: the "In Process" tab's actual rule - JPMC Pharmacy Status
-//   not yet Completed/Duplicate Order/Cancelled Order, and GO RUSH Status not
-//   Cancelled/Disposed, across every window (see tabWhereClause above) -
-//   overrides pharmacyStatus for this one tab, which needs a compound
-//   condition the plain OR-of-values filter below can't express.
-// - pharmacyStatus/goRushStatus filter on top of either view (used by the
-//   Completed / Duplicate&Cancelled tabs, and the free-standing GO RUSH
-//   filter).
+// - pharmacyStatus/goRushStatus filter on top of either view (comma-separated
+//   values - used by every tab; see TAB_STATUSES above for the exact groups,
+//   and the free-standing GO RUSH filter).
 router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
     try {
         // Kept separate from `where` below (which goes on to accumulate the
@@ -170,17 +160,12 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
         }
         const where = { ...baseWhere };
 
-        if (req.query.tab === 'inProcess') {
-            // Reuses the exact same rule the count helper (tabWhereClause above)
-            // uses, so the list and its own tab count can never drift apart.
-            where.AND = [...(where.AND || []), tabWhereClause('inProcess')];
-        } else if (req.query.pharmacyStatus) {
-            // Comma-separated - lets the portal's other tabs (Completed/
-            // Duplicate&Cancelled) ask for a whole status group in one request,
-            // not just a single value. 'New Order' is the default/unset state -
-            // matches rows that haven't been touched yet (null) as well as ones
-            // explicitly saved as such. Prisma's `in` filter doesn't accept null as
-            // a member, hence the OR.
+        if (req.query.pharmacyStatus) {
+            // Comma-separated - lets a tab ask for a whole status group (e.g.
+            // Duplicate/Cancelled) in one request, not just a single value.
+            // 'New Order' is the default/unset state - matches rows that haven't
+            // been touched yet (null) as well as ones explicitly saved as such.
+            // Prisma's `in` filter doesn't accept null as a member, hence the OR.
             const statuses = req.query.pharmacyStatus.split(',');
             const orClauses = statuses.map((s) => ({ jpmcPharmacyStatus: s }));
             if (statuses.includes('New Order')) orClauses.push({ jpmcPharmacyStatus: null });
