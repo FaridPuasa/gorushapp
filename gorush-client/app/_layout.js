@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { View } from 'react-native';
+import { Platform, View } from 'react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -56,6 +56,22 @@ function AdminGuard() {
   return null;
 }
 
+// GA's automatic pageview only fires once on the initial document load; expo-router
+// navigates client-side after that, so each route change is reported here instead.
+function AnalyticsPageViews() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined' || !window.gtag) return;
+    window.gtag('event', 'page_view', {
+      page_path: pathname,
+      page_location: window.location.href,
+    });
+  }, [pathname]);
+
+  return null;
+}
+
 function AppShell() {
   const insets = useSafeAreaInsets();
   const { mode, colors } = useTheme();
@@ -63,6 +79,7 @@ function AppShell() {
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <AdminGuard />
+      <AnalyticsPageViews />
       <AnnouncementBar />
       <Navbar />
       <Slot />
