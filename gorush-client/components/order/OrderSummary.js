@@ -57,7 +57,8 @@ export default function OrderSummary({ form }) {
       {['MOH', 'JPMC', 'PHC'].includes(product) && (
         <Card icon="🪪" title={t('order.patientDetails')}>
           {product === 'MOH' && <Row label={t('order.summary.bruHimsNo')} value={form.bruhimsnum} />}
-          {(product === 'JPMC' || product === 'PHC') && <Row label={t('order.summary.patientNo')} value={form.patientNumber} />}
+          {product === 'JPMC' && <Row label={t('order.summary.patientNoJpmc')} value={form.patientNumber} />}
+          {product === 'PHC' && <Row label={t('order.summary.patientNoPhc')} value={form.patientNumber} />}
           <Row label={t('order.summary.dateOfBirth')} value={identity.dateOfBirth} />
           <Row label={identity.idType === 'IC' ? t('order.summary.icNo') : t('order.summary.passport')} value={identity.idType === 'IC' ? identity.icNum : identity.passport} />
           {product === 'MOH' && <Row label={t('order.summary.appointmentDistrict')} value={form.appointmentDistrict} />}

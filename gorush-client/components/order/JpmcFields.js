@@ -17,11 +17,11 @@ export default function JpmcFields({ values, onChange, errors = {}, focusedField
     <Card icon="🏥" title={t('order.jpmcDetails')}>
       {patientNumberSaved ? (
         <View style={{ marginBottom: 10 }}>
-          <Text style={formStyles.fieldLabel}>{t('order.patientNo')}</Text>
+          <Text style={formStyles.fieldLabel}>{t('order.patientNoJpmc')}</Text>
           <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color }}>{values.patientNumber}</Text>
         </View>
       ) : (
-        <Field label={t('order.patientNo')} required error={errors.patientNumber} fieldKey="patientNumber" registerRef={registerFieldRef}>
+        <Field label={t('order.patientNoJpmc')} required error={errors.patientNumber} fieldKey="patientNumber" registerRef={registerFieldRef}>
           <TextInput style={inputStyle('patientNumber')} value={values.patientNumber} onChangeText={(v) => onChange('patientNumber', v)} {...focusHandlers('patientNumber')} />
         </Field>
       )}

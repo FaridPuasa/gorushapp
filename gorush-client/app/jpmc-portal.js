@@ -379,8 +379,8 @@ function PaymentProofControl({ order, authHeader, colors, scaleFont, formStyles 
 const ROW_ORDER_FIELDS = [
   { key: 'dateTimeSubmission', label: 'Date/Time Submitted', minWidth: 130, format: (o) => formatDMYTime(o.dateTimeSubmission) },
   { key: 'jobMethod', label: 'Delivery Type', minWidth: 130, maxWidth: 180, format: (o) => o.jobMethod || '—' },
-  { key: 'receiverName', label: 'Name', minWidth: 140, maxWidth: 200, format: (o) => o.receiverName || '—' },
-  { key: 'patientNumber', label: 'Patient No.', minWidth: 100, format: (o) => o.patientNumber || '—' },
+  { key: 'receiverName', label: "Patient's Name", minWidth: 140, maxWidth: 200, format: (o) => o.receiverName || '—' },
+  { key: 'patientNumber', label: "Patient's PRN", minWidth: 100, format: (o) => o.patientNumber || '—' },
   { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
 ];
 
@@ -510,8 +510,8 @@ function GoRushDetailCard({ order, onClose, colors, scaleFont }) {
         </Section>
 
         <Section icon="👤" title="Customer Info" colors={colors} scaleFont={scaleFont}>
-          <DetailField label="Name" value={order.receiverName} minWidth={180} colors={colors} scaleFont={scaleFont} />
-          <DetailField label="Patient No." value={order.patientNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Patient's Name" value={order.receiverName} minWidth={180} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Patient's PRN" value={order.patientNumber} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Location" value={order.appointmentPlace} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Main Phone No." value={order.receiverPhoneNumber} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Additional Phone No." value={order.additionalPhoneNumber} colors={colors} scaleFont={scaleFont} />

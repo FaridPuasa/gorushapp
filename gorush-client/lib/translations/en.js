@@ -344,7 +344,11 @@ export default {
     phcDetails: 'PHC Details',
     bruHimsNo: 'MOH Bru-HIMs No.',
     bruHimsHint: 'e.g. BN12312312',
-    patientNo: 'Patient No.',
+    // JPMC and PHC use different terms for the same field on their own forms
+    // (and its review-screen row, see summary.patientNoJpmc/Phc below) -
+    // JPMC's is a PRN, PHC's is a plain patient number.
+    patientNoJpmc: "Patient's PRN",
+    patientNoPhc: 'Patient Number',
     appointmentDistrict: 'Appointment District',
     jpmcOrPjsc: 'JPMC or PJSC?',
     jpmc: 'JPMC',
@@ -453,7 +457,8 @@ export default {
       phoneNumber: 'Phone Number',
       additionalPhone: 'Additional Phone',
       bruHimsNo: 'Bru-HIMs No.',
-      patientNo: 'Patient No.',
+      patientNoJpmc: "Patient's PRN",
+      patientNoPhc: 'Patient Number',
       dateOfBirth: 'Date of Birth',
       icNo: 'IC No.',
       passport: 'Passport',
