@@ -933,7 +933,10 @@ export default function JpmcPortal() {
                 onPress={() => setGoRushStatusFilter(opt.value)}
                 style={[
                   { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
-                  selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                  // Red (the brand's secondary color) rather than the blue JPMC Status
+                  // pills use above - visually separates "which JPMC tab" from "which
+                  // GO RUSH sub-filter" at a glance, since they're two different axes.
+                  selected && { backgroundColor: colors.secondary, borderColor: colors.secondary },
                 ]}
               >
                 <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: selected ? '#fff' : colors.textPrimary }}>
