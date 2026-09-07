@@ -887,13 +887,20 @@ export default function JpmcPortal() {
       <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 20 }}>
         <Text style={captionStyle}>JPMC Status</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
-          {TABS.map((t) => {
+          {TABS.filter((t) => {
             // Counts always reflect whichever Time Range is currently active -
             // the same window (all time, or the selected date's Brunei
             // noon-to-noon cutover) the table itself is filtered to, not a
             // separate/independent count. `data.counts.date` is null until a
             // date is actually picked, so the date-view tabs briefly fall back
             // to allTime's numbers rather than showing nothing.
+            const tabCounts = (viewMode === 'date' && data?.counts?.date) ? data.counts.date : data?.counts?.allTime;
+            const count = tabCounts ? tabCounts[t.key] : null;
+            // Hide empty tabs to keep the row clean - except 'all' (the "no
+            // filter" reset) and whichever tab is currently selected, so the
+            // active pill never disappears out from under the user.
+            return count == null || count > 0 || t.key === 'all' || t.key === activeTab;
+          }).map((t) => {
             const tabCounts = (viewMode === 'date' && data?.counts?.date) ? data.counts.date : data?.counts?.allTime;
             const count = tabCounts ? tabCounts[t.key] : null;
             return (
@@ -921,7 +928,11 @@ export default function JpmcPortal() {
               active (and search/date), but not this filter itself, so every option's
               count reflects "what picking it would show", not what's already selected.
               "All" sums them, matching the active tab's own count shown on its pill. */}
-          {[{ value: '', label: 'All GO RUSH Statuses' }, ...GO_RUSH_STATUS_OPTIONS.map((s) => ({ value: s, label: s }))].map((opt) => {
+          {[{ value: '', label: 'All GO RUSH Statuses' }, ...GO_RUSH_STATUS_OPTIONS.map((s) => ({ value: s, label: s }))].filter((opt) => {
+            if (opt.value === '' || opt.value === goRushStatusFilter) return true; // "All" and the active selection always show
+            const rawCount = data?.goRushStatusCounts?.[opt.value];
+            return rawCount == null || rawCount > 0; // unknown yet (not loaded) or has orders
+          }).map((opt) => {
             const count = opt.value === ''
               ? (data?.goRushStatusCounts ? Object.values(data.goRushStatusCounts).reduce((a, b) => a + b, 0) : null)
               : (data?.goRushStatusCounts?.[opt.value] ?? 0);
