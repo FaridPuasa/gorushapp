@@ -22,8 +22,8 @@ const transporter = nodemailer.createTransport({
     socketTimeout: 15000,
 });
 
-// Same fixed recipient list for all 3 alert cases (moh/jpmc immediate, phc,
-// self-collect) - confirmed 2026-08-26, not per-case.
+// Same fixed recipient list for all alert cases (moh/jpmc immediate, phc,
+// self-collect, local delivery, warga emas) - confirmed 2026-08-26, not per-case.
 const ORDER_ALERT_RECIPIENTS = [
     'customer.care@globex.com.bn',
     'customer.care@gorushbn.com',

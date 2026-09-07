@@ -1,12 +1,11 @@
-// Microsoft Teams notifications for 3 order categories, each posted to its
-// own channel via a separate Incoming Webhook - broader/independent from
-// the existing order-alert email (lib/mailer.js), which only covers
-// moh/jpmc Immediate, any phc order, or any Self Collect order, in ONE
-// combined email. These 3 checks are NOT mutually exclusive - e.g. a phc
-// order placed with "Immediate" charge posts to both the phc channel and
-// the immediate channel, since those are different teams who each want
-// visibility into their own order type. Only used by the Postgres
-// order-intake path (see routes/orders.js).
+// Microsoft Teams notifications for several order categories, each posted to
+// its own channel via a separate Incoming Webhook - broader/independent from
+// the existing order-alert email (lib/mailer.js). These checks are NOT
+// mutually exclusive - e.g. a phc order placed with "Immediate" charge posts
+// to both the phc channel and the immediate channel, since those are
+// different teams who each want visibility into their own order type. Used
+// by the Postgres order-intake path (see routes/orders.js) and by the Warga
+// Emas guest-submission route (see routes/wargaEmasOrders.js).
 const axios = require('axios');
 const { getDistrictLabel, extractBaseJobMethod } = require('./jobMethodFormat');
 
@@ -16,6 +15,7 @@ const PRODUCT_DISPLAY_NAME = {
     pharmacyphc: 'Pharmacy PHC',
     localdelivery: 'Local Delivery',
     cbsl: 'CBSL',
+    wargaemas: 'Warga Emas',
 };
 
 function formatBruneiDateTime(date) {
@@ -47,10 +47,46 @@ const CATEGORIES = [
         title: '🚚 Local Delivery Order',
         matches: (orderData) => orderData.product === 'localdelivery',
     },
+    {
+        key: 'wargaemas',
+        envVar: 'TEAMS_WEBHOOK_URL_WARGAEMAS',
+        title: '👴 Warga Emas Request',
+        matches: (orderData) => orderData.product === 'wargaemas',
+    },
 ];
 
 function buildOrderCard(title, orderData, trackingNumber, categoryKey) {
     const productName = PRODUCT_DISPLAY_NAME[orderData.product] || orderData.product;
+
+    // Warga Emas is just a guest IC submission (phone + IC front/back photos) -
+    // none of the delivery-order fields below (job method, address, payment,
+    // tracking number) apply, and the photos themselves aren't embedded here;
+    // staff view them in the admin dashboard.
+    if (categoryKey === 'wargaemas') {
+        return {
+            type: 'message',
+            attachments: [{
+                contentType: 'application/vnd.microsoft.card.adaptive',
+                content: {
+                    $schema: 'http://adaptivecards.io/schemas/adaptive-card.json',
+                    type: 'AdaptiveCard',
+                    version: '1.4',
+                    body: [
+                        { type: 'TextBlock', text: title, weight: 'Bolder', size: 'Medium', wrap: true },
+                        {
+                            type: 'FactSet',
+                            facts: [
+                                { title: 'Date Time Submission', value: formatBruneiDateTime(orderData.dateTimeSubmission) },
+                                { title: 'Phone', value: orderData.receiverPhoneNumber || '' },
+                                { title: 'IC Photos', value: 'Submitted - view in admin dashboard' },
+                            ],
+                        },
+                    ],
+                },
+            }],
+        };
+    }
+
     const facts = [
         { title: 'Tracking Number', value: trackingNumber || '' },
         { title: 'Date Time Submission', value: formatBruneiDateTime(orderData.dateTimeSubmission) },
@@ -134,7 +170,7 @@ async function postToChannel(category, orderData, trackingNumber) {
 
 // Best-effort/fire-and-forget, same tolerance as the other order-creation
 // side effects - a failed Teams post never fails the order-creation
-// request. Checks all 3 categories independently, posting to each channel
+// request. Checks all categories independently, posting to each channel
 // whose condition matches.
 async function notifyTeams(orderData, trackingNumber) {
     const results = await Promise.all(
