@@ -432,8 +432,8 @@ function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, colors,
 
           <GroupLabel colors={colors} scaleFont={scaleFont}>💊 JPMC Pharmacy</GroupLabel>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10, marginBottom: 14 }}>
-            <DetailField label="Fridge Item" value={order.jpmcFridgeItem || 'No'} minWidth={90} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Patient Informed" value={order.jpmcPatientInformed || '—'} minWidth={100} colors={colors} scaleFont={scaleFont} />
+            <DetailField label="Fridge Item?" value={order.jpmcFridgeItem || 'No'} minWidth={90} colors={colors} scaleFont={scaleFont} />
+            <DetailField label="Patient Informed?" value={order.jpmcPatientInformed || '—'} minWidth={100} colors={colors} scaleFont={scaleFont} />
             <DetailField label="Remarks from Pharmacy" value={order.jpmcPharmacyRemarks || '—'} minWidth={160} maxWidth={220} colors={colors} scaleFont={scaleFont} />
           </View>
 
@@ -613,7 +613,7 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
             </View>
             <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 120 }]}>
               <Picker enabled={canEdit} style={formStyles.pickerControl} selectedValue={fridgeItem} onValueChange={setFridgeItem}>
-                {FRIDGE_ITEM_OPTIONS.map((opt) => <Picker.Item key={opt} label={`Fridge Item: ${opt}`} value={opt} />)}
+                {FRIDGE_ITEM_OPTIONS.map((opt) => <Picker.Item key={opt} label={`Fridge Item?: ${opt}`} value={opt} />)}
               </Picker>
             </View>
             <View style={[formStyles.pickerContainer, { flex: 1, minWidth: 140 }]}>
