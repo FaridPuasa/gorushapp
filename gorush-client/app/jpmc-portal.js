@@ -915,21 +915,33 @@ export default function JpmcPortal() {
         </View>
 
         <Text style={captionStyle}>GO RUSH Status</Text>
-        <View style={[formStyles.pickerContainer, { maxWidth: 320, marginBottom: 18 }]}>
-          <Picker style={formStyles.pickerControl} selectedValue={goRushStatusFilter} onValueChange={setGoRushStatusFilter}>
-            {/* Counts come from data.goRushStatusCounts - scoped to whichever JPMC
-                status tab is currently active (and search/date), but not this filter
-                itself, so every option's count reflects "what picking it would show",
-                not what's already selected. "All" sums them, matching the active
-                tab's own count shown on its pill above. */}
-            <Picker.Item
-              label={`All GO RUSH Statuses${data?.goRushStatusCounts ? ` (${Object.values(data.goRushStatusCounts).reduce((a, b) => a + b, 0)})` : ''}`}
-              value=""
-            />
-            {GO_RUSH_STATUS_OPTIONS.map((s) => (
-              <Picker.Item key={s} label={`${s}${data?.goRushStatusCounts?.[s] != null ? ` (${data.goRushStatusCounts[s]})` : ' (0)'}`} value={s} />
-            ))}
-          </Picker>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
+          {/* Same pill design as JPMC Status above, for the same reason. Counts come
+              from data.goRushStatusCounts - scoped to whichever JPMC tab is currently
+              active (and search/date), but not this filter itself, so every option's
+              count reflects "what picking it would show", not what's already selected.
+              "All" sums them, matching the active tab's own count shown on its pill. */}
+          {[{ value: '', label: 'All GO RUSH Statuses' }, ...GO_RUSH_STATUS_OPTIONS.map((s) => ({ value: s, label: s }))].map((opt) => {
+            const count = opt.value === ''
+              ? (data?.goRushStatusCounts ? Object.values(data.goRushStatusCounts).reduce((a, b) => a + b, 0) : null)
+              : (data?.goRushStatusCounts?.[opt.value] ?? 0);
+            const selected = goRushStatusFilter === opt.value;
+            return (
+              <AnimatedPressable
+                key={opt.value || 'all'}
+                scaleTo={1.03}
+                onPress={() => setGoRushStatusFilter(opt.value)}
+                style={[
+                  { paddingVertical: 9, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border },
+                  selected && { backgroundColor: colors.primary, borderColor: colors.primary },
+                ]}
+              >
+                <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: selected ? '#fff' : colors.textPrimary }}>
+                  {opt.label}{count != null ? ` (${count})` : ''}
+                </Text>
+              </AnimatedPressable>
+            );
+          })}
         </View>
 
         <Text style={captionStyle}>Time Range</Text>
