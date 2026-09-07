@@ -167,6 +167,13 @@ async function buildFilteredWhere(req) {
         if (statuses.includes('New Order')) orClauses.push({ jpmcPharmacyStatus: null });
         where.AND = [...(where.AND || []), { OR: orClauses }];
     }
+    // Snapshot before applying goRushStatus itself - the GO RUSH Status
+    // filter's own per-option counts (see goRushStatusCountsByStatus below)
+    // need everything else the list is scoped to (search, the active JPMC
+    // tab, the date window) EXCEPT the currently selected GO RUSH status,
+    // otherwise picking one option would immediately zero out every other
+    // option's count instead of showing what picking it WOULD show.
+    const whereWithoutGoRush = { ...where };
     if (req.query.goRushStatus) {
         where.currentStatus = req.query.goRushStatus;
     }
@@ -185,9 +192,18 @@ async function buildFilteredWhere(req) {
         // Sunday/holiday-aware boundary used everywhere else in this portal.
         windowRange = windowForDate(req.query.date, holidayDates);
         where.dateTimeSubmission = { gte: windowRange.start, lte: windowRange.end };
+        whereWithoutGoRush.dateTimeSubmission = where.dateTimeSubmission;
     }
 
-    return { baseWhere, where, holidayDates, view, windowRange };
+    return { baseWhere, where, whereWithoutGoRush, holidayDates, view, windowRange };
+}
+
+// Per-GO-RUSH-status counts, scoped to whatever the caller's already filtered
+// to (JPMC tab, search, date window) but not the GO RUSH status filter itself -
+// backs the GO RUSH Status dropdown's own "(N)" counts next to each option.
+async function goRushStatusCounts(whereWithoutGoRush) {
+    const rows = await prisma.order.groupBy({ by: ['currentStatus'], where: whereWithoutGoRush, _count: true });
+    return Object.fromEntries(rows.map((r) => [r.currentStatus || 'null', r._count]));
 }
 
 // GET /api/jpmc/orders?view=all|date&date=&search=&pharmacyStatus=&goRushStatus=&page=&limit=
@@ -202,11 +218,11 @@ async function buildFilteredWhere(req) {
 //   and the free-standing GO RUSH filter).
 router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
     try {
-        const { baseWhere, where, holidayDates, view, windowRange } = await buildFilteredWhere(req);
+        const { baseWhere, where, whereWithoutGoRush, holidayDates, view, windowRange } = await buildFilteredWhere(req);
 
         if (view === 'date') {
             const dateWhere = { AND: [baseWhere, { dateTimeSubmission: where.dateTimeSubmission }] };
-            const [orders, allTimeCounts, dateCounts] = await Promise.all([
+            const [orders, allTimeCounts, dateCounts, goRushCounts] = await Promise.all([
                 prisma.order.findMany({
                     where,
                     include: { history: true },
@@ -214,6 +230,7 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
                 }),
                 countByTab(baseWhere),
                 countByTab(dateWhere),
+                goRushStatusCounts(whereWithoutGoRush),
             ]);
             return res.json({
                 view,
@@ -221,12 +238,13 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
                 to: windowRange.end,
                 orders: orders.map((o) => toApiShape(o, holidayDates)),
                 counts: { allTime: allTimeCounts, date: dateCounts },
+                goRushStatusCounts: goRushCounts,
             });
         }
 
         const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
         const limit = Math.min(parseInt(req.query.limit, 10) || ALL_ORDERS_PAGE_SIZE, 100);
-        const [orders, totalCount, allTimeCounts] = await Promise.all([
+        const [orders, totalCount, allTimeCounts, goRushCounts] = await Promise.all([
             prisma.order.findMany({
                 where,
                 include: { history: true },
@@ -236,6 +254,7 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
             }),
             prisma.order.count({ where }),
             countByTab(baseWhere),
+            goRushStatusCounts(whereWithoutGoRush),
         ]);
         res.json({
             view: 'all',
@@ -244,6 +263,7 @@ router.get('/orders', requireRole('jpmc', 'admin'), async (req, res) => {
             totalCount,
             orders: orders.map((o) => toApiShape(o, holidayDates)),
             counts: { allTime: allTimeCounts, date: null },
+            goRushStatusCounts: goRushCounts,
         });
     } catch (err) {
         console.error(err.message);

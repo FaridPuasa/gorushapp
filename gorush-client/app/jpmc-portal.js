@@ -33,6 +33,16 @@ const WIDE_MAX_WIDTH = 1800;
 const STATUS_OPTIONS = ['New Order', 'Entered', 'Pending Payment', 'Pending Query', 'Completed', 'Duplicate Order', 'Cancelled Order'];
 const PATIENT_INFORMED_OPTIONS = ['Yes', 'No'];
 const FRIDGE_ITEM_OPTIONS = ['No', 'Yes'];
+// currentStatus values actually set by grfmxstatusupdate's Detrack sync - shown verbatim,
+// no renaming. Trimmed to the statuses JPMC staff actually care about tracking against
+// (the warehouse-internal ones aren't useful filter targets for them). A further
+// refinement on top of whichever JPMC status tab is active (e.g. "Completed" JPMC +
+// "Out for Delivery" GO RUSH), not tied to any one tab - JPMC being Completed no longer
+// implies GO RUSH is too (see the tab definitions below), so this is what lets staff
+// narrow any tab down by GO RUSH's own delivery status too.
+const GO_RUSH_STATUS_OPTIONS = [
+  'Info Received', 'At Warehouse', 'Out for Delivery', 'Return to Warehouse', 'Self Collect', 'Completed', 'Cancelled',
+];
 const SEARCH_DEBOUNCE_MS = 400;
 // "Current window" removed - staff triage across every window by default now
 // (see the "In Process" tab below), so "All time" is the default/primary
@@ -581,7 +591,10 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
     <View style={{ maxHeight: '100%' }}>
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 }}>
         <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{order.doTrackingNumber || 'No tracking yet'}</Text>
+          <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{order.receiverName || '—'}</Text>
+          <Text style={{ fontSize: scaleFont(13), color: colors.textMuted, marginTop: 2 }}>
+            {order.patientNumber || '—'} · {order.appointmentPlace || '—'}
+          </Text>
           <View style={{ alignSelf: 'flex-start', marginTop: 8 }}>
             <Badge label="JPMC" value={order.jpmcPharmacyStatus || 'New Order'} bg={jpmcBadge.bg} fg={jpmcBadge.fg} scaleFont={scaleFont} />
           </View>
@@ -752,6 +765,10 @@ export default function JpmcPortal() {
   const [viewOrder, setViewOrder] = useState(null);
   const [editOrder, setEditOrder] = useState(null);
   const [exporting, setExporting] = useState(false);
+  // Available regardless of which JPMC status tab is active (default 'All GO
+  // RUSH Statuses', i.e. no extra filter) - a further refinement on top of
+  // whichever JPMC tab is selected, not tied to any one of them.
+  const [goRushStatusFilter, setGoRushStatusFilter] = useState('');
 
   useEffect(() => {
     const id = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
@@ -760,7 +777,7 @@ export default function JpmcPortal() {
 
   // Any filter/view change should jump back to page 1 of "All time" - a stale
   // page number from a previous, larger result set could land past the end.
-  useEffect(() => { setPage(1); }, [activeTab, viewMode, dateFilter, search]);
+  useEffect(() => { setPage(1); }, [activeTab, viewMode, dateFilter, search, goRushStatusFilter]);
 
   const activeTabDef = TABS.find((t) => t.key === activeTab) || TABS[0];
 
@@ -773,6 +790,7 @@ export default function JpmcPortal() {
       const params = { view: viewMode };
       if (search) params.search = search;
       if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
+      if (goRushStatusFilter) params.goRushStatus = goRushStatusFilter;
       if (viewMode === 'date') params.date = dateFilter;
       if (viewMode === 'all') params.page = page;
       const res = await api.get('/api/jpmc/orders', { headers: authHeader, params });
@@ -782,7 +800,7 @@ export default function JpmcPortal() {
     } finally {
       setLoading(false);
     }
-  }, [token, activeTab, viewMode, dateFilter, page, search]);
+  }, [token, activeTab, viewMode, dateFilter, page, search, goRushStatusFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
@@ -813,13 +831,17 @@ export default function JpmcPortal() {
       const params = { view: viewMode };
       if (search) params.search = search;
       if (activeTabDef.statuses) params.pharmacyStatus = activeTabDef.statuses.join(',');
+      if (goRushStatusFilter) params.goRushStatus = goRushStatusFilter;
       if (viewMode === 'date') params.date = dateFilter;
       const res = await api.get('/api/jpmc/orders/export', { headers: authHeader, params, responseType: 'blob' });
 
       // 'YYYY-MM-DD' -> 'DD.MM.YYYY', matching this page's other date displays
       // (formatDMY) without routing a plain filter string through a Date object.
       const dateLabel = (viewMode === 'date' && dateFilter) ? dateFilter.split('-').reverse().join('.') : 'All';
-      const filename = `JPMC Pharmacy Orders ${activeTabDef.label} ${dateLabel}.xlsx`;
+      const tabLabel = goRushStatusFilter
+        ? `${activeTabDef.label} (GO RUSH ${goRushStatusFilter})`
+        : activeTabDef.label;
+      const filename = `JPMC Pharmacy Orders ${tabLabel} ${dateLabel}.xlsx`;
 
       const blob = new Blob([res.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
       const url = window.URL.createObjectURL(blob);
@@ -863,7 +885,7 @@ export default function JpmcPortal() {
           (secondary, changed less often) - so they read as two distinct kinds of choice
           rather than one long run of identical-looking buttons. */}
       <View style={{ backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 12, padding: 16, marginBottom: 20 }}>
-        <Text style={captionStyle}>Status</Text>
+        <Text style={captionStyle}>JPMC Status</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginBottom: 18, flexWrap: 'wrap' }}>
           {TABS.map((t) => {
             // Counts always reflect whichever Time Range is currently active -
@@ -890,6 +912,24 @@ export default function JpmcPortal() {
               </AnimatedPressable>
             );
           })}
+        </View>
+
+        <Text style={captionStyle}>GO RUSH Status</Text>
+        <View style={[formStyles.pickerContainer, { maxWidth: 320, marginBottom: 18 }]}>
+          <Picker style={formStyles.pickerControl} selectedValue={goRushStatusFilter} onValueChange={setGoRushStatusFilter}>
+            {/* Counts come from data.goRushStatusCounts - scoped to whichever JPMC
+                status tab is currently active (and search/date), but not this filter
+                itself, so every option's count reflects "what picking it would show",
+                not what's already selected. "All" sums them, matching the active
+                tab's own count shown on its pill above. */}
+            <Picker.Item
+              label={`All GO RUSH Statuses${data?.goRushStatusCounts ? ` (${Object.values(data.goRushStatusCounts).reduce((a, b) => a + b, 0)})` : ''}`}
+              value=""
+            />
+            {GO_RUSH_STATUS_OPTIONS.map((s) => (
+              <Picker.Item key={s} label={`${s}${data?.goRushStatusCounts?.[s] != null ? ` (${data.goRushStatusCounts[s]})` : ' (0)'}`} value={s} />
+            ))}
+          </Picker>
         </View>
 
         <Text style={captionStyle}>Time Range</Text>
