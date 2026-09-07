@@ -928,7 +928,7 @@ export default function JpmcPortal() {
               active (and search/date), but not this filter itself, so every option's
               count reflects "what picking it would show", not what's already selected.
               "All" sums them, matching the active tab's own count shown on its pill. */}
-          {[{ value: '', label: 'All GO RUSH Statuses' }, ...GO_RUSH_STATUS_OPTIONS.map((s) => ({ value: s, label: s }))].filter((opt) => {
+          {[{ value: '', label: 'All' }, ...GO_RUSH_STATUS_OPTIONS.map((s) => ({ value: s, label: s }))].filter((opt) => {
             if (opt.value === '' || opt.value === goRushStatusFilter) return true; // "All" and the active selection always show
             const rawCount = data?.goRushStatusCounts?.[opt.value];
             return rawCount == null || rawCount > 0; // unknown yet (not loaded) or has orders
