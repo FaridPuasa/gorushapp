@@ -930,8 +930,14 @@ export default function JpmcPortal() {
               "All" sums them, matching the active tab's own count shown on its pill. */}
           {[{ value: '', label: 'All' }, ...GO_RUSH_STATUS_OPTIONS.map((s) => ({ value: s, label: s }))].filter((opt) => {
             if (opt.value === '' || opt.value === goRushStatusFilter) return true; // "All" and the active selection always show
-            const rawCount = data?.goRushStatusCounts?.[opt.value];
-            return rawCount == null || rawCount > 0; // unknown yet (not loaded) or has orders
+            // goRushStatusCounts comes from a groupBy, which only returns keys that
+            // actually occur - a genuinely zero-count status is simply ABSENT from
+            // it, same as one that hasn't loaded yet. So "not loaded" has to be
+            // judged by the counts object itself existing, not by whether this one
+            // status's key is present in it - once it exists, a missing key really
+            // does mean zero.
+            if (!data?.goRushStatusCounts) return true;
+            return (data.goRushStatusCounts[opt.value] ?? 0) > 0;
           }).map((opt) => {
             const count = opt.value === ''
               ? (data?.goRushStatusCounts ? Object.values(data.goRushStatusCounts).reduce((a, b) => a + b, 0) : null)
