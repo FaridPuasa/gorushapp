@@ -1,16 +1,23 @@
 // Two-tier gate, both off by default, mirroring grfmxstatusupdate's own
-// SUPABASE_ENABLED + SUPABASE_DUAL_WRITE_COLLECTIONS pattern. This app only
-// ever has one thing to gate (order intake), so a single boolean plays the
-// role grfmxstatusupdate's per-collection list plays there:
+// SUPABASE_ENABLED + SUPABASE_DUAL_WRITE_COLLECTIONS pattern - one boolean
+// per feature being migrated off Mongo, all sharing the same master switch:
 //   SUPABASE_ENABLED               - master switch.
-//   SUPABASE_ORDER_INTAKE_ENABLED  - this specific feature.
+//   SUPABASE_ORDER_INTAKE_ENABLED  - order intake (live since 2026-08-28).
+//   SUPABASE_WARGA_EMAS_ENABLED    - Warga Emas form submissions.
 //
-// HARD BLOCKER: do not set both true in any deployed environment until
-// grfmxstatusupdate's own Phase 7 (read cutover) is complete - see
-// HANDOFF_SUPABASE_ORDER_INTAKE.md. Ask before flipping this in production.
+// The order-intake flag had a hard blocker (grfmxstatusupdate's Phase 7 read
+// cutover had to complete first, since that app read exclusively from Mongo
+// until then) - that phase is now done (2026-08-31), so no such blocker
+// applies to flags added after it. Still, ask before flipping any of these
+// in production - each is a real behavior change, not a no-op toggle.
 function isPostgresOrderIntakeEnabled() {
     return process.env.SUPABASE_ENABLED === 'true'
         && process.env.SUPABASE_ORDER_INTAKE_ENABLED === 'true';
 }
 
-module.exports = { isPostgresOrderIntakeEnabled };
+function isPostgresWargaEmasEnabled() {
+    return process.env.SUPABASE_ENABLED === 'true'
+        && process.env.SUPABASE_WARGA_EMAS_ENABLED === 'true';
+}
+
+module.exports = { isPostgresOrderIntakeEnabled, isPostgresWargaEmasEnabled };

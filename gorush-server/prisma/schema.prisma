@@ -190,3 +190,22 @@ model OrderHistory {
   @@map("order_history")
   @@schema("gr_dms")
 }
+
+// Owned by grfmxstatusupdate's own prisma/schema.prisma - mirrored here only
+// for this app's direct write path (routes/wargaEmasOrders.js). Keep in sync
+// with that file's WaOrder model if it ever changes shape - see this
+// repo's header comment on the Order model above for why this mirroring is
+// necessary (a missing field here silently breaks every insert with a
+// PrismaClientValidationError, not caught until it happens live).
+model WaOrder {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+
+  icPictureFront      String?   @map("ic_picture_front")
+  icPictureBack       String?   @map("ic_picture_back")
+  dateTimeSubmission  DateTime? @map("date_time_submission")
+  receiverPhoneNumber String?   @map("receiver_phone_number")
+
+  @@map("wa_orders")
+  @@schema("gr_dms")
+}

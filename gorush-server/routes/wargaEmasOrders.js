@@ -4,6 +4,8 @@ const WargaEmasOrder = require('../models/WargaEmasOrder');
 const { optionalAuth } = require('../middleware/auth');
 const { sendOrderAlert } = require('../lib/mailer');
 const { notifyTeams } = require('../lib/teamsNotify');
+const { isPostgresWargaEmasEnabled } = require('../lib/supabaseFlag');
+const prisma = require('../lib/prismaClient');
 
 function formatBruneiDateTime(date) {
     return date ? new Date(date).toLocaleString('en-GB', { timeZone: 'Asia/Brunei' }) : '';
@@ -43,6 +45,34 @@ router.post('/', optionalAuth, async (req, res) => {
         });
 
         const savedOrder = await newOrder.save();
+
+        // Direct write to Postgres, alongside the Mongo save above rather than
+        // instead of it - grfmxstatusupdate's own daily cleanup job already
+        // syncs any not-yet-mirrored Warga Emas doc to Postgres as a
+        // best-effort catch-all (see that repo's data/waorders.js), so this
+        // is purely a latency improvement (immediate instead of up-to-24h
+        // later), not a new sync path - the upsert-by-mongoId there is a
+        // safe no-op if this write already landed first. Same fire-and-
+        // forget tolerance as the Teams/email side effects below: a failure
+        // here never fails the actual submission, the nightly job just
+        // picks it up later like it always has.
+        if (isPostgresWargaEmasEnabled()) {
+            try {
+                await prisma.waOrder.upsert({
+                    where: { mongoId: savedOrder._id.toString() },
+                    create: {
+                        mongoId: savedOrder._id.toString(),
+                        icPictureFront,
+                        icPictureBack,
+                        dateTimeSubmission: new Date(newOrder.dateTimeSubmission),
+                        receiverPhoneNumber,
+                    },
+                    update: {},
+                });
+            } catch (pgErr) {
+                console.error('[Postgres] Warga Emas direct write failed (will be caught by grfmxstatusupdate\'s nightly sync instead):', pgErr.message);
+            }
+        }
 
         // Same tolerance as the Postgres order-intake path's own Teams/email
         // side effects (both already swallow their own errors internally) -
