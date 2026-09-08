@@ -301,7 +301,7 @@ router.get('/orders/export', requireRole('jpmc', 'admin'), async (req, res) => {
             'Main Phone': o.receiverPhoneNumber || '',
             'Additional Phone': o.additionalPhoneNumber || '',
             'Price': o.totalPrice || '',
-            'Customer Remarks': o.remarks || '',
+            "Patient's Remarks": o.remarks || '',
             'JPMC Status': o.jpmcPharmacyStatus || 'New Order',
             'Fridge Item?': o.jpmcFridgeItem || 'No',
             'Patient Informed?': o.jpmcPatientInformed || '',

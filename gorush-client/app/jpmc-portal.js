@@ -392,7 +392,7 @@ const ROW_ORDER_FIELDS = [
   { key: 'receiverName', label: "Patient's Name", minWidth: 140, maxWidth: 200, format: (o) => o.receiverName || '—' },
   { key: 'patientNumber', label: "Patient's PRN", minWidth: 100, format: (o) => o.patientNumber || '—' },
   { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
-  { key: 'remarks', label: 'Customer Remarks', minWidth: 160, maxWidth: 260, format: (o) => o.remarks, hideIfEmpty: true },
+  { key: 'remarks', label: "Patient's Remarks", minWidth: 160, maxWidth: 260, format: (o) => o.remarks, hideIfEmpty: true },
 ];
 
 function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, colors, isEven, scaleFont, formStyles }) {
