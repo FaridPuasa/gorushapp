@@ -384,14 +384,15 @@ function PaymentProofControl({ order, authHeader, colors, scaleFont, formStyles 
 }
 
 // Fields shown directly on the GO RUSH (left) side of the row - the rest
-// (address, phone numbers, tracking no., remarks) live in the "View More"
-// detail card instead of crowding the row.
+// (address, phone numbers, tracking no.) live in the "View More" detail card
+// instead of crowding the row.
 const ROW_ORDER_FIELDS = [
   { key: 'dateTimeSubmission', label: 'Date/Time Submitted', minWidth: 130, format: (o) => formatDMYTime(o.dateTimeSubmission) },
   { key: 'jobMethod', label: 'Delivery Type', minWidth: 130, maxWidth: 180, format: (o) => o.jobMethod || '—' },
   { key: 'receiverName', label: "Patient's Name", minWidth: 140, maxWidth: 200, format: (o) => o.receiverName || '—' },
   { key: 'patientNumber', label: "Patient's PRN", minWidth: 100, format: (o) => o.patientNumber || '—' },
   { key: 'appointmentPlace', label: 'Location', minWidth: 70, format: (o) => o.appointmentPlace || '—' },
+  { key: 'remarks', label: 'Customer Remarks', minWidth: 160, maxWidth: 260, format: (o) => o.remarks, hideIfEmpty: true },
 ];
 
 function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, colors, isEven, scaleFont, formStyles }) {
@@ -406,7 +407,7 @@ function OrderTableRow({ order, onViewMore, onEdit, canEdit, authHeader, colors,
             <Badge label="GO RUSH" value={order.goRushStatus} bg={goRushBadge.bg} fg={goRushBadge.fg} scaleFont={scaleFont} />
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 10, marginBottom: 12 }}>
-            {ROW_ORDER_FIELDS.map((f) => (
+            {ROW_ORDER_FIELDS.filter((f) => !f.hideIfEmpty || f.format(order)).map((f) => (
               <DetailField key={f.key} label={f.label} value={f.format(order)} minWidth={f.minWidth} maxWidth={f.maxWidth} colors={colors} scaleFont={scaleFont} />
             ))}
           </View>
@@ -803,6 +804,22 @@ export default function JpmcPortal() {
   }, [token, activeTab, viewMode, dateFilter, page, search, goRushStatusFilter]);
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  // A tracking-number (or other) search matching zero results under the
+  // current JPMC/GO RUSH/time-range filters is misleading when the order
+  // does exist, just under a different status or window (e.g. searching a
+  // now-Completed order while still on the New Order tab) - "No orders
+  // found" reads as "that tracking number doesn't exist" rather than "not
+  // under this filter". Widen automatically to the broadest scope (All/All/
+  // All time) whenever a search comes up empty and isn't already there -
+  // this settles to a no-op once it is, so it can't loop.
+  useEffect(() => {
+    if (!search || !data || data.orders.length > 0) return;
+    if (activeTab === 'all' && !goRushStatusFilter && viewMode === 'all') return;
+    setActiveTab('all');
+    setGoRushStatusFilter('');
+    setViewMode('all');
+  }, [data, search]);
 
   async function blobErrorMessage(err) {
     try {
