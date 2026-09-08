@@ -1,7 +1,6 @@
-// Microsoft Graph API helper for appending order rows to the two SharePoint/
-// OneDrive Excel workbooks the old Make.com flow wrote to - "Guest Orders"
-// in "JPMC PJSC Forms.xlsx" for JPMC orders, and "Database" in "Limbang
-// Manifest.xlsx" for CBSL orders. Mirrors grfmxstatusupdate's own
+// Microsoft Graph API helper for appending order rows to the SharePoint/
+// OneDrive Excel workbook the old Make.com flow wrote to - "Database" in
+// "Limbang Manifest.xlsx" for CBSL orders. Mirrors grfmxstatusupdate's own
 // data/msGraphExcel.js pattern exactly (same app-only client-credentials
 // auth, same "write past usedRange" append strategy) - reuse that same
 // Azure AD app registration's credentials here rather than creating a new
@@ -10,24 +9,20 @@
 // Only used by the Postgres order-intake path (see routes/orders.js) - the
 // old Mongo-based flow's equivalent Excel rows are still written by
 // Make.com until that flow is retired.
+//
+// The equivalent JPMC "Guest Orders" append (appendJpmcGuestOrderRow) was
+// removed 2026-09-08 - JPMC has fully cut over to gorushapp's own /jpmc-portal,
+// so new/reordered JPMC orders no longer need to land in the old workbook at
+// all (see grfmxstatusupdate's project_jpmc_portal_and_excel_backfill memory).
 const axios = require('axios');
 
 const GRAPH_BASE = 'https://graph.microsoft.com/v1.0';
 
-// Date/timestamp values (orderData.dateOfBirth, orderData.dateTimeSubmission)
-// are real JS Date objects - written into a row's `values` array as-is, they
-// get JSON-serialized to a raw ISO string ("1993-05-13T00:00:00.000Z") and
-// Excel just displays that literally instead of a real date. Format both as
-// plain readable strings before they ever reach a row.
-function formatDateOnly(date) {
-    if (!date) return null;
-    const d = new Date(date);
-    if (Number.isNaN(d.getTime())) return null;
-    const day = String(d.getUTCDate()).padStart(2, '0');
-    const month = String(d.getUTCMonth() + 1).padStart(2, '0');
-    return `${day}/${month}/${d.getUTCFullYear()}`;
-}
-
+// Date/timestamp values (orderData.dateTimeSubmission) are real JS Date
+// objects - written into a row's `values` array as-is, they get
+// JSON-serialized to a raw ISO string ("1993-05-13T00:00:00.000Z") and Excel
+// just displays that literally instead of a real date. Formatted as a plain
+// readable string before it ever reaches a row.
 function formatBruneiDateTime(date) {
     if (!date) return null;
     const d = new Date(date);
@@ -159,51 +154,6 @@ async function uploadCbslInvoiceScreenshot(dataUrl, trackingNumber, itemIndex) {
     }
 }
 
-// "Guest Orders" sheet, 18-column layout - identical to
-// grfmxstatusupdate's data/msGraphExcel.js buildGuestOrderRow, confirmed
-// against the live Make.com scenario 2026-08-26:
-//   No | icnumber | passport | dateofbirth | Column1(additionalPhoneNumber) |
-//   customerPhone | dateSubmitted | paymentmethod | deliveryType | name |
-//   patientNumber | customerAddress | remarks | jpmcpjsc | Tookan-Tracking |
-//   price | Column2(unused) | dateOrdered(unused)
-// N/jpmcpjsc: the Make.com scenario maps this to an internal bundle
-// reference ("108.data.jpmcpjsc") that doesn't correspond to a plain order
-// field name - using appointmentPlace here, matching what
-// grfmxstatusupdate's own working copy of this exact sheet already writes
-// into this same column. Flag if this turns out to be wrong.
-function buildJpmcGuestOrderRow(orderData, trackingNumber) {
-    return [
-        '-',
-        orderData.icNum || null,
-        orderData.passport || 'IC Number',
-        formatDateOnly(orderData.dateOfBirth),
-        orderData.additionalPhoneNumber || null,
-        orderData.receiverPhoneNumber || null,
-        formatBruneiDateTime(orderData.dateTimeSubmission),
-        orderData.paymentMethod || null,
-        orderData.jobMethod || null,
-        orderData.receiverName || null,
-        orderData.patientNumber || null,
-        orderData.receiverAddress || null,
-        orderData.remarks || null,
-        orderData.appointmentPlace || null,
-        trackingNumber || null,
-        orderData.totalPrice != null ? Number(orderData.totalPrice) : null,
-        null,
-        null,
-    ];
-}
-
-async function appendJpmcGuestOrderRow(orderData, trackingNumber) {
-    return appendRow({
-        fileOwner: process.env.MS_GRAPH_EXCEL_FILE_OWNER,
-        itemId: process.env.MS_GRAPH_JPMC_EXCEL_ITEM_ID,
-        sheetName: 'Guest Orders',
-        row: buildJpmcGuestOrderRow(orderData, trackingNumber),
-        logLabel: trackingNumber,
-    });
-}
-
 // "Database" sheet in Limbang Manifest.xlsx, 13-column layout confirmed
 // against the live Make.com scenario 2026-08-26. CBSL orders carry a real
 // items[] array (multiple distinct goods per shipment) - Make's scenario
@@ -275,4 +225,4 @@ async function appendCbslManifestRows(orderData, trackingNumber) {
     return allOk;
 }
 
-module.exports = { appendJpmcGuestOrderRow, appendCbslManifestRows, buildJpmcGuestOrderRow, buildCbslManifestRow };
+module.exports = { appendCbslManifestRows, buildCbslManifestRow };

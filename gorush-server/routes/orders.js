@@ -15,7 +15,7 @@ const { generateTrackingNumber } = require('../lib/trackingNumber');
 const { createDetrackJob } = require('../lib/detrack');
 const { parseGorushDateOnly } = require('../lib/dateHelpers');
 const { sendOrderAlert } = require('../lib/mailer');
-const { appendJpmcGuestOrderRow, appendCbslManifestRows } = require('../lib/msGraphExcel');
+const { appendCbslManifestRows } = require('../lib/msGraphExcel');
 const { sendWhatsAppMessage } = require('../lib/whatsapp');
 const { getAreaFromAddress } = require('../lib/area');
 const { notifyTeams } = require('../lib/teamsNotify');
@@ -399,9 +399,10 @@ router.post('/', optionalAuth, async (req, res) => {
                     }
                     await sendWhatsAppMessage(orderData.receiverPhoneNumber, orderData.receiverName, trackingNumber, product);
                     await notifyTeams(orderData, trackingNumber);
-                    if (product === 'pharmacyjpmc') {
-                        await appendJpmcGuestOrderRow(orderData, trackingNumber);
-                    } else if (product === 'cbsl') {
+                    // JPMC's own Excel append was removed 2026-09-08 - JPMC has fully
+                    // cut over to gorushapp's /jpmc-portal, so new orders no longer
+                    // need to land in the old "JPMC PJSC Forms.xlsx" workbook.
+                    if (product === 'cbsl') {
                         await appendCbslManifestRows(orderData, trackingNumber);
                     }
                 } catch (err) {
