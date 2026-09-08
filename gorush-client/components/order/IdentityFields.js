@@ -97,7 +97,7 @@ export default function IdentityFields({ values, onChange, errors = {}, focusedF
             placeholder={t('identity.icPlaceholder')}
             placeholderTextColor={colors.textMuted}
             keyboardType="numeric"
-            maxLength={8}
+            maxLength={20}
             value={values.icNum}
             onChangeText={(v) => onChange('icNum', formatICNumber(v))}
             {...focusHandlers('icNum')}

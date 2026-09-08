@@ -146,7 +146,7 @@ function DetailsForm({ initial, onSave, onCancel, saving, scrollRef }) {
             placeholder={t('identity.icPlaceholder')}
             placeholderTextColor={colors.textMuted}
             keyboardType="numeric"
-            maxLength={8}
+            maxLength={20}
             value={data.icnum}
             onChangeText={(v) => update('icnum', formatICNumber(v))}
             {...focusHandlers('icnum')}
@@ -161,7 +161,7 @@ function DetailsForm({ initial, onSave, onCancel, saving, scrollRef }) {
       <Field label={t('identity.bruHimsNo')} error={errors.bruhimsnum} hint={t('identity.bruHimsHint')} fieldKey="bruhimsnum" registerRef={registerFieldRef}>
         <TextInput
           style={inputStyle('bruhimsnum')}
-          maxLength={10}
+          maxLength={20}
           value={data.bruhimsnum}
           onFocus={() => { setFocusedField('bruhimsnum'); if (!data.bruhimsnum) update('bruhimsnum', 'BN'); }}
           onBlur={() => setFocusedField(null)}

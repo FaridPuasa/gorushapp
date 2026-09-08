@@ -114,7 +114,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
           placeholder={t('identity.icPlaceholder')}
           placeholderTextColor={colors.textMuted}
           keyboardType="numeric"
-          maxLength={8}
+          maxLength={20}
           value={values.icnumber}
           onChangeText={(v) => onChange('icnumber', formatICNumber(v))}
           {...focusHandlers('icnumber')}

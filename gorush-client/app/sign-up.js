@@ -421,7 +421,7 @@ export default function Register() {
                 placeholder={t('identity.icPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 keyboardType="numeric"
-                maxLength={8}
+                maxLength={20}
                 value={formData.icnum}
                 onChangeText={handleICNumber}
                 {...focusHandlers('icnum')}
@@ -443,7 +443,7 @@ export default function Register() {
           <Field label={t('auth.register.bruHimsNo')} error={errors.bruhimsnum} hint={t('auth.register.bruHimsHint')} fieldKey="bruhimsnum" registerRef={registerFieldRef}>
             <TextInput
               style={inputStyle('bruhimsnum')}
-              maxLength={10}
+              maxLength={20}
               value={formData.bruhimsnum}
               onFocus={() => { setFocusedField('bruhimsnum'); if (!formData.bruhimsnum) updateField('bruhimsnum', 'BN'); }}
               onBlur={() => setFocusedField(null)}

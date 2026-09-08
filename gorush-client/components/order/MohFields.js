@@ -34,7 +34,7 @@ export default function MohFields({ values, onChange, errors = {}, focusedField,
         <Field label={t('order.bruHimsNo')} required hint={t('order.bruHimsHint')} error={errors.bruhimsnum} fieldKey="bruhimsnum" registerRef={registerFieldRef}>
           <TextInput
             style={inputStyle('bruhimsnum')}
-            maxLength={10}
+            maxLength={20}
             value={values.bruhimsnum}
             onFocus={() => { setFocusedField('bruhimsnum'); if (!values.bruhimsnum) onChange('bruhimsnum', 'BN'); }}
             onBlur={() => setFocusedField(null)}
