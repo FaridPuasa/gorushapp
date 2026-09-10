@@ -265,3 +265,37 @@ model HeroSlide {
   @@map("heroslides")
   @@schema("gr_dms")
 }
+
+// Read directly by grfmxstatusupdate too (GorushPricingRule/GorushPublicHoliday
+// read-only mirror models) - unlike Announcement/Vacancy/HeroSlide, this pair
+// needs BOTH apps' reads coordinated together before any read-cutover, not
+// just a one-sided dual-write. This phase is still write-side only (Mongo
+// stays primary here too); the read-cutover is a separate, later decision -
+// see the gorushapp Mongo migration phasing memory. This is also the exact
+// collection pair that caused the 2026-08-31 strictQuery reorder-pricing
+// incident in grfmxstatusupdate.
+model PricingRule {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+
+  product    String?
+  district   String?
+  chargeCode String? @map("charge_code")
+  price      Float?
+  note       String?
+
+  @@unique([product, district, chargeCode])
+  @@map("pricing_rules")
+  @@schema("gr_dms")
+}
+
+model PublicHoliday {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+
+  date  String?
+  label String?
+
+  @@map("public_holidays")
+  @@schema("gr_dms")
+}
