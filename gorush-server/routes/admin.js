@@ -8,6 +8,11 @@ const Vacancy = require('../models/Vacancy');
 const PricingRule = require('../models/PricingRule');
 const { compressBase64Image } = require('../lib/imageCompress');
 const { prisma, dualWriteCmsCreate, dualWriteCmsUpdate, dualWriteCmsDelete } = require('../lib/cmsDualWrite');
+const {
+    dualWriteCreate: dualWritePricingHolidayCreate,
+    dualWriteUpdate: dualWritePricingHolidayUpdate,
+    dualWriteDelete: dualWritePricingHolidayDelete,
+} = require('../lib/pricingHolidayDualWrite');
 
 router.use(requireAdmin);
 
@@ -18,6 +23,7 @@ router.post('/holidays', async (req, res) => {
         const { date, label } = req.body;
         if (!date) return res.status(400).json({ error: "A date is required." });
         const holiday = await PublicHoliday.create({ date, label });
+        await dualWritePricingHolidayCreate(prisma.publicHoliday, holiday, { date: holiday.date, label: holiday.label });
         res.status(201).json(holiday);
     } catch (err) {
         console.error(err.message);
@@ -29,6 +35,7 @@ router.delete('/holidays/:id', async (req, res) => {
     try {
         const result = await PublicHoliday.findByIdAndDelete(req.params.id);
         if (!result) return res.status(404).json({ error: "Holiday not found." });
+        await dualWritePricingHolidayDelete(prisma.publicHoliday, result._id);
         res.status(200).json({ message: "Holiday removed." });
     } catch (err) {
         console.error(err.message);
@@ -246,6 +253,13 @@ router.put('/pricing/:id', async (req, res) => {
             { new: true }
         );
         if (!rule) return res.status(404).json({ error: "Pricing rule not found." });
+        // Full field set, not just price/note - this upsert may be the FIRST
+        // time this specific row is mirrored (rows are seeded once via
+        // scripts/seedPricingRules.js, not through this route, so most rows
+        // only reach Postgres lazily, one at a time, as each gets edited).
+        await dualWritePricingHolidayUpdate(prisma.pricingRule, rule._id, {
+            product: rule.product, district: rule.district, chargeCode: rule.chargeCode, price: rule.price, note: rule.note,
+        });
         res.status(200).json(rule);
     } catch (err) {
         console.error(err.message);

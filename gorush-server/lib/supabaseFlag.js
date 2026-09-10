@@ -31,4 +31,19 @@ function isCmsDualWriteEnabled() {
         && process.env.SUPABASE_CMS_ENABLED === 'true';
 }
 
-module.exports = { isPostgresOrderIntakeEnabled, isPostgresWargaEmasEnabled, isCmsDualWriteEnabled };
+// PricingRule/PublicHoliday get their OWN flag, deliberately not folded into
+// SUPABASE_CMS_ENABLED - grfmxstatusupdate reads these two directly
+// (GorushPricingRule/GorushPublicHoliday), so their eventual read-cutover
+// needs independent control from the other 3 CMS collections, which have no
+// other reader at all.
+function isPricingHolidayDualWriteEnabled() {
+    return process.env.SUPABASE_ENABLED === 'true'
+        && process.env.SUPABASE_PRICING_HOLIDAY_ENABLED === 'true';
+}
+
+module.exports = {
+    isPostgresOrderIntakeEnabled,
+    isPostgresWargaEmasEnabled,
+    isCmsDualWriteEnabled,
+    isPricingHolidayDualWriteEnabled,
+};
