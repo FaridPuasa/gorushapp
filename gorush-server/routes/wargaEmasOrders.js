@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const WargaEmasOrder = require('../models/WargaEmasOrder');
 const { optionalAuth } = require('../middleware/auth');
 const { sendOrderAlert } = require('../lib/mailer');
@@ -37,41 +38,47 @@ router.post('/', optionalAuth, async (req, res) => {
             return res.status(400).json({ error: "Both front and back IC pictures are required." });
         }
 
-        const newOrder = new WargaEmasOrder({
-            receiverPhoneNumber,
-            icPictureFront,
-            icPictureBack,
-            dateTimeSubmission: new Date().toISOString(),
-        });
+        const dateTimeSubmission = new Date();
+        let mongoId;
 
-        const savedOrder = await newOrder.save();
-
-        // Direct write to Postgres, alongside the Mongo save above rather than
-        // instead of it - grfmxstatusupdate's own daily cleanup job already
-        // syncs any not-yet-mirrored Warga Emas doc to Postgres as a
-        // best-effort catch-all (see that repo's data/waorders.js), so this
-        // is purely a latency improvement (immediate instead of up-to-24h
-        // later), not a new sync path - the upsert-by-mongoId there is a
-        // safe no-op if this write already landed first. Same fire-and-
-        // forget tolerance as the Teams/email side effects below: a failure
-        // here never fails the actual submission, the nightly job just
-        // picks it up later like it always has.
         if (isPostgresWargaEmasEnabled()) {
+            // Postgres-primary, matching the same flip already applied to
+            // grfmxstatusupdate's other 10 collections (users, reports,
+            // inventoryStock, etc.): Postgres write happens first and its
+            // failure fails the request - it's the real record now, not a
+            // mirror. Mongo is kept only as a best-effort rollback safety
+            // net during the transition (its failure is logged, never
+            // fatal) - a real MongoDB-shaped ObjectId is still generated
+            // locally (no DB round-trip needed to make one) so both sides
+            // share the same identifier, which grfmxstatusupdate's own read
+            // path (data/waorders.js's `_id: row.mongoId`) already expects.
+            mongoId = new mongoose.Types.ObjectId().toString();
+            await prisma.waOrder.create({
+                data: { mongoId, icPictureFront, icPictureBack, dateTimeSubmission, receiverPhoneNumber },
+            });
+
             try {
-                await prisma.waOrder.upsert({
-                    where: { mongoId: savedOrder._id.toString() },
-                    create: {
-                        mongoId: savedOrder._id.toString(),
-                        icPictureFront,
-                        icPictureBack,
-                        dateTimeSubmission: new Date(newOrder.dateTimeSubmission),
-                        receiverPhoneNumber,
-                    },
-                    update: {},
-                });
-            } catch (pgErr) {
-                console.error('[Postgres] Warga Emas direct write failed (will be caught by grfmxstatusupdate\'s nightly sync instead):', pgErr.message);
+                await new WargaEmasOrder({
+                    _id: mongoId,
+                    receiverPhoneNumber,
+                    icPictureFront,
+                    icPictureBack,
+                    dateTimeSubmission: dateTimeSubmission.toISOString(),
+                }).save();
+            } catch (mongoErr) {
+                console.error('[Mongo] Warga Emas mirror write failed (Postgres already has the real record, this is just the rollback-safety mirror):', mongoErr.message);
             }
+        } else {
+            // Flag off - original pure-Mongo path, unchanged, so this can be
+            // rolled back to instantly by flipping SUPABASE_WARGA_EMAS_ENABLED.
+            const newOrder = new WargaEmasOrder({
+                receiverPhoneNumber,
+                icPictureFront,
+                icPictureBack,
+                dateTimeSubmission: dateTimeSubmission.toISOString(),
+            });
+            const savedOrder = await newOrder.save();
+            mongoId = savedOrder._id.toString();
         }
 
         // Same tolerance as the Postgres order-intake path's own Teams/email
@@ -79,15 +86,15 @@ router.post('/', optionalAuth, async (req, res) => {
         // a failed notification never fails the submission itself.
         const orderData = {
             product: 'wargaemas',
-            dateTimeSubmission: newOrder.dateTimeSubmission,
+            dateTimeSubmission: dateTimeSubmission.toISOString(),
             receiverPhoneNumber,
         };
         await sendOrderAlert(buildWargaEmasAlertEmail(orderData));
-        await notifyTeams(orderData, savedOrder._id.toString());
+        await notifyTeams(orderData, mongoId);
 
         res.status(201).json({
             message: "Warga Emas request submitted successfully!",
-            orderId: savedOrder._id,
+            orderId: mongoId,
         });
     } catch (err) {
         console.error(err.message);
