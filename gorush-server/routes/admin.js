@@ -7,6 +7,7 @@ const HeroSlide = require('../models/HeroSlide');
 const Vacancy = require('../models/Vacancy');
 const PricingRule = require('../models/PricingRule');
 const { compressBase64Image } = require('../lib/imageCompress');
+const { prisma, dualWriteCmsCreate, dualWriteCmsUpdate, dualWriteCmsDelete } = require('../lib/cmsDualWrite');
 
 router.use(requireAdmin);
 
@@ -60,6 +61,11 @@ router.post('/announcements', async (req, res) => {
             titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign,
             showOnBannerToGuests: showOnBannerToGuests !== false, showOnBannerToLoggedIn: showOnBannerToLoggedIn !== false,
         });
+        await dualWriteCmsCreate(prisma.announcement, announcement, {
+            titleEn: announcement.titleEn, bodyEn: announcement.bodyEn, titleBm: announcement.titleBm, bodyBm: announcement.bodyBm,
+            date: announcement.date, bodyAlign: announcement.bodyAlign,
+            showOnBannerToGuests: announcement.showOnBannerToGuests, showOnBannerToLoggedIn: announcement.showOnBannerToLoggedIn,
+        });
         res.status(201).json(announcement);
     } catch (err) {
         console.error(err.message);
@@ -79,6 +85,11 @@ router.put('/announcements/:id', async (req, res) => {
             { new: true }
         );
         if (!announcement) return res.status(404).json({ error: "Announcement not found." });
+        await dualWriteCmsUpdate(prisma.announcement, announcement._id, {
+            titleEn: announcement.titleEn, bodyEn: announcement.bodyEn, titleBm: announcement.titleBm, bodyBm: announcement.bodyBm,
+            date: announcement.date, bodyAlign: announcement.bodyAlign,
+            showOnBannerToGuests: announcement.showOnBannerToGuests, showOnBannerToLoggedIn: announcement.showOnBannerToLoggedIn,
+        });
         res.status(200).json(announcement);
     } catch (err) {
         console.error(err.message);
@@ -90,6 +101,7 @@ router.delete('/announcements/:id', async (req, res) => {
     try {
         const result = await Announcement.findByIdAndDelete(req.params.id);
         if (!result) return res.status(404).json({ error: "Announcement not found." });
+        await dualWriteCmsDelete(prisma.announcement, result._id);
         res.status(200).json({ message: "Announcement removed." });
     } catch (err) {
         console.error(err.message);
@@ -104,6 +116,9 @@ router.post('/slides', async (req, res) => {
         const { image, headline, subtext, linkUrl, order } = req.body;
         const compressedImage = await compressBase64Image(image);
         const slide = await HeroSlide.create({ image: compressedImage, headline, subtext, linkUrl, order: order || 0 });
+        await dualWriteCmsCreate(prisma.heroSlide, slide, {
+            image: slide.image, headline: slide.headline, subtext: slide.subtext, linkUrl: slide.linkUrl, order: slide.order,
+        });
         res.status(201).json(slide);
     } catch (err) {
         console.error(err.message);
@@ -121,6 +136,9 @@ router.put('/slides/:id', async (req, res) => {
             { new: true }
         );
         if (!slide) return res.status(404).json({ error: "Slide not found." });
+        await dualWriteCmsUpdate(prisma.heroSlide, slide._id, {
+            image: slide.image, headline: slide.headline, subtext: slide.subtext, linkUrl: slide.linkUrl, order: slide.order,
+        });
         res.status(200).json(slide);
     } catch (err) {
         console.error(err.message);
@@ -132,6 +150,7 @@ router.delete('/slides/:id', async (req, res) => {
     try {
         const result = await HeroSlide.findByIdAndDelete(req.params.id);
         if (!result) return res.status(404).json({ error: "Slide not found." });
+        await dualWriteCmsDelete(prisma.heroSlide, result._id);
         res.status(200).json({ message: "Slide removed." });
     } catch (err) {
         console.error(err.message);
@@ -162,6 +181,12 @@ router.post('/vacancies', async (req, res) => {
             title, department, employmentType, description, requirements, responsibilities,
             applicationType, isOpen: isOpen !== false, closingDate, order: order || 0,
         });
+        await dualWriteCmsCreate(prisma.vacancy, vacancy, {
+            title: vacancy.title, department: vacancy.department, employmentType: vacancy.employmentType,
+            description: vacancy.description, requirements: vacancy.requirements, responsibilities: vacancy.responsibilities,
+            applicationType: vacancy.applicationType, isOpen: vacancy.isOpen, closingDate: vacancy.closingDate,
+            order: vacancy.order, createdAt: vacancy.createdAt,
+        });
         res.status(201).json(vacancy);
     } catch (err) {
         console.error(err.message);
@@ -179,6 +204,12 @@ router.put('/vacancies/:id', async (req, res) => {
             { new: true }
         );
         if (!vacancy) return res.status(404).json({ error: "Vacancy not found." });
+        await dualWriteCmsUpdate(prisma.vacancy, vacancy._id, {
+            title: vacancy.title, department: vacancy.department, employmentType: vacancy.employmentType,
+            description: vacancy.description, requirements: vacancy.requirements, responsibilities: vacancy.responsibilities,
+            applicationType: vacancy.applicationType, isOpen: vacancy.isOpen, closingDate: vacancy.closingDate,
+            order: vacancy.order,
+        });
         res.status(200).json(vacancy);
     } catch (err) {
         console.error(err.message);
@@ -190,6 +221,7 @@ router.delete('/vacancies/:id', async (req, res) => {
     try {
         const result = await Vacancy.findByIdAndDelete(req.params.id);
         if (!result) return res.status(404).json({ error: "Vacancy not found." });
+        await dualWriteCmsDelete(prisma.vacancy, result._id);
         res.status(200).json({ message: "Vacancy removed." });
     } catch (err) {
         console.error(err.message);

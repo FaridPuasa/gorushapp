@@ -4,6 +4,7 @@
 //   SUPABASE_ENABLED               - master switch.
 //   SUPABASE_ORDER_INTAKE_ENABLED  - order intake (live since 2026-08-28).
 //   SUPABASE_WARGA_EMAS_ENABLED    - Warga Emas form submissions.
+//   SUPABASE_CMS_ENABLED           - Announcement/Vacancy/HeroSlide admin CMS.
 //
 // The order-intake flag had a hard blocker (grfmxstatusupdate's Phase 7 read
 // cutover had to complete first, since that app read exclusively from Mongo
@@ -20,4 +21,14 @@ function isPostgresWargaEmasEnabled() {
         && process.env.SUPABASE_WARGA_EMAS_ENABLED === 'true';
 }
 
-module.exports = { isPostgresOrderIntakeEnabled, isPostgresWargaEmasEnabled };
+// Announcement/Vacancy/HeroSlide are grouped under one shared flag rather
+// than one each - all 3 are simple admin-managed CMS content, deployed
+// together, with no other app reading them (unlike Warga Emas/PricingRule/
+// PublicHoliday, which grfmxstatusupdate mirrors and so need independent
+// per-collection control).
+function isCmsDualWriteEnabled() {
+    return process.env.SUPABASE_ENABLED === 'true'
+        && process.env.SUPABASE_CMS_ENABLED === 'true';
+}
+
+module.exports = { isPostgresOrderIntakeEnabled, isPostgresWargaEmasEnabled, isCmsDualWriteEnabled };
