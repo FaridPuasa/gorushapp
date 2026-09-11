@@ -173,7 +173,7 @@ function DetailsForm({ initial, onSave, onCancel, saving, scrollRef }) {
         />
       </Field>
 
-      <Field label={t('order.appointmentDistrict')}>
+      <Field label={t('identity.mohAppointmentDistrict')}>
         <View style={formStyles.pickerContainer}>
           <Picker style={formStyles.pickerControl} selectedValue={data.appointmentdistrict} onValueChange={(v) => update('appointmentdistrict', v)}>
             <Picker.Item label={t('common.notSet')} value="" />
