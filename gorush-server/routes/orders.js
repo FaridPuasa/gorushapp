@@ -274,7 +274,7 @@ router.post('/', optionalAuth, async (req, res) => {
             }
         }
 
-        const pricingDistrict = product === 'localdelivery' ? senderAddressDetail?.district : address.district;
+        const pricingDistrict = address.district;
         const totalPriceValue = cbslSelfCollect ? 0 : await computeTotalPrice(product, pricingDistrict, deliveryTypeCode, weightValue);
         if (totalPriceValue == null) {
             return res.status(400).json({ error: "Selected charges are not valid for this district." });
