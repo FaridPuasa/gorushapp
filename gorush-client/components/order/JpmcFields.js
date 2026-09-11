@@ -3,10 +3,11 @@ import { Text, TextInput, View } from 'react-native';
 import { useFormStyles, Card, Field, InfoNotice, makeInputStyle, makeFocusHandlers } from '../../lib/formPrimitives';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFontScale } from '../../context/FontScaleContext';
+import { formatJpmcPatientNumber } from '../../lib/validators';
 import IdentityFields from './IdentityFields';
 import { AnimatedPressable } from '../../lib/animations';
 
-export default function JpmcFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnlyIdentity = false, patientNumberSaved = false, payingPatientSaved = false, registerFieldRef }) {
+export default function JpmcFields({ values, onChange, errors = {}, focusedField, setFocusedField, viewOnlyIdentity = false, patientNumberSaved = false, appointmentPlaceSaved = false, payingPatientSaved = false, registerFieldRef }) {
   const { t } = useLanguage();
   const formStyles = useFormStyles();
   const { scaleFont } = useFontScale();
@@ -15,14 +16,55 @@ export default function JpmcFields({ values, onChange, errors = {}, focusedField
 
   return (
     <Card icon="🏥" title={t('order.jpmcDetails')}>
+      {appointmentPlaceSaved ? (
+        <View style={{ marginBottom: 10 }}>
+          <Text style={formStyles.fieldLabel}>{t('order.appointmentLocation')}</Text>
+          <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color }}>{values.appointmentPlace}</Text>
+        </View>
+      ) : (
+        <>
+          <Text style={formStyles.fieldLabel}>{t('order.appointmentLocation')}<Text style={formStyles.requiredMark}> *</Text></Text>
+          <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('appointmentPlace', el) : undefined}>
+            <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'JPMC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'JPMC')}>
+              <Text style={values.appointmentPlace === 'JPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.jpmc')}</Text>
+            </AnimatedPressable>
+            <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'PJSC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'PJSC')}>
+              <Text style={values.appointmentPlace === 'PJSC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.pjsc')}</Text>
+            </AnimatedPressable>
+            <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'GJPMC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'GJPMC')}>
+              <Text style={values.appointmentPlace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.gjpmc')}</Text>
+            </AnimatedPressable>
+          </View>
+        </>
+      )}
+
       {patientNumberSaved ? (
         <View style={{ marginBottom: 10 }}>
           <Text style={formStyles.fieldLabel}>{t('order.patientNoJpmc')}</Text>
           <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color }}>{values.patientNumber}</Text>
         </View>
       ) : (
-        <Field label={t('order.patientNoJpmc')} required error={errors.patientNumber} fieldKey="patientNumber" registerRef={registerFieldRef}>
-          <TextInput style={inputStyle('patientNumber')} value={values.patientNumber} onChangeText={(v) => onChange('patientNumber', v)} {...focusHandlers('patientNumber')} />
+        <Field
+          label={t('order.patientNoJpmc')}
+          required
+          error={errors.patientNumber}
+          hint={
+            !values.appointmentPlace
+              ? t('order.selectAppointmentLocationFirst')
+              : values.appointmentPlace === 'GJPMC' ? t('identity.gjpmcFormatHint') : t('identity.jpmcDigitsFormatHint')
+          }
+          fieldKey="patientNumber"
+          registerRef={registerFieldRef}
+        >
+          <TextInput
+            style={inputStyle('patientNumber')}
+            editable={!!values.appointmentPlace}
+            maxLength={8}
+            placeholder={values.appointmentPlace === 'GJPMC' ? 'G-123456' : values.appointmentPlace ? '12312312' : undefined}
+            value={values.patientNumber}
+            onChangeText={(v) => onChange('patientNumber', formatJpmcPatientNumber(values.appointmentPlace, v))}
+            {...focusHandlers('patientNumber')}
+          />
         </Field>
       )}
 
@@ -35,16 +77,6 @@ export default function JpmcFields({ values, onChange, errors = {}, focusedField
         viewOnly={viewOnlyIdentity}
         registerFieldRef={registerFieldRef}
       />
-
-      <Text style={formStyles.fieldLabel}>{t('order.jpmcOrPjsc')}<Text style={formStyles.requiredMark}> *</Text></Text>
-      <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('appointmentPlace', el) : undefined}>
-        <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'JPMC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'JPMC')}>
-          <Text style={values.appointmentPlace === 'JPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.jpmc')}</Text>
-        </AnimatedPressable>
-        <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'PJSC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'PJSC')}>
-          <Text style={values.appointmentPlace === 'PJSC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.pjsc')}</Text>
-        </AnimatedPressable>
-      </View>
 
       {payingPatientSaved ? (
         <View style={{ marginBottom: 10 }}>

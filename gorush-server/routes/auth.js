@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
+const { validateJpmcPatientNumber } = require('../lib/jpmcValidation');
 
 function signToken(user) {
     return jwt.sign(
@@ -19,7 +20,7 @@ router.post('/register', async (req, res) => {
             email, password,
             houseunitno, jalan, kampong, simpang, district, postalcode,
             phonenum, addphonenum,
-            receivername, dateofbirth, icnum, passportnum, bruhimsnum, patientphcnum, patientjpmcnum,
+            receivername, dateofbirth, icnum, passportnum, bruhimsnum, patientphcnum, patientjpmcnum, appointmentplace,
             Agreepolicy, Receivemarketing
         } = req.body;
 
@@ -40,6 +41,11 @@ router.post('/register', async (req, res) => {
 
         if (!Agreepolicy) {
             return res.status(400).json({ error: "You must agree to the privacy policy and terms of service." });
+        }
+
+        const jpmcFormatError = validateJpmcPatientNumber(appointmentplace, patientjpmcnum);
+        if (jpmcFormatError) {
+            return res.status(400).json({ error: jpmcFormatError });
         }
 
         const existingUser = await User.findOne({ email });
@@ -64,6 +70,7 @@ router.post('/register', async (req, res) => {
                 bruhimsnum,
                 patientphcnum,
                 patientjpmcnum,
+                appointmentplace,
                 isDefault: true
             }],
             Agreepolicy,
@@ -131,12 +138,17 @@ router.get('/me', requireAuth, async (req, res) => {
         const address = user.addresses.find(a => a.isDefault) || user.addresses[0] || null;
         const phone = user.phonenumbers.find(p => p.isDefault) || user.phonenumbers[0] || null;
         const details = user.userdetails.find(d => d.isDefault) || user.userdetails[0] || null;
+        // Scans every saved personal-details entry (not just the default one) since
+        // any of them could later be picked as default - a stale JPMC/PJSC number
+        // from before the Appointment Location field existed still needs fixing.
+        const needsJpmcAppointmentLocation = user.userdetails.some(d => d.patientjpmcnum && !d.appointmentplace);
 
         res.status(200).json({
             email: user.email,
             role: user.role,
             receivername: details ? details.receivername : '',
             phonenum: phone ? phone.phonenum : '',
+            needsJpmcAppointmentLocation,
             address: address ? {
                 houseunitno: address.houseunitno,
                 jalan: address.jalan,

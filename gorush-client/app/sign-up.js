@@ -15,7 +15,8 @@ import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers, PageScro
 import { AnimatedPressable } from '../lib/animations';
 import {
   isValidEmail, formatPostalCode, isValidPostalCode, formatICNumber,
-  formatBruHims, applyPrefix, isPrefixOnly, getPasswordStrength, COUNTRY_CODES
+  formatBruHims, applyPrefix, isPrefixOnly, getPasswordStrength, COUNTRY_CODES,
+  formatJpmcPatientNumber, isValidJpmcPatientNumber,
 } from '../lib/validators';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -29,7 +30,7 @@ const FIELD_ORDER = [
   'email', 'password', 'confirmPassword',
   'houseunitno', 'jalan', 'kampong', 'postalcode',
   'phonenum',
-  'receivername', 'dateofbirth', 'icnum', 'passportnum', 'bruhimsnum',
+  'receivername', 'dateofbirth', 'icnum', 'passportnum', 'bruhimsnum', 'appointmentplace', 'patientjpmcnum',
   'Agreepolicy',
 ];
 
@@ -41,7 +42,7 @@ const INITIAL_FORM_DATA = {
   countryCodeAdd: '+673', addphonenum: '',
   receivername: '', dateofbirth: '',
   idType: 'IC', icnum: '', passportnum: '',
-  bruhimsnum: '', patientphcnum: '', patientjpmcnum: '',
+  bruhimsnum: '', patientphcnum: '', patientjpmcnum: '', appointmentplace: '',
   Agreepolicy: false, Receivemarketing: false,
 };
 
@@ -128,6 +129,10 @@ export default function Register() {
 
     if (formData.bruhimsnum && formData.bruhimsnum.length !== 10) {
       newErrors.bruhimsnum = t('auth.register.bruHimsInvalid');
+    }
+
+    if (formData.appointmentplace && formData.patientjpmcnum && !isValidJpmcPatientNumber(formData.appointmentplace, formData.patientjpmcnum)) {
+      newErrors.patientjpmcnum = formData.appointmentplace === 'GJPMC' ? t('identity.gjpmcInvalid') : t('identity.jpmcDigitsInvalid');
     }
 
     if (!formData.Agreepolicy) newErrors.Agreepolicy = t('auth.register.agreePolicyRequired');
@@ -460,11 +465,33 @@ export default function Register() {
             />
           </Field>
 
-          <Field label={t('auth.register.jpmcPatientNo')}>
+          <Text style={formStyles.fieldLabel}>{t('identity.appointmentLocation')}</Text>
+          <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('appointmentplace', el) : undefined}>
+            <AnimatedPressable scaleTo={1.02} style={[formStyles.toggleBtn, formData.appointmentplace === 'JPMC' && formStyles.toggleBtnActive]} onPress={() => updateField('appointmentplace', 'JPMC')}>
+              <Text style={formData.appointmentplace === 'JPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.jpmc')}</Text>
+            </AnimatedPressable>
+            <AnimatedPressable scaleTo={1.02} style={[formStyles.toggleBtn, formData.appointmentplace === 'PJSC' && formStyles.toggleBtnActive]} onPress={() => updateField('appointmentplace', 'PJSC')}>
+              <Text style={formData.appointmentplace === 'PJSC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.pjsc')}</Text>
+            </AnimatedPressable>
+            <AnimatedPressable scaleTo={1.02} style={[formStyles.toggleBtn, formData.appointmentplace === 'GJPMC' && formStyles.toggleBtnActive]} onPress={() => updateField('appointmentplace', 'GJPMC')}>
+              <Text style={formData.appointmentplace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.gjpmc')}</Text>
+            </AnimatedPressable>
+          </View>
+
+          <Field
+            label={t('auth.register.jpmcPatientNo')}
+            error={errors.patientjpmcnum}
+            hint={formData.appointmentplace ? (formData.appointmentplace === 'GJPMC' ? t('identity.gjpmcFormatHint') : t('identity.jpmcDigitsFormatHint')) : undefined}
+            fieldKey="patientjpmcnum"
+            registerRef={registerFieldRef}
+          >
             <TextInput
               style={inputStyle('patientjpmcnum')}
+              maxLength={8}
+              placeholder={formData.appointmentplace === 'GJPMC' ? 'G-123456' : formData.appointmentplace ? '12312312' : undefined}
+              placeholderTextColor={colors.textMuted}
               value={formData.patientjpmcnum}
-              onChangeText={(val) => updateField('patientjpmcnum', val)}
+              onChangeText={(val) => updateField('patientjpmcnum', formatJpmcPatientNumber(formData.appointmentplace, val))}
               {...focusHandlers('patientjpmcnum')}
             />
           </Field>

@@ -62,7 +62,7 @@ export default function OrderSummary({ form }) {
           <Row label={t('order.summary.dateOfBirth')} value={identity.dateOfBirth} />
           <Row label={identity.idType === 'IC' ? t('order.summary.icNo') : t('order.summary.passport')} value={identity.idType === 'IC' ? identity.icNum : identity.passport} />
           {product === 'MOH' && <Row label={t('order.summary.appointmentDistrict')} value={form.appointmentDistrict} />}
-          {product === 'JPMC' && <Row label={t('order.summary.jpmcOrPjsc')} value={form.appointmentPlace} />}
+          {product === 'JPMC' && <Row label={t('order.summary.appointmentLocation')} value={form.appointmentPlace} />}
           <Row label={t('order.summary.payingPatient')} value={form.payingPatient} />
         </Card>
       )}

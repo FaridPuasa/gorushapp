@@ -32,6 +32,31 @@ export function formatBruHims(text) {
   return text.length > 0 ? `BN${numbers}` : '';
 }
 
+// JPMC/PJSC Patient No. is exactly 8 digits, no letters.
+export function formatJpmcDigits8(text) {
+  return text.replace(/[^0-9]/g, '').slice(0, 8);
+}
+
+// GJPMC Patient No. is always "G-" followed by exactly 6 digits. Stripping
+// everything but digits and re-adding the fixed "G-" prefix (rather than
+// masking character-by-character) means a full paste of "G-123456" survives
+// intact instead of getting truncated by a naive fixed-prefix mask.
+export function formatGjpmcNumber(text) {
+  const digits = text.replace(/[^0-9]/g, '').slice(0, 6);
+  return digits.length > 0 ? `G-${digits}` : '';
+}
+
+export function formatJpmcPatientNumber(appointmentPlace, text) {
+  return appointmentPlace === 'GJPMC' ? formatGjpmcNumber(text) : formatJpmcDigits8(text);
+}
+
+export function isValidJpmcPatientNumber(appointmentPlace, value) {
+  if (!appointmentPlace || !value) return true;
+  if (appointmentPlace === 'GJPMC') return /^G-\d{6}$/.test(value);
+  if (appointmentPlace === 'JPMC' || appointmentPlace === 'PJSC') return /^\d{8}$/.test(value);
+  return true;
+}
+
 export const COUNTRY_CODES = [
   { label: '🇧🇳 +673', value: '+673' },
   { label: '🇲🇾 +60', value: '+60' },

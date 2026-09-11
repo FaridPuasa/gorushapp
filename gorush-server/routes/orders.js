@@ -13,6 +13,7 @@ const { isPostgresOrderIntakeEnabled } = require('../lib/supabaseFlag');
 const postgresOrders = require('../lib/postgresOrders');
 const { generateTrackingNumber } = require('../lib/trackingNumber');
 const { createDetrackJob } = require('../lib/detrack');
+const { validateJpmcPatientNumber, JPMC_APPOINTMENT_PLACES } = require('../lib/jpmcValidation');
 const { parseGorushDateOnly } = require('../lib/dateHelpers');
 const { sendOrderAlert } = require('../lib/mailer');
 const { appendCbslManifestRows } = require('../lib/msGraphExcel');
@@ -258,6 +259,18 @@ router.post('/', optionalAuth, async (req, res) => {
         if (PHARMACY_PRODUCTS.includes(product)) {
             if (!dateOfBirth || (!icNum && !passport)) {
                 return res.status(400).json({ error: "Date of birth and IC/Passport are required." });
+            }
+        }
+        if (product === 'pharmacyjpmc') {
+            if (!appointmentPlace || !JPMC_APPOINTMENT_PLACES.includes(appointmentPlace)) {
+                return res.status(400).json({ error: "A valid Appointment Location (JPMC, PJSC, or GJPMC) is required." });
+            }
+            if (!patientNumber) {
+                return res.status(400).json({ error: "Patient's PRN is required." });
+            }
+            const jpmcFormatError = validateJpmcPatientNumber(appointmentPlace, patientNumber);
+            if (jpmcFormatError) {
+                return res.status(400).json({ error: jpmcFormatError });
             }
         }
 

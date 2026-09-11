@@ -3,7 +3,7 @@ import { View, Text, TextInput, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, SaveCancelRow, DeleteConfirm, useFieldFocus } from '../../lib/formPrimitives';
-import { formatICNumber, formatBruHims, dmyToIso, dmyToDate } from '../../lib/validators';
+import { formatICNumber, formatBruHims, dmyToIso, dmyToDate, formatJpmcPatientNumber, isValidJpmcPatientNumber } from '../../lib/validators';
 import { useIsMobile } from '../../lib/responsive';
 import { AnimatedPressable } from '../../lib/animations';
 import { getBruneiNow, getBruneiTodayISO } from '../../lib/bruneiTime';
@@ -15,7 +15,7 @@ function emptyDetails() {
   return {
     receivername: '', dateofbirth: '', idType: 'IC',
     icnum: '', passportnum: '', bruhimsnum: '', appointmentdistrict: '',
-    patientphcnum: '', patientjpmcnum: '', payingpatient: '',
+    patientphcnum: '', patientjpmcnum: '', appointmentplace: '', payingpatient: '',
   };
 }
 
@@ -30,6 +30,7 @@ function toFormData(entry) {
     appointmentdistrict: entry.appointmentdistrict || '',
     patientphcnum: entry.patientphcnum || '',
     patientjpmcnum: entry.patientjpmcnum || '',
+    appointmentplace: entry.appointmentplace || '',
     payingpatient: entry.payingpatient || '',
   };
 }
@@ -46,13 +47,16 @@ function validateDetails(data, t) {
   if (data.bruhimsnum && data.bruhimsnum.length !== 10) {
     errors.bruhimsnum = t('identity.bruHimsInvalid');
   }
+  if (data.appointmentplace && data.patientjpmcnum && !isValidJpmcPatientNumber(data.appointmentplace, data.patientjpmcnum)) {
+    errors.patientjpmcnum = data.appointmentplace === 'GJPMC' ? t('identity.gjpmcInvalid') : t('identity.jpmcDigitsInvalid');
+  }
   return errors;
 }
 
 // Flat, top-to-bottom visual order of every field this form can show, used
 // by scrollToFirstError (useFieldFocus, lib/formPrimitives) to jump to
 // whichever one actually has an error after a failed save.
-const FIELD_ORDER = ['receivername', 'dateofbirth', 'icnum', 'passportnum', 'bruhimsnum'];
+const FIELD_ORDER = ['receivername', 'dateofbirth', 'icnum', 'passportnum', 'bruhimsnum', 'appointmentplace', 'patientjpmcnum'];
 
 function DetailsForm({ initial, onSave, onCancel, saving, scrollRef }) {
   const formStyles = useFormStyles();
@@ -185,8 +189,35 @@ function DetailsForm({ initial, onSave, onCancel, saving, scrollRef }) {
         <TextInput style={inputStyle('patientphcnum')} value={data.patientphcnum} onChangeText={(v) => update('patientphcnum', v)} {...focusHandlers('patientphcnum')} />
       </Field>
 
-      <Field label={t('identity.jpmcPatientNo')}>
-        <TextInput style={inputStyle('patientjpmcnum')} value={data.patientjpmcnum} onChangeText={(v) => update('patientjpmcnum', v)} {...focusHandlers('patientjpmcnum')} />
+      <Text style={formStyles.fieldLabel}>{t('identity.appointmentLocation')}</Text>
+      <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('appointmentplace', el) : undefined}>
+        <AnimatedPressable style={[formStyles.toggleBtn, data.appointmentplace === 'JPMC' && formStyles.toggleBtnActive]} onPress={() => update('appointmentplace', 'JPMC')} scaleTo={1.04}>
+          <Text style={data.appointmentplace === 'JPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.jpmc')}</Text>
+        </AnimatedPressable>
+        <AnimatedPressable style={[formStyles.toggleBtn, data.appointmentplace === 'PJSC' && formStyles.toggleBtnActive]} onPress={() => update('appointmentplace', 'PJSC')} scaleTo={1.04}>
+          <Text style={data.appointmentplace === 'PJSC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.pjsc')}</Text>
+        </AnimatedPressable>
+        <AnimatedPressable style={[formStyles.toggleBtn, data.appointmentplace === 'GJPMC' && formStyles.toggleBtnActive]} onPress={() => update('appointmentplace', 'GJPMC')} scaleTo={1.04}>
+          <Text style={data.appointmentplace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.gjpmc')}</Text>
+        </AnimatedPressable>
+      </View>
+
+      <Field
+        label={t('identity.jpmcPatientNo')}
+        error={errors.patientjpmcnum}
+        hint={data.appointmentplace ? (data.appointmentplace === 'GJPMC' ? t('identity.gjpmcFormatHint') : t('identity.jpmcDigitsFormatHint')) : undefined}
+        fieldKey="patientjpmcnum"
+        registerRef={registerFieldRef}
+      >
+        <TextInput
+          style={inputStyle('patientjpmcnum')}
+          maxLength={8}
+          placeholder={data.appointmentplace === 'GJPMC' ? 'G-123456' : data.appointmentplace ? '12312312' : undefined}
+          placeholderTextColor={colors.textMuted}
+          value={data.patientjpmcnum}
+          onChangeText={(v) => update('patientjpmcnum', formatJpmcPatientNumber(data.appointmentplace, v))}
+          {...focusHandlers('patientjpmcnum')}
+        />
       </Field>
 
       <Text style={formStyles.fieldLabel}>{t('identity.payingPatient')}</Text>

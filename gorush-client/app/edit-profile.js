@@ -292,8 +292,8 @@ export default function EditProfile() {
       <PasswordSection headers={headers} scrollRef={scrollRef} />
       <PersonalDetailsManager
         items={profile.userdetails}
-        onAdd={(data) => api.post('/api/profile/userdetails', data, headers).then(loadProfile)}
-        onEdit={(id, data) => api.put(`/api/profile/userdetails/${id}`, data, headers).then(loadProfile)}
+        onAdd={(data) => api.post('/api/profile/userdetails', data, headers).then(loadProfile).then(refreshProfile)}
+        onEdit={(id, data) => api.put(`/api/profile/userdetails/${id}`, data, headers).then(loadProfile).then(refreshProfile)}
         onDelete={(id) => api.delete(`/api/profile/userdetails/${id}`, headers).then(loadProfile)}
         onSetDefault={(id) => api.put(`/api/profile/userdetails/${id}/default`, {}, headers).then(loadProfile)}
         scrollRef={scrollRef}

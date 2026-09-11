@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const { requireAuth } = require('../middleware/auth');
+const { validateJpmcPatientNumber } = require('../lib/jpmcValidation');
 
 router.use(requireAuth);
 
@@ -91,9 +92,11 @@ function validateDetailsFields({ receivername, dateofbirth, icnum, passportnum, 
 
 router.post('/userdetails', async (req, res) => {
     try {
-        const { receivername, dateofbirth, icnum, passportnum, bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, payingpatient } = req.body;
+        const { receivername, dateofbirth, icnum, passportnum, bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, appointmentplace, payingpatient } = req.body;
         const validationError = validateDetailsFields(req.body);
         if (validationError) return res.status(400).json({ error: validationError });
+        const jpmcFormatError = validateJpmcPatientNumber(appointmentplace, patientjpmcnum);
+        if (jpmcFormatError) return res.status(400).json({ error: jpmcFormatError });
 
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
@@ -101,7 +104,7 @@ router.post('/userdetails', async (req, res) => {
         user.userdetails.push({
             receivername, dateofbirth,
             icnum: icnum || undefined, passportnum: passportnum || undefined,
-            bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, payingpatient,
+            bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, appointmentplace, payingpatient,
             isDefault: false,
         });
         await user.save();
@@ -114,9 +117,11 @@ router.post('/userdetails', async (req, res) => {
 
 router.put('/userdetails/:id', async (req, res) => {
     try {
-        const { receivername, dateofbirth, icnum, passportnum, bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, payingpatient } = req.body;
+        const { receivername, dateofbirth, icnum, passportnum, bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, appointmentplace, payingpatient } = req.body;
         const validationError = validateDetailsFields(req.body);
         if (validationError) return res.status(400).json({ error: validationError });
+        const jpmcFormatError = validateJpmcPatientNumber(appointmentplace, patientjpmcnum);
+        if (jpmcFormatError) return res.status(400).json({ error: jpmcFormatError });
 
         const user = await User.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
@@ -132,6 +137,7 @@ router.put('/userdetails/:id', async (req, res) => {
         details.appointmentdistrict = appointmentdistrict;
         details.patientphcnum = patientphcnum;
         details.patientjpmcnum = patientjpmcnum;
+        details.appointmentplace = appointmentplace;
         details.payingpatient = payingpatient;
 
         await user.save();

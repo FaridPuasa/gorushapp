@@ -56,6 +56,25 @@ function AdminGuard() {
   return null;
 }
 
+// Forces any logged-in customer whose saved JPMC/PJSC Patient No. predates the
+// Appointment Location field (added with no way to say which location the number
+// belongs to) to fix it before using the rest of the app - `needsJpmcAppointmentLocation`
+// is computed server-side in /api/auth/me across ALL of the user's saved personal-detail
+// entries, not just the default one. /edit-profile and /login stay reachable so the fix
+// itself, and switching accounts, both still work.
+function JpmcAppointmentGuard() {
+  const { user, loading } = useAuth();
+  const pathname = usePathname();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (loading || !user?.needsJpmcAppointmentLocation) return;
+    if (pathname !== '/edit-profile' && pathname !== '/login') router.replace('/edit-profile');
+  }, [loading, user?.needsJpmcAppointmentLocation, pathname]);
+
+  return null;
+}
+
 // GA's automatic pageview only fires once on the initial document load; expo-router
 // navigates client-side after that, so each route change is reported here instead.
 function AnalyticsPageViews() {
@@ -79,6 +98,7 @@ function AppShell() {
     <View style={{ flex: 1, backgroundColor: colors.background, paddingTop: insets.top }}>
       <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
       <AdminGuard />
+      <JpmcAppointmentGuard />
       <AnalyticsPageViews />
       <AnnouncementBar />
       <Navbar />

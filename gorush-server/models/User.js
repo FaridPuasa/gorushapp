@@ -46,6 +46,9 @@ const UserSchema = new mongoose.Schema({
         appointmentdistrict: { type: String },
         patientphcnum: { type: String },
         patientjpmcnum: { type: String },
+        // 'JPMC' | 'PJSC' | 'GJPMC' - not enum-restricted: optional at the profile
+        // level (same reasoning as payingpatient below), an enum would reject blank.
+        appointmentplace: { type: String },
         // Not enum-restricted: optional at the profile level (order.js falls back to manual
         // entry when blank), and an enum would reject the blank default.
         payingpatient: { type: String },

@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFormStyles, Card, PageScroll, useFieldFocus } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
-import { isValidEmail, isValidPostalCode, splitPhoneNumber, isPrefixOnly } from '../lib/validators';
+import { isValidEmail, isValidPostalCode, splitPhoneNumber, isPrefixOnly, isValidJpmcPatientNumber } from '../lib/validators';
 import { PRODUCT_CODES } from '../lib/pricing';
 
 import WargaEmasBanner from '../components/order/WargaEmasBanner';
@@ -132,6 +132,7 @@ export default function Order() {
   // blank doesn't suddenly lock itself the moment the user types the first character into it.
   const bruhimsSaved = viewOnlyIdentity && !!defaultDetails?.bruhimsnum;
   const patientNumberSaved = viewOnlyIdentity && !!(product === 'JPMC' ? defaultDetails?.patientjpmcnum : product === 'PHC' ? defaultDetails?.patientphcnum : false);
+  const appointmentPlaceSaved = viewOnlyIdentity && product === 'JPMC' && !!defaultDetails?.appointmentplace;
   const payingPatientSaved = viewOnlyIdentity && !!defaultDetails?.payingpatient;
   const appointmentDistrictSaved = viewOnlyIdentity && !!defaultDetails?.appointmentdistrict;
 
@@ -154,6 +155,7 @@ export default function Order() {
         bruhimsnum: product === 'MOH' ? (defaultDetails.bruhimsnum || '') : prev.bruhimsnum,
         appointmentDistrict: product === 'MOH' ? (defaultDetails.appointmentdistrict || prev.appointmentDistrict) : prev.appointmentDistrict,
         patientNumber: product === 'JPMC' ? (defaultDetails.patientjpmcnum || '') : product === 'PHC' ? (defaultDetails.patientphcnum || '') : prev.patientNumber,
+        appointmentPlace: product === 'JPMC' ? (defaultDetails.appointmentplace || prev.appointmentPlace) : prev.appointmentPlace,
         // Saved on the profile if the user has filled it in before; otherwise stays blank
         // (emptyDetails()'s default) so the toggle just shows unselected for manual entry.
         payingPatient: defaultDetails.payingpatient || prev.payingPatient,
@@ -257,6 +259,9 @@ export default function Order() {
       }
       if (product === 'JPMC' && !details.appointmentPlace) e.appointmentPlace = t('order.validation.required');
       if ((product === 'JPMC' || product === 'PHC') && !details.patientNumber.trim()) e.patientNumber = t('order.validation.required');
+      else if (product === 'JPMC' && details.patientNumber.trim() && !isValidJpmcPatientNumber(details.appointmentPlace, details.patientNumber)) {
+        e.patientNumber = details.appointmentPlace === 'GJPMC' ? t('order.validation.gjpmcInvalid') : t('order.validation.jpmcDigitsInvalid');
+      }
     }
 
     if (product === 'Local Delivery') {
@@ -490,7 +495,7 @@ export default function Order() {
                 <MohFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} bruhimsSaved={bruhimsSaved} payingPatientSaved={payingPatientSaved} appointmentDistrictSaved={appointmentDistrictSaved} registerFieldRef={registerFieldRef} />
               )}
               {product === 'JPMC' && (
-                <JpmcFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} patientNumberSaved={patientNumberSaved} payingPatientSaved={payingPatientSaved} registerFieldRef={registerFieldRef} />
+                <JpmcFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} patientNumberSaved={patientNumberSaved} appointmentPlaceSaved={appointmentPlaceSaved} payingPatientSaved={payingPatientSaved} registerFieldRef={registerFieldRef} />
               )}
               {product === 'PHC' && (
                 <PhcFields values={{ ...identity, ...details }} onChange={updateAny} errors={errors} focusedField={focusedField} setFocusedField={setFocusedField} viewOnlyIdentity={viewOnlyIdentity} patientNumberSaved={patientNumberSaved} payingPatientSaved={payingPatientSaved} registerFieldRef={registerFieldRef} />
