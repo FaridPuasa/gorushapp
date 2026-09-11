@@ -73,7 +73,7 @@ export default {
     bruHimsHint: 'cth. BN12312312',
     phcPatientNo: 'No. Pesakit PHC',
     jpmcPatientNo: 'No. Pesakit JPMC/PJSC',
-    appointmentLocation: 'Lokasi Temujanji',
+    appointmentLocation: 'Lokasi Temujanji JPMC',
     jpmc: 'JPMC',
     pjsc: 'PJSC',
     gjpmc: 'GJPMC',

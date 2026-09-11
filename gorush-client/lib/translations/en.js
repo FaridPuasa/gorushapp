@@ -73,7 +73,7 @@ export default {
     bruHimsHint: 'e.g. BN12312312',
     phcPatientNo: 'PHC Patient No.',
     jpmcPatientNo: 'JPMC/PJSC Patient No.',
-    appointmentLocation: 'Appointment Location',
+    appointmentLocation: 'JPMC Appointment Location',
     jpmc: 'JPMC',
     pjsc: 'PJSC',
     gjpmc: 'GJPMC',
