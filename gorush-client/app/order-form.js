@@ -58,6 +58,21 @@ const SELF_COLLECT_ADDRESS = {
 // one product's conditional section is ever populated with real fields at a
 // time, so including every product's fields here unconditionally is safe -
 // the others simply have no matching key in `errors` and are skipped over.
+// MOH is the only product with two separate districts - the delivery address
+// (party.district) and where the medicine is actually collected
+// (details.appointmentDistrict). Whichever of the two is NOT Brunei governs
+// pricing/charge availability, since that's the real logistics constraint
+// (e.g. same-day Express/Immediate requires the whole round trip - both the
+// collection AND the delivery - to stay within Brunei-Muara). If both are
+// Brunei, pricing is Brunei; in the rare case both are set to different
+// non-Brunei districts, appointmentDistrict wins (the actual medicine
+// collection point most directly determines feasible turnaround time).
+function resolveMohPricingDistrict(addressDistrict, appointmentDistrict) {
+  if (appointmentDistrict && appointmentDistrict !== 'Brunei') return appointmentDistrict;
+  if (addressDistrict && addressDistrict !== 'Brunei') return addressDistrict;
+  return 'Brunei';
+}
+
 const PARTY_FIELD_ORDER = ['party.fullName', 'party.houseunitno', 'party.jalan', 'party.kampong', 'party.postalcode', 'party.email', 'party.phone'];
 const MOH_JPMC_PHC_FIELD_ORDER = ['dateOfBirth', 'icNum', 'passport', 'payingPatient', 'appointmentDistrict', 'bruhimsnum', 'appointmentPlace', 'patientNumber'];
 const LOCAL_DELIVERY_FIELD_ORDER = ['receiver.fullName', 'receiver.houseunitno', 'receiver.jalan', 'receiver.kampong', 'receiver.postalcode', 'receiver.email', 'receiver.phone', 'ldPickupOrDelivery', 'pickupDate', 'pickupAddress', 'itemContains', 'ldProductType', 'ldProductWeight', 'billTo'];
@@ -203,7 +218,11 @@ export default function Order() {
     setErrors((prev) => (prev.cbslItems ? { ...prev, cbslItems: prev.cbslItems.filter((_, i) => i !== index) } : prev));
   };
 
-  const pricingDistrict = product === 'Local Delivery' ? receiver.district : party.district;
+  const pricingDistrict = product === 'Local Delivery'
+    ? receiver.district
+    : product === 'MOH'
+      ? resolveMohPricingDistrict(party.district, details.appointmentDistrict)
+      : party.district;
   const cbslSelfCollect = product === 'Cross Border Service Limbang' && details.shipmentMethod === 'Self Collect';
   // Local Delivery has no Self Collect charge option at all - only pharmacy (via chargeCode)
   // and CBSL (via its own separate shipmentMethod field) ever reach this.

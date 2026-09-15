@@ -39,6 +39,24 @@ function escapeRegex(value) {
 }
 const PHARMACY_PRODUCTS = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc'];
 
+// pharmacymoh is the only product with two separate districts - the delivery
+// address (address.district) and where the medicine is actually collected
+// (appointmentDistrict). Whichever of the two is NOT Brunei governs
+// pricing/charge availability, since that's the real logistics constraint
+// (e.g. same-day Express/Immediate requires the whole round trip - both the
+// collection AND the delivery - to stay within Brunei-Muara). Mirrors
+// gorush-client/app/order-form.js's resolveMohPricingDistrict() - this is
+// the authoritative server-side copy, since a stale/bypassed client must not
+// be able to get Brunei-only pricing validated/accepted for a non-Brunei
+// appointment. If both are set to different non-Brunei districts (rare),
+// appointmentDistrict wins - the actual medicine collection point most
+// directly determines feasible turnaround time.
+function resolveMohPricingDistrict(addressDistrict, appointmentDistrict) {
+    if (appointmentDistrict && appointmentDistrict !== 'Brunei') return appointmentDistrict;
+    if (addressDistrict && addressDistrict !== 'Brunei') return addressDistrict;
+    return 'Brunei';
+}
+
 // Which order alert email (if any) this order needs: moh/jpmc's "Immediate"
 // charge code, any phc order, "Self Collect" regardless of product (the 3
 // original Make.com-driven cases), or any localdelivery order (added
@@ -274,7 +292,9 @@ router.post('/', optionalAuth, async (req, res) => {
             }
         }
 
-        const pricingDistrict = address.district;
+        const pricingDistrict = product === 'pharmacymoh'
+            ? resolveMohPricingDistrict(address.district, appointmentDistrict)
+            : address.district;
         const totalPriceValue = cbslSelfCollect ? 0 : await computeTotalPrice(product, pricingDistrict, deliveryTypeCode, weightValue);
         if (totalPriceValue == null) {
             return res.status(400).json({ error: "Selected charges are not valid for this district." });
