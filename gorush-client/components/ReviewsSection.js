@@ -119,7 +119,7 @@ function makeStyles(scaleFont) {
       elevation: 3,
     },
     stars: { color: '#f5c518', fontSize: scaleFont(16), marginBottom: 12, letterSpacing: 2 },
-    text: { color: '#333', fontSize: scaleFont(14), lineHeight: 21 },
+    text: { color: '#333', fontSize: scaleFont(14), lineHeight: scaleFont(21) },
     arrow: {
       position: 'absolute',
       top: '50%',

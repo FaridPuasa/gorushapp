@@ -230,15 +230,16 @@ function readPath(obj, path) {
 
 export function InfoNotice({ icon = 'ℹ️', title, children }) {
   const { colors } = useTheme();
+  const { scaleFont } = useFontScale();
   return (
     <View style={{ backgroundColor: colors.primaryLight, borderColor: colors.tertiary, borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 16 }}>
       {title ? (
-        <Text style={{ color: colors.textPrimary, fontWeight: 'bold', marginBottom: 6 }}>
+        <Text style={{ color: colors.textPrimary, fontWeight: 'bold', marginBottom: 6, fontSize: scaleFont(14) }}>
           {icon} {title}
         </Text>
       ) : null}
       {typeof children === 'string' ? (
-        <Text style={{ color: colors.textPrimary, lineHeight: 20 }}>{children}</Text>
+        <Text style={{ color: colors.textPrimary, fontSize: scaleFont(14), lineHeight: scaleFont(20) }}>{children}</Text>
       ) : children}
     </View>
   );

@@ -85,7 +85,7 @@ export default function WargaEmas() {
     return (
       <PageScroll title={t('nav.wargaEmas')}>
         <Card icon="✅" title={t('wargaEmasForm.submittedTitle')}>
-          <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color, lineHeight: 20 }}>
+          <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color, lineHeight: scaleFont(20) }}>
             {t('wargaEmasForm.submittedBody')}
           </Text>
         </Card>

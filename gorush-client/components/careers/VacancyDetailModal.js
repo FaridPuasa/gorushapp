@@ -3,6 +3,7 @@ import { Text, View, Modal, Pressable, ScrollView, StyleSheet } from 'react-nati
 import { useFormStyles } from '../../lib/formPrimitives';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useFontScale } from '../../context/FontScaleContext';
 import { formatAnnouncementDate } from '../../lib/announcements';
 import { AnimatedPressable } from '../../lib/animations';
 
@@ -10,6 +11,7 @@ export default function VacancyDetailModal({ vacancy, onClose, onApply }) {
   const { t } = useLanguage();
   const { colors } = useTheme();
   const formStyles = useFormStyles();
+  const { scaleFont } = useFontScale();
 
   return (
     <Modal visible={!!vacancy} transparent animationType="fade" onRequestClose={onClose}>
@@ -20,7 +22,7 @@ export default function VacancyDetailModal({ vacancy, onClose, onApply }) {
             <View style={[styles.header, { borderBottomColor: colors.border }]}>
               <Text style={[formStyles.sectionHeader, { marginBottom: 0, flex: 1 }]} numberOfLines={2}>💼 {vacancy.title}</Text>
               <AnimatedPressable scaleTo={1.15} onPress={onClose} style={styles.closeButton}>
-                <Text style={{ fontSize: 18, color: colors.textSecondary }}>✕</Text>
+                <Text style={{ fontSize: scaleFont(18), color: colors.textSecondary }}>✕</Text>
               </AnimatedPressable>
             </View>
 
@@ -28,18 +30,18 @@ export default function VacancyDetailModal({ vacancy, onClose, onApply }) {
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 12 }}>
                 {vacancy.department ? (
                   <View style={{ backgroundColor: colors.primaryLight, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginRight: 8, marginBottom: 6 }}>
-                    <Text style={{ color: colors.primaryDark, fontWeight: '700', fontSize: 12 }}>{vacancy.department}</Text>
+                    <Text style={{ color: colors.primaryDark, fontWeight: '700', fontSize: scaleFont(12) }}>{vacancy.department}</Text>
                   </View>
                 ) : null}
                 {vacancy.employmentType ? (
                   <View style={{ backgroundColor: colors.subtleBackground, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 6 }}>
-                    <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: 12 }}>🕐 {vacancy.employmentType}</Text>
+                    <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: scaleFont(12) }}>🕐 {vacancy.employmentType}</Text>
                   </View>
                 ) : null}
               </View>
 
               {vacancy.closingDate ? (
-                <Text style={{ color: colors.error, fontWeight: '600', fontSize: 12, marginBottom: 12 }}>
+                <Text style={{ color: colors.error, fontWeight: '600', fontSize: scaleFont(12), marginBottom: 12 }}>
                   ⏳ {t('careers.closesOn').replace('${date}', formatAnnouncementDate(vacancy.closingDate))}
                 </Text>
               ) : null}
@@ -48,14 +50,14 @@ export default function VacancyDetailModal({ vacancy, onClose, onApply }) {
 
               {vacancy.requirements ? (
                 <View style={{ marginBottom: 16 }}>
-                  <Text style={[formStyles.sectionHeader, { fontSize: 15, marginBottom: 8 }]}>{t('careers.requirements')}</Text>
+                  <Text style={[formStyles.sectionHeader, { fontSize: scaleFont(15), marginBottom: 8 }]}>{t('careers.requirements')}</Text>
                   <Text style={formStyles.bodyText}>{vacancy.requirements}</Text>
                 </View>
               ) : null}
 
               {vacancy.responsibilities ? (
                 <View style={{ marginBottom: 4 }}>
-                  <Text style={[formStyles.sectionHeader, { fontSize: 15, marginBottom: 8 }]}>{t('careers.responsibilities')}</Text>
+                  <Text style={[formStyles.sectionHeader, { fontSize: scaleFont(15), marginBottom: 8 }]}>{t('careers.responsibilities')}</Text>
                   <Text style={formStyles.bodyText}>{vacancy.responsibilities}</Text>
                 </View>
               ) : null}

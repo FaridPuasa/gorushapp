@@ -3,6 +3,7 @@ import { Text, View, ActivityIndicator } from 'react-native';
 import { useFormStyles, Card } from '../../lib/formPrimitives';
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
+import { useFontScale } from '../../context/FontScaleContext';
 import { api } from '../../lib/api';
 import { formatAnnouncementDate } from '../../lib/announcements';
 import VacancyDetailModal from './VacancyDetailModal';
@@ -12,6 +13,7 @@ export default function VacancyList({ onApply }) {
   const { t } = useLanguage();
   const { colors } = useTheme();
   const formStyles = useFormStyles();
+  const { scaleFont } = useFontScale();
   const [vacancies, setVacancies] = useState(null);
   const [selectedVacancy, setSelectedVacancy] = useState(null);
 
@@ -38,18 +40,18 @@ export default function VacancyList({ onApply }) {
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 }}>
             {v.department ? (
               <View style={{ backgroundColor: colors.primaryLight, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginRight: 8, marginBottom: 6 }}>
-                <Text style={{ color: colors.primaryDark, fontWeight: '700', fontSize: 12 }}>{v.department}</Text>
+                <Text style={{ color: colors.primaryDark, fontWeight: '700', fontSize: scaleFont(12) }}>{v.department}</Text>
               </View>
             ) : null}
             {v.employmentType ? (
               <View style={{ backgroundColor: colors.subtleBackground, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 6 }}>
-                <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: 12 }}>🕐 {v.employmentType}</Text>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: scaleFont(12) }}>🕐 {v.employmentType}</Text>
               </View>
             ) : null}
           </View>
 
           {v.closingDate ? (
-            <Text style={{ color: colors.error, fontWeight: '600', fontSize: 12, marginBottom: 10 }}>
+            <Text style={{ color: colors.error, fontWeight: '600', fontSize: scaleFont(12), marginBottom: 10 }}>
               ⏳ {t('careers.closesOn').replace('${date}', formatAnnouncementDate(v.closingDate))}
             </Text>
           ) : null}

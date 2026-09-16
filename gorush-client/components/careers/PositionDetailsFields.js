@@ -3,6 +3,7 @@ import { Text, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useFormStyles, Card, Field } from '../../lib/formPrimitives';
 import { useLanguage } from '../../context/LanguageContext';
+import { useFontScale } from '../../context/FontScaleContext';
 import { HIGHEST_ACHIEVEMENT_OPTIONS, DURATION_OPTIONS, PARCEL_NUM_OPTIONS, CAR_OWN_OPTIONS, getApplicationTypeConfig } from '../../lib/careersOptions';
 import { AnimatedPressable } from '../../lib/animations';
 
@@ -25,13 +26,14 @@ function ToggleField({ label, required, error, value, onChange, formStyles, fiel
 export default function PositionDetailsFields({ vacancy, values, onChange, errors = {}, registerFieldRef }) {
   const { t } = useLanguage();
   const formStyles = useFormStyles();
+  const { scaleFont } = useFontScale();
   const config = getApplicationTypeConfig(vacancy.applicationType);
 
   return (
     <Card icon="📋" title={t('careers.applicationDetails')}>
       <Field label={t('careers.positionApplied')}>
         <View style={[formStyles.pickerContainer, { justifyContent: 'center', paddingHorizontal: 12 }]}>
-          <Text style={{ color: formStyles.subtitle.color, fontSize: 14 }}>{vacancy.title}</Text>
+          <Text style={{ color: formStyles.subtitle.color, fontSize: scaleFont(14) }}>{vacancy.title}</Text>
         </View>
       </Field>
 

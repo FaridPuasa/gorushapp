@@ -288,7 +288,7 @@ export default function DeliveryPrice() {
     // scale settings.
     tierPriceMulti: { fontSize: scaleFont(14), color: colors.primary, fontWeight: '800', marginTop: 3, textAlign: 'center' },
     notesTitle: { fontSize: scaleFont(12), fontWeight: '700', color: colors.textPrimary, marginTop: 8, marginBottom: 6, textAlign: 'center' },
-    noteLine: { fontSize: scaleFont(11), color: colors.textMuted, marginBottom: 4, lineHeight: 17, textAlign: 'center' },
+    noteLine: { fontSize: scaleFont(11), color: colors.textMuted, marginBottom: 4, lineHeight: scaleFont(17), textAlign: 'center' },
   };
 
   const activeSection = TABS.find((s) => s.title === activeTab);

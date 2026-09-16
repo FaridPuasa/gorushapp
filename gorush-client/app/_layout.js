@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Platform, View } from 'react-native';
+import { Platform, View, Text, TextInput } from 'react-native';
 import { Slot, usePathname, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +10,16 @@ import { LanguageProvider } from '../context/LanguageContext';
 import { FontScaleProvider } from '../context/FontScaleContext';
 import Navbar from '../components/Navbar';
 import AnnouncementBar from '../components/AnnouncementBar';
+
+// The app has its own Small/Regular/Large text-size setting (FontScaleContext), so it
+// should be the only thing controlling text size - without this, RN's default of
+// respecting the OS accessibility font-size setting on top of it would double-scale
+// text for users who also have a large OS font size set, and make "Large" mean a
+// different actual size on different devices.
+Text.defaultProps = Text.defaultProps || {};
+Text.defaultProps.allowFontScaling = false;
+TextInput.defaultProps = TextInput.defaultProps || {};
+TextInput.defaultProps.allowFontScaling = false;
 
 export default function RootLayout() {
   return (

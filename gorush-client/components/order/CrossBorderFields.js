@@ -4,6 +4,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useFormStyles, Card, Field, InfoNotice, makeInputStyle, makeFocusHandlers } from '../../lib/formPrimitives';
 import { useLanguage } from '../../context/LanguageContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useFontScale } from '../../context/FontScaleContext';
 import { AnimatedPressable } from '../../lib/animations';
 
 export default function CrossBorderFields({
@@ -13,6 +14,7 @@ export default function CrossBorderFields({
   const { t } = useLanguage();
   const { colors } = useTheme();
   const formStyles = useFormStyles();
+  const { scaleFont } = useFontScale();
   const inputStyle = makeInputStyle(formStyles, focusedField, errors);
   const focusHandlers = makeFocusHandlers(setFocusedField);
 
@@ -124,7 +126,7 @@ export default function CrossBorderFields({
 
       <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 14, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border }}>
         <Text style={[formStyles.fieldLabel, { marginBottom: 0 }]}>{t('order.itemsPriceTotal')}</Text>
-        <Text style={{ color: formStyles.statusTextSuccess.color, fontWeight: 'bold', fontSize: 16 }}>RM {itemsTotal.toFixed(2)}</Text>
+        <Text style={{ color: formStyles.statusTextSuccess.color, fontWeight: 'bold', fontSize: scaleFont(16) }}>RM {itemsTotal.toFixed(2)}</Text>
       </View>
     </Card>
   );
