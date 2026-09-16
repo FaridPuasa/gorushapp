@@ -342,10 +342,20 @@ model JobApplication {
   parcelNum          String? @map("parcel_num")
   driveManual        String? @map("drive_manual")
 
+  // 2026-09-16: retired in favor of the Storage-backed *Path columns below -
+  // real destination now, see lib/jobApplicationDocsStorage.js (same private-
+  // bucket pattern as lib/podImageStorage.js's POD photos and
+  // lib/jpmcPaymentStorage.js's payment proofs). Kept only as a read-side
+  // safety net for the brief window right before this migration deployed.
   icFront             String? @map("ic_front")
   resumeCv            String? @map("resume_cv")
   drivingLicenseFront String? @map("driving_license_front")
   drivingLicenseBack  String? @map("driving_license_back")
+
+  icFrontPath             String? @map("ic_front_path")
+  resumeCvPath            String? @map("resume_cv_path")
+  drivingLicenseFrontPath String? @map("driving_license_front_path")
+  drivingLicenseBackPath  String? @map("driving_license_back_path")
 
   status             String?
   dateTimeSubmission String?   @map("date_time_submission")

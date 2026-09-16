@@ -8,6 +8,7 @@ const { isVacancyCurrentlyOpen } = require('../lib/vacancies');
 const prisma = require('../lib/prismaClient');
 const { sendJobApplicationAlert, dataUriToAttachment } = require('../lib/mailer');
 const { notifyTeamsJobApplication } = require('../lib/teamsNotify');
+const { uploadJobApplicationDoc } = require('../lib/jobApplicationDocsStorage');
 
 const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 function generateCaptchaCode() {
@@ -147,9 +148,6 @@ router.post('/apply', optionalAuth, async (req, res) => {
             experienceDelivery: rules.needsDeliverBefore && deliverBefore === 'Yes' ? experienceDelivery : null,
             parcelNum: rules.needsDeliverBefore && deliverBefore === 'Yes' ? parcelNum : null,
             driveManual: rules.needsDriveManual ? driveManual : null,
-            icFront, resumeCv,
-            drivingLicenseFront: rules.needsLicense ? drivingLicenseFront : null,
-            drivingLicenseBack: rules.needsLicense ? drivingLicenseBack : null,
             status: 'New',
             dateTimeSubmission: new Date().toISOString(),
             createdAt: new Date(),
@@ -160,6 +158,21 @@ router.post('/apply', optionalAuth, async (req, res) => {
         // removal in the same commit).
         const saved = await prisma.jobApplication.create({ data: applicationData });
         const applicationId = saved.id.toString();
+
+        // Uploaded documents go to the private job-application-documents
+        // Storage bucket (2026-09-16), not the icFront/resumeCv/etc base64
+        // columns - the row needs its own id as the path prefix, so this is a
+        // second write right after create rather than part of the same one.
+        const [icFrontPath, resumeCvPath, drivingLicenseFrontPath, drivingLicenseBackPath] = await Promise.all([
+            uploadJobApplicationDoc(applicationId, 'ic_front', icFront),
+            uploadJobApplicationDoc(applicationId, 'resume_cv', resumeCv),
+            rules.needsLicense ? uploadJobApplicationDoc(applicationId, 'driving_license_front', drivingLicenseFront) : null,
+            rules.needsLicense ? uploadJobApplicationDoc(applicationId, 'driving_license_back', drivingLicenseBack) : null,
+        ]);
+        await prisma.jobApplication.update({
+            where: { id: saved.id },
+            data: { icFrontPath, resumeCvPath, drivingLicenseFrontPath, drivingLicenseBackPath },
+        });
 
         // Fire-and-forget notifications - a failed email/Teams post must never
         // fail the applicant's own submission.
