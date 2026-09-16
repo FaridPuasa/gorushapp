@@ -24,7 +24,18 @@ async function readNativeDocumentAsBase64(asset) {
   const { File } = await import('expo-file-system');
   const file = new File(asset.uri);
   const base64 = await file.base64();
-  return `data:${asset.mimeType || 'application/octet-stream'};base64,${base64}`;
+  return `data:${asset.mimeType || 'application/octet-stream'};base64,${stripDataUriPrefix(base64)}`;
+}
+
+// On web, expo-document-picker's `base64` option can come back as an already-
+// complete data URI (browsers' FileReader.readAsDataURL includes the
+// "data:<mime>;base64," header itself) rather than bare base64 - prepending
+// our own header on top of that produced a doubled "data:...;base64,data:
+// ...;base64,<bytes>" string that no viewer/mail client could decode. Always
+// strip any existing header before building the final data URI.
+function stripDataUriPrefix(value) {
+  const match = typeof value === 'string' && value.match(/^data:[^;]+;base64,(.+)$/s);
+  return match ? match[1] : value;
 }
 
 export default function DocumentUploads({ vacancy, values, onChange, errors = {}, registerFieldRef }) {
@@ -40,7 +51,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
     if (!result.canceled && result.assets?.[0]?.base64) {
       const asset = result.assets[0];
       const mime = asset.mimeType || 'image/jpeg';
-      onChange(field, `data:${mime};base64,${asset.base64}`);
+      onChange(field, `data:${mime};base64,${stripDataUriPrefix(asset.base64)}`);
     }
   };
 
@@ -54,7 +65,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
       return;
     }
     const dataUri = asset.base64
-      ? `data:${asset.mimeType || 'application/octet-stream'};base64,${asset.base64}`
+      ? `data:${asset.mimeType || 'application/octet-stream'};base64,${stripDataUriPrefix(asset.base64)}`
       : await readNativeDocumentAsBase64(asset);
     onChange('resumeCv', dataUri);
     onChange('resumeCvName', asset.name);
