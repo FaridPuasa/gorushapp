@@ -53,4 +53,50 @@ async function sendOrderAlert({ subject, html }) {
     }
 }
 
-module.exports = { sendOrderAlert, ORDER_ALERT_RECIPIENTS };
+// Base64 data URI ("data:<mime>;base64,<data>") -> a nodemailer attachment,
+// so uploaded documents (IC/resume/license, stored as data URIs - same
+// convention as Order.items[].screenshotInvoice) can be opened directly from
+// the email instead of only being visible in the admin dashboard.
+const MIME_EXTENSIONS = {
+    'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/heic': 'heic',
+    'application/pdf': 'pdf',
+    'application/msword': 'doc',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
+};
+function dataUriToAttachment(baseFilename, dataUri) {
+    if (!dataUri || typeof dataUri !== 'string' || !dataUri.startsWith('data:')) return null;
+    const match = dataUri.match(/^data:([^;]+);base64,(.+)$/s);
+    if (!match) return null;
+    const contentType = match[1];
+    const ext = MIME_EXTENSIONS[contentType] || 'bin';
+    return { filename: `${baseFilename}.${ext}`, content: Buffer.from(match[2], 'base64'), contentType };
+}
+
+const CAREERS_ALERT_RECIPIENTS = ['careers@globex.com.bn'];
+
+// Fire-and-forget, same tolerance as sendOrderAlert - a failed alert email
+// never fails the applicant's own submission (see routes/careers.js).
+async function sendJobApplicationAlert({ subject, html, attachments }) {
+    try {
+        const info = await transporter.sendMail({
+            from: `"Go Rush System" <${process.env.EMAIL_USER || 'it.support@globex.com.bn'}>`,
+            to: CAREERS_ALERT_RECIPIENTS.join(', '),
+            subject,
+            html,
+            attachments,
+        });
+        console.log(`✅ Job application alert email sent (${subject}): ${info.messageId}`);
+        return true;
+    } catch (err) {
+        console.error(`❌ Job application alert email failed (${subject}):`, err.message);
+        return false;
+    }
+}
+
+module.exports = {
+    sendOrderAlert,
+    ORDER_ALERT_RECIPIENTS,
+    sendJobApplicationAlert,
+    dataUriToAttachment,
+    CAREERS_ALERT_RECIPIENTS,
+};

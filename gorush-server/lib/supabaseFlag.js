@@ -41,22 +41,9 @@ function isPricingHolidayDualWriteEnabled() {
         && process.env.SUPABASE_PRICING_HOLIDAY_ENABLED === 'true';
 }
 
-// JobApplication (2026-09-16, first step of gorushapp's own remaining Mongo
-// write-cutover - the two collections grfmxstatusupdate's own migration
-// couldn't touch because nothing here dual-wrote them yet). Own flag, same
-// reasoning as PricingRule/PublicHoliday - grfmxstatusupdate reads this
-// collection directly (GorushJobApplication, currently a read-only Mongo
-// view at /jobApplications) and will need its own independent read-cutover
-// later.
-function isJobApplicationDualWriteEnabled() {
-    return process.env.SUPABASE_ENABLED === 'true'
-        && process.env.SUPABASE_JOB_APPLICATION_ENABLED === 'true';
-}
-
 module.exports = {
     isPostgresOrderIntakeEnabled,
     isPostgresWargaEmasEnabled,
     isCmsDualWriteEnabled,
     isPricingHolidayDualWriteEnabled,
-    isJobApplicationDualWriteEnabled,
 };

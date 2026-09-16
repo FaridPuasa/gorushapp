@@ -180,4 +180,69 @@ async function notifyTeams(orderData, trackingNumber) {
     return results.some(Boolean);
 }
 
-module.exports = { notifyTeams, buildOrderCard };
+// Job application notifications - separate webhook/channel from the order
+// categories above, posted once per submission (see routes/careers.js).
+function buildJobApplicationCard(application) {
+    const address = [application.houseunitno, application.jalan, application.kampong, application.simpang]
+        .filter(Boolean).join(', ');
+    const facts = [
+        { title: 'Name', value: application.name },
+        { title: 'Position Applied', value: application.positionApplied },
+        { title: 'Application Type', value: application.applicationType },
+        { title: 'Date of Birth', value: application.dateofbirth },
+        { title: 'IC Number', value: application.icnumber },
+        { title: 'Address', value: address },
+        { title: 'District', value: application.district },
+        { title: 'Postal Code', value: application.postalcode },
+        { title: 'Email', value: application.email },
+        { title: 'Phone', value: application.phonenum },
+        { title: 'Additional Phone', value: application.addphonenum },
+        { title: 'Highest Achievement', value: application.highestAchievement },
+        { title: 'Part-time Duration', value: application.partTimeDuration },
+        { title: 'Owns a Car', value: application.carOwn },
+        { title: 'Delivered Before', value: application.deliverBefore },
+        { title: 'Delivery Experience', value: application.experienceDelivery },
+        { title: 'Parcels/Day Handled', value: application.parcelNum },
+        { title: 'Can Drive Manual', value: application.driveManual },
+        { title: 'Date Submitted', value: application.dateTimeSubmission },
+    ].filter((f) => f.value);
+
+    const body = [
+        { type: 'TextBlock', text: `📄 New Job Application — ${application.positionApplied}`, weight: 'Bolder', size: 'Medium', wrap: true },
+        { type: 'FactSet', facts: facts.map((f) => ({ title: f.title, value: String(f.value) })) },
+    ];
+    if (process.env.ADMIN_PORTAL_URL) {
+        body.push({
+            type: 'ActionSet',
+            actions: [{ type: 'Action.OpenUrl', title: 'View Application & Documents', url: `${process.env.ADMIN_PORTAL_URL}/jobApplications` }],
+        });
+    }
+
+    return {
+        type: 'message',
+        attachments: [{
+            contentType: 'application/vnd.microsoft.card.adaptive',
+            content: { $schema: 'http://adaptivecards.io/schemas/adaptive-card.json', type: 'AdaptiveCard', version: '1.4', body },
+        }],
+    };
+}
+
+// Fire-and-forget, same tolerance as notifyTeams - a failed Teams post never
+// fails the applicant's own submission (see routes/careers.js).
+async function notifyTeamsJobApplication(application) {
+    const webhookUrl = process.env.TEAMS_WEBHOOK_URL_CAREERS;
+    if (!webhookUrl) {
+        console.log('[teams] TEAMS_WEBHOOK_URL_CAREERS not set - skipping job application notification');
+        return false;
+    }
+    try {
+        await axios.post(webhookUrl, buildJobApplicationCard(application));
+        console.log(`✅ Teams job application notification sent for ${application.name}`);
+        return true;
+    } catch (err) {
+        console.error('❌ Failed to send Teams job application notification:', err.response?.data || err.message);
+        return false;
+    }
+}
+
+module.exports = { notifyTeams, buildOrderCard, notifyTeamsJobApplication };

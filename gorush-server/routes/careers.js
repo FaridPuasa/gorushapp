@@ -3,10 +3,11 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const Vacancy = require('../models/Vacancy');
-const JobApplication = require('../models/JobApplication');
 const { optionalAuth } = require('../middleware/auth');
-const { dualWriteCreate } = require('../lib/jobApplicationDualWrite');
 const { isVacancyCurrentlyOpen } = require('../lib/vacancies');
+const prisma = require('../lib/prismaClient');
+const { sendJobApplicationAlert, dataUriToAttachment } = require('../lib/mailer');
+const { notifyTeamsJobApplication } = require('../lib/teamsNotify');
 
 const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 function generateCaptchaCode() {
@@ -15,6 +16,37 @@ function generateCaptchaCode() {
         code += CAPTCHA_CHARS[Math.floor(Math.random() * CAPTCHA_CHARS.length)];
     }
     return code;
+}
+
+// Same simple <p>-per-field style as routes/orders.js's buildOrderAlertEmail.
+function buildJobApplicationEmailHtml(a) {
+    const address = [a.houseunitno, a.jalan, a.kampong, a.simpang].filter(Boolean).join(', ');
+    const portalLink = process.env.ADMIN_PORTAL_URL
+        ? `<p><a href="${process.env.ADMIN_PORTAL_URL}/jobApplications">View Application & Documents in Admin Portal</a></p>`
+        : '';
+    return `
+        <p>Name: ${a.name || ''}</p>
+        <p>Position Applied: ${a.positionApplied || ''}</p>
+        <p>Application Type: ${a.applicationType || ''}</p>
+        <p>Date of Birth: ${a.dateofbirth || ''}</p>
+        <p>IC Number: ${a.icnumber || ''}</p>
+        <p>Address: ${address}</p>
+        <p>District: ${a.district || ''}</p>
+        <p>Postal Code: ${a.postalcode || ''}</p>
+        <p>Email: ${a.email || ''}</p>
+        <p>Phone: ${a.phonenum || ''}</p>
+        <p>Additional Phone: ${a.addphonenum || ''}</p>
+        <p>Highest Qualification Achieved: ${a.highestAchievement || ''}</p>
+        <p>Part-time Duration: ${a.partTimeDuration || ''}</p>
+        <p>Owns a Car: ${a.carOwn || ''}</p>
+        <p>Delivered Before: ${a.deliverBefore || ''}</p>
+        <p>Delivery Experience: ${a.experienceDelivery || ''}</p>
+        <p>Parcels/Day Handled: ${a.parcelNum || ''}</p>
+        <p>Can Drive Manual: ${a.driveManual || ''}</p>
+        <p>Date Submitted: ${a.dateTimeSubmission || ''}</p>
+        <p>IC Front, Resume/CV, and Driving License (if applicable) are attached to this email.</p>
+        ${portalLink}
+    `;
 }
 
 router.get('/captcha', (req, res) => {
@@ -100,33 +132,51 @@ router.post('/apply', optionalAuth, async (req, res) => {
             return res.status(400).json({ error: "Both sides of your driving license are required for this position." });
         }
 
-        const application = new JobApplication({
+        const applicationData = {
             userId: req.userId || null,
-            vacancyId: vacancy._id,
+            vacancyId: vacancy._id.toString(),
             positionApplied: vacancy.title,
             applicationType: vacancy.applicationType,
             name, dateofbirth, icnumber,
             houseunitno, jalan, kampong, simpang, district, postalcode,
             email, phonenum, addphonenum,
             highestAchievement,
-            partTimeDuration: rules.needsPartTime ? partTimeDuration : undefined,
-            carOwn: rules.needsCarOwn ? carOwn : undefined,
-            deliverBefore: rules.needsDeliverBefore ? deliverBefore : undefined,
-            experienceDelivery: rules.needsDeliverBefore && deliverBefore === 'Yes' ? experienceDelivery : undefined,
-            parcelNum: rules.needsDeliverBefore && deliverBefore === 'Yes' ? parcelNum : undefined,
-            driveManual: rules.needsDriveManual ? driveManual : undefined,
+            partTimeDuration: rules.needsPartTime ? partTimeDuration : null,
+            carOwn: rules.needsCarOwn ? carOwn : null,
+            deliverBefore: rules.needsDeliverBefore ? deliverBefore : null,
+            experienceDelivery: rules.needsDeliverBefore && deliverBefore === 'Yes' ? experienceDelivery : null,
+            parcelNum: rules.needsDeliverBefore && deliverBefore === 'Yes' ? parcelNum : null,
+            driveManual: rules.needsDriveManual ? driveManual : null,
             icFront, resumeCv,
-            drivingLicenseFront: rules.needsLicense ? drivingLicenseFront : undefined,
-            drivingLicenseBack: rules.needsLicense ? drivingLicenseBack : undefined,
+            drivingLicenseFront: rules.needsLicense ? drivingLicenseFront : null,
+            drivingLicenseBack: rules.needsLicense ? drivingLicenseBack : null,
+            status: 'New',
             dateTimeSubmission: new Date().toISOString(),
-        });
+            createdAt: new Date(),
+        };
 
-        const saved = await application.save();
-        // Fire-and-forget, Mongo stays primary/authoritative for now (see
-        // lib/jobApplicationDualWrite.js) - a mirror failure must never fail
-        // an applicant's actual submission.
-        dualWriteCreate(saved).catch((err) => console.error('[jobApplication dual-write] unexpected error:', err.message));
-        res.status(201).json({ message: "Application submitted successfully!", applicationId: saved._id });
+        // Postgres is now the sole store for JobApplication (cutover 2026-09-16,
+        // no more Mongo write/mirror - see lib/jobApplicationDualWrite.js's
+        // removal in the same commit).
+        const saved = await prisma.jobApplication.create({ data: applicationData });
+        const applicationId = saved.id.toString();
+
+        // Fire-and-forget notifications - a failed email/Teams post must never
+        // fail the applicant's own submission.
+        const alertData = { ...applicationData, applicationId };
+        sendJobApplicationAlert({
+            subject: `New Job Application - ${name} (${vacancy.title})`,
+            html: buildJobApplicationEmailHtml(alertData),
+            attachments: [
+                dataUriToAttachment('IC_Front', icFront),
+                dataUriToAttachment('Resume_CV', resumeCv),
+                dataUriToAttachment('Driving_License_Front', drivingLicenseFront),
+                dataUriToAttachment('Driving_License_Back', drivingLicenseBack),
+            ].filter(Boolean),
+        }).catch((err) => console.error('[jobApplication email] unexpected error:', err.message));
+        notifyTeamsJobApplication(alertData).catch((err) => console.error('[jobApplication teams] unexpected error:', err.message));
+
+        res.status(201).json({ message: "Application submitted successfully!", applicationId });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server application error." });
