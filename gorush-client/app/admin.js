@@ -12,6 +12,7 @@ import { useAuth } from '../context/AuthContext';
 import { api } from '../lib/api';
 import { formatAnnouncementDate, renderRichText } from '../lib/announcements';
 import { CHARGE_CODE_ORDER } from '../lib/pricing';
+import { getApplicationTypeConfig } from '../lib/careersOptions';
 
 const TABS = ['Holidays', 'Announcements', 'Slides', 'Vacancies', 'Pricing'];
 
@@ -833,7 +834,29 @@ const APPLICATION_TYPE_OPTIONS = ['General', 'Freelancer', 'Dispatcher', 'Helper
 const VACANCY_TITLE_OPTIONS = ['Human Resource', 'Forwarding Support', 'Operation Support', 'Dispatcher', 'Customer Service', 'Account Clerk', 'Information Technology Technical Support'];
 const VACANCY_DEPARTMENT_OPTIONS = ['Human Resource', 'Logistics', 'Customer Relations', 'Accounting', 'IT'];
 const VACANCY_EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time'];
-const EMPTY_VACANCY = { title: VACANCY_TITLE_OPTIONS[0], department: VACANCY_DEPARTMENT_OPTIONS[0], employmentType: 'Full-time', description: '', requirements: '', responsibilities: '', applicationType: 'General', isOpen: true, closingDate: '', order: '0' };
+
+// Human-readable label for each conditional extra question/upload an
+// applicationType can turn on - mirrors the boolean flags in
+// lib/careersOptions.js's APPLICATION_TYPE_CONFIG (itself mirroring the
+// server's APPLICATION_TYPE_RULES in routes/careers.js). Every applicant,
+// regardless of type, is always asked for name/DOB/IC number/address/phone/
+// highest qualification/IC photo/resume - only these 5 vary by type.
+const APPLICATION_TYPE_EXTRA_LABELS = {
+  needsPartTime: 'Expected part-time duration',
+  needsCarOwn: 'Type of transportation owned',
+  needsDeliverBefore: "Prior delivery experience (+ follow-up details if they've done it before)",
+  needsDriveManual: 'Whether they can drive manual',
+  needsLicense: 'Driving license photo upload (front & back)',
+};
+
+function describeApplicationTypeExtras(applicationType) {
+  const config = getApplicationTypeConfig(applicationType);
+  return Object.entries(APPLICATION_TYPE_EXTRA_LABELS)
+    .filter(([key]) => config[key])
+    .map(([, label]) => label);
+}
+
+const EMPTY_VACANCY ={ title: VACANCY_TITLE_OPTIONS[0], department: VACANCY_DEPARTMENT_OPTIONS[0], employmentType: 'Full-time', description: '', requirements: '', responsibilities: '', applicationType: 'General', isOpen: true, closingDate: '', order: '0' };
 
 function VacanciesTab({ formStyles, colors, authHeader }) {
   const [vacancies, setVacancies] = useState([]);
@@ -931,6 +954,21 @@ function VacanciesTab({ formStyles, colors, authHeader }) {
             <Picker style={formStyles.pickerControl} selectedValue={form.applicationType} onValueChange={(v) => onChange('applicationType', v)}>
               {APPLICATION_TYPE_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
             </Picker>
+          </View>
+          <View style={{ marginTop: 8, padding: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.subtleBackground }}>
+            <Text style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 6 }}>
+              Every applicant is always asked for: Name, Date of birth, IC number, Address, Phone number, Highest qualification, IC photo, Resume/CV.
+            </Text>
+            {describeApplicationTypeExtras(form.applicationType).length > 0 ? (
+              <>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary, marginBottom: 2 }}>Plus, for {form.applicationType}:</Text>
+                {describeApplicationTypeExtras(form.applicationType).map((label) => (
+                  <Text key={label} style={{ fontSize: 12, color: colors.textSecondary }}>• {label}</Text>
+                ))}
+              </>
+            ) : (
+              <Text style={{ fontSize: 12, fontWeight: '700', color: colors.textPrimary }}>No extra questions for this type.</Text>
+            )}
           </View>
         </Field>
         <Field label="Status">
