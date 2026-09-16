@@ -2,15 +2,17 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { useFormStyles, Card } from '../../lib/formPrimitives';
 import { useLanguage } from '../../context/LanguageContext';
+import { useFontScale } from '../../context/FontScaleContext';
 import { getApplicationTypeConfig } from '../../lib/careersOptions';
 
 function Row({ label, value }) {
   const formStyles = useFormStyles();
+  const { scaleFont } = useFontScale();
   if (value === undefined || value === null || value === '') return null;
   return (
     <View style={{ flexDirection: 'row', marginBottom: 8 }}>
-      <Text style={{ fontSize: 13, color: formStyles.subtitle.color, width: 160 }}>{label}</Text>
-      <Text style={{ fontSize: 13, color: formStyles.fieldLabel.color, fontWeight: '600', flex: 1 }}>{value}</Text>
+      <Text style={{ fontSize: scaleFont(13), color: formStyles.subtitle.color, width: 160 }}>{label}</Text>
+      <Text style={{ fontSize: scaleFont(13), color: formStyles.fieldLabel.color, fontWeight: '600', flex: 1 }}>{value}</Text>
     </View>
   );
 }
@@ -49,7 +51,7 @@ export default function ApplicationSummary({ vacancy, personal, application, fil
 
       <Card icon="📎" title={t('careers.documents')}>
         <Row label={t('careers.uploadIcFront')} value={files.icFront ? t('common.yes') : t('common.no')} />
-        <Row label={t('careers.uploadResume')} value={files.resumeCvName || (files.resumeCv ? t('common.yes') : t('common.no'))} />
+        <Row label={t('careers.uploadResume')} value={files.resumeCv ? t('common.yes') : t('common.no')} />
         {config.needsLicense && (
           <>
             <Row label={t('careers.uploadLicenseFront')} value={files.drivingLicenseFront ? t('common.yes') : t('common.no')} />
