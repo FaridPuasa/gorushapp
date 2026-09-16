@@ -7,7 +7,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useFontScale } from '../../context/FontScaleContext';
 import { AnimatedPressable } from '../../lib/animations';
 
-export default function Captcha({ answer, onAnswerChange, onTokenChange, focusedField, setFocusedField, error }) {
+export default function Captcha({ answer, onAnswerChange, onTokenChange, focusedField, setFocusedField, error, endpoint = '/api/orders/captcha' }) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(true);
   const { colors } = useTheme();
@@ -21,13 +21,13 @@ export default function Captcha({ answer, onAnswerChange, onTokenChange, focused
   const fetchCaptcha = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await api.get('/api/orders/captcha');
+      const response = await api.get(endpoint);
       setCode(response.data.code);
       onTokenChange(response.data.token);
     } finally {
       setLoading(false);
     }
-  }, [onTokenChange]);
+  }, [onTokenChange, endpoint]);
 
   useEffect(() => {
     fetchCaptcha();

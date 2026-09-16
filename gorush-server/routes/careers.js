@@ -1,11 +1,27 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const jwt = require('jsonwebtoken');
 const Vacancy = require('../models/Vacancy');
 const JobApplication = require('../models/JobApplication');
 const { optionalAuth } = require('../middleware/auth');
 const { dualWriteCreate } = require('../lib/jobApplicationDualWrite');
 const { isVacancyCurrentlyOpen } = require('../lib/vacancies');
+
+const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
+function generateCaptchaCode() {
+    let code = '';
+    for (let i = 0; i < 5; i++) {
+        code += CAPTCHA_CHARS[Math.floor(Math.random() * CAPTCHA_CHARS.length)];
+    }
+    return code;
+}
+
+router.get('/captcha', (req, res) => {
+    const code = generateCaptchaCode();
+    const token = jwt.sign({ code }, process.env.JWT_SECRET, { expiresIn: '10m' });
+    res.status(200).json({ code, token });
+});
 
 // Which extra questions/uploads each applicationType requires — mirrors
 // getApplicationTypeConfig() in the client's lib/careersOptions.js, so a request that
@@ -27,7 +43,21 @@ router.post('/apply', optionalAuth, async (req, res) => {
             email, phonenum, addphonenum,
             highestAchievement, partTimeDuration, carOwn, deliverBefore, experienceDelivery, parcelNum, driveManual,
             icFront, resumeCv, drivingLicenseFront, drivingLicenseBack,
+            captchaToken, captchaAnswer,
         } = req.body;
+
+        if (!captchaToken || !captchaAnswer) {
+            return res.status(400).json({ error: "Please complete the captcha." });
+        }
+        let decodedCaptcha;
+        try {
+            decodedCaptcha = jwt.verify(captchaToken, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.status(400).json({ error: "Captcha expired or invalid — please try again." });
+        }
+        if (decodedCaptcha.code.toUpperCase() !== String(captchaAnswer).trim().toUpperCase()) {
+            return res.status(400).json({ error: "Captcha answer did not match." });
+        }
 
         if (!vacancyId || !mongoose.Types.ObjectId.isValid(vacancyId)) {
             return res.status(400).json({ error: "A valid vacancy is required." });

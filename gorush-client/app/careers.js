@@ -13,6 +13,7 @@ import PersonalDetailsFields from '../components/careers/PersonalDetailsFields';
 import PositionDetailsFields from '../components/careers/PositionDetailsFields';
 import DocumentUploads from '../components/careers/DocumentUploads';
 import ApplicationSummary from '../components/careers/ApplicationSummary';
+import Captcha from '../components/order/Captcha';
 
 // Flat, top-to-bottom visual order of every field the 'form' step can show,
 // used by scrollToFirstError (useFieldFocus, lib/formPrimitives) to jump to
@@ -52,6 +53,8 @@ export default function Careers() {
   const [application, setApplication] = useState(emptyApplication());
   const [files, setFiles] = useState(emptyFiles());
   const [ack, setAck] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [captchaAnswer, setCaptchaAnswer] = useState('');
   const [errors, setErrors] = useState({});
   const [focusedField, setFocusedField] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -176,6 +179,7 @@ export default function Careers() {
   const handleSubmit = async () => {
     if (submitting) return;
     if (!ack) { setStatusMessage({ type: 'error', text: t('careers.acknowledgeRequired') }); return; }
+    if (!captchaAnswer.trim()) { setStatusMessage({ type: 'error', text: t('order.completeCaptcha') }); return; }
 
     setSubmitting(true);
     setStatusMessage(null);
@@ -188,6 +192,8 @@ export default function Careers() {
         resumeCv: files.resumeCv,
         drivingLicenseFront: files.drivingLicenseFront,
         drivingLicenseBack: files.drivingLicenseBack,
+        captchaToken,
+        captchaAnswer,
       }, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
@@ -206,6 +212,8 @@ export default function Careers() {
     setApplication(emptyApplication());
     setFiles(emptyFiles());
     setAck(false);
+    setCaptchaToken('');
+    setCaptchaAnswer('');
     setErrors({});
     setStatusMessage(null);
   };
@@ -272,10 +280,19 @@ export default function Careers() {
             </AnimatedPressable>
           </Card>
 
+          <Captcha
+            answer={captchaAnswer}
+            onAnswerChange={setCaptchaAnswer}
+            onTokenChange={setCaptchaToken}
+            focusedField={focusedField}
+            setFocusedField={setFocusedField}
+            endpoint="/api/careers/captcha"
+          />
+
           <AnimatedPressable
-            style={[formStyles.buttonAccent, (submitting || !ack) && formStyles.buttonDisabled]}
+            style={[formStyles.buttonAccent, (submitting || !ack || !captchaAnswer.trim()) && formStyles.buttonDisabled]}
             onPress={handleSubmit}
-            disabled={submitting || !ack}
+            disabled={submitting || !ack || !captchaAnswer.trim()}
             scaleTo={1.04}
           >
             {submitting ? (
