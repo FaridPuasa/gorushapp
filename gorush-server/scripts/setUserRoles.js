@@ -28,12 +28,17 @@ async function run() {
 
     let updated = 0;
     for (const email of emails) {
-        const result = await User.updateOne({ email: email.trim().toLowerCase() }, { $set: { role } });
-        if (result.matchedCount === 0) {
+        // Loaded and saved as a document (not User.updateOne) so the
+        // Postgres dual-write post('save') hook in models/User.js still
+        // fires - updateOne bypasses document middleware entirely.
+        const user = await User.findOne({ email: email.trim().toLowerCase() });
+        if (!user) {
             console.warn(`  no account found for ${email} - skipped (they must register first)`);
-        } else {
-            updated += 1;
+            continue;
         }
+        user.role = role;
+        await user.save();
+        updated += 1;
     }
 
     console.log(`Done. Updated ${updated}/${emails.length} account(s).`);

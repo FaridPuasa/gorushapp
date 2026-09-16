@@ -354,3 +354,108 @@ model JobApplication {
   @@map("job_applications")
   @@schema("gr_dms")
 }
+
+// 2026-09-16: dual-write phase (last item of the "cutting all Mongo ties"
+// plan). Mongo (`grusers` collection, model name `User`) stays primary -
+// this is purely an additive mirror, gated behind SUPABASE_USER_ENABLED, see
+// lib/userDualWrite.js. Table named `website_users` (NOT `users`) because
+// grfmxstatusupdate's OWN schema.prisma already owns a table literally
+// called `users` in this same gr_dms schema for its internal staff/admin
+// accounts - a completely unrelated concept from gorushapp's website
+// customers (email/password signup to place orders). Embedded Mongo arrays
+// (addresses/phonenumbers/additionalphonenumbers/userdetails) become real
+// child tables here since Postgres has no native embedded-array equivalent;
+// each child row's own `mongoId` is the embedded subdocument's Mongoose
+// `_id` (used throughout routes/profile.js for .id()/.pull() lookups), kept
+// only for traceability - the dual-write helper fully deletes and recreates
+// all child rows on every sync rather than diffing them individually, since
+// every profile write in routes/profile.js already ends in `user.save()`
+// with the complete final array state in memory (auth.js's UserSchema.post
+// ('save') hook is the single call site for all of this - see models/User.js).
+model User {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+
+  email            String?
+  password         String?
+  role             String?
+  agreePolicy      Boolean?  @map("agree_policy")
+  receiveMarketing Boolean?  @map("receive_marketing")
+  createdAt        DateTime? @map("created_at")
+
+  addresses              UserAddress[]
+  phonenumbers           UserPhoneNumber[]
+  additionalPhonenumbers UserAdditionalPhoneNumber[]
+  userdetails            UserDetail[]
+
+  @@map("website_users")
+  @@schema("gr_dms")
+}
+
+model UserAddress {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+  userId  BigInt  @map("user_id")
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  houseunitno String?
+  jalan       String?
+  kampong     String?
+  simpang     String?
+  district    String?
+  postalcode  String?
+  isDefault   Boolean? @map("is_default")
+
+  @@map("website_user_addresses")
+  @@schema("gr_dms")
+}
+
+model UserPhoneNumber {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+  userId  BigInt  @map("user_id")
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phonenum  String?
+  isDefault Boolean? @map("is_default")
+
+  @@map("website_user_phone_numbers")
+  @@schema("gr_dms")
+}
+
+// Flat list, no isDefault - matches models/User.js's additionalphonenumbers
+// sub-schema exactly (no default concept for these, unlike addresses/
+// phonenumbers/userdetails).
+model UserAdditionalPhoneNumber {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+  userId  BigInt  @map("user_id")
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  addphonenum String?
+
+  @@map("website_user_additional_phone_numbers")
+  @@schema("gr_dms")
+}
+
+model UserDetail {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+  userId  BigInt  @map("user_id")
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  receivername        String?
+  dateofbirth          String?
+  icnum                String?
+  passportnum          String?
+  bruhimsnum           String?
+  appointmentdistrict  String?
+  patientphcnum        String?
+  patientjpmcnum       String?
+  appointmentplace     String?
+  payingpatient        String?
+  isDefault            Boolean? @map("is_default")
+
+  @@map("website_user_details")
+  @@schema("gr_dms")
+}

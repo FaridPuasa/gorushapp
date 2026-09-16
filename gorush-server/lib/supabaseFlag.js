@@ -41,9 +41,19 @@ function isPricingHolidayDualWriteEnabled() {
         && process.env.SUPABASE_PRICING_HOLIDAY_ENABLED === 'true';
 }
 
+// User (2026-09-16, last item of the "cutting all Mongo ties" plan) - own
+// flag since this is the most sensitive collection here (auth-adjacent,
+// ~100 real accounts already exist) and needs to be independently
+// switchable from everything else while it's being verified.
+function isUserDualWriteEnabled() {
+    return process.env.SUPABASE_ENABLED === 'true'
+        && process.env.SUPABASE_USER_ENABLED === 'true';
+}
+
 module.exports = {
     isPostgresOrderIntakeEnabled,
     isPostgresWargaEmasEnabled,
     isCmsDualWriteEnabled,
     isPricingHolidayDualWriteEnabled,
+    isUserDualWriteEnabled,
 };

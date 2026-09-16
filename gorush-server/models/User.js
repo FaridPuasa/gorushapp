@@ -68,4 +68,14 @@ const UserSchema = new mongoose.Schema({
     }
 }, { collection: 'grusers' });
 
+// Postgres dual-write mirror (2026-09-16) - fires after every save from
+// routes/auth.js's register and every write in routes/profile.js (they all
+// end in `user.save()`), so this single hook covers all of them instead of
+// a call at each of the ~19 sites. Fire-and-forget - see lib/userDualWrite.js
+// for why a failure here must never surface to the request that triggered it.
+UserSchema.post('save', function (doc) {
+    require('../lib/userDualWrite').dualWriteUserSync(doc)
+        .catch((err) => console.error('[user dual-write] post-save hook error:', err.message));
+});
+
 module.exports = mongoose.model('User', UserSchema);
