@@ -299,3 +299,58 @@ model PublicHoliday {
   @@map("public_holidays")
   @@schema("gr_dms")
 }
+
+// 2026-09-16: first step of gorushapp's own Mongo write-cutover (grfmxstatusupdate's
+// side finished 2026-09-15 - see that repo's migration_status.md). Confirmed the
+// `jobapplications` Mongo collection has zero real documents as of this writing, so
+// no backfill is needed - dual-write starts clean. userId/vacancyId are stored as
+// plain mongoId-style strings (not real Postgres FKs) - same loose-reference
+// convention as every other mongoId column in this schema, since neither User nor
+// Vacancy's own Postgres migration is guaranteed to be ahead of this one. icFront/
+// resumeCv/drivingLicenseFront/drivingLicenseBack are large base64 data URIs, stored
+// as plain String (Postgres TEXT) for now - same "not the final destination, just
+// stops the Mongo write" bridge-storage decision grfmxstatusupdate made for its own
+// POD images the day before, not a proper Storage-bucket migration.
+model JobApplication {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+
+  userId    String? @map("user_id")
+  vacancyId String? @map("vacancy_id")
+
+  positionApplied String? @map("position_applied")
+  applicationType String? @map("application_type")
+
+  name        String?
+  dateofbirth String?
+  icnumber    String?
+  houseunitno String?
+  jalan       String?
+  kampong     String?
+  simpang     String?
+  district    String?
+  postalcode  String?
+  email       String?
+  phonenum    String?
+  addphonenum String?
+
+  highestAchievement String? @map("highest_achievement")
+  partTimeDuration   String? @map("part_time_duration")
+  carOwn             String? @map("car_own")
+  deliverBefore      String? @map("deliver_before")
+  experienceDelivery String? @map("experience_delivery")
+  parcelNum          String? @map("parcel_num")
+  driveManual        String? @map("drive_manual")
+
+  icFront             String? @map("ic_front")
+  resumeCv            String? @map("resume_cv")
+  drivingLicenseFront String? @map("driving_license_front")
+  drivingLicenseBack  String? @map("driving_license_back")
+
+  status             String?
+  dateTimeSubmission String?   @map("date_time_submission")
+  createdAt          DateTime? @map("created_at")
+
+  @@map("job_applications")
+  @@schema("gr_dms")
+}

@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Vacancy = require('../models/Vacancy');
 const JobApplication = require('../models/JobApplication');
 const { optionalAuth } = require('../middleware/auth');
+const { dualWriteCreate } = require('../lib/jobApplicationDualWrite');
 const { isVacancyCurrentlyOpen } = require('../lib/vacancies');
 
 // Which extra questions/uploads each applicationType requires — mirrors
@@ -91,6 +92,10 @@ router.post('/apply', optionalAuth, async (req, res) => {
         });
 
         const saved = await application.save();
+        // Fire-and-forget, Mongo stays primary/authoritative for now (see
+        // lib/jobApplicationDualWrite.js) - a mirror failure must never fail
+        // an applicant's actual submission.
+        dualWriteCreate(saved).catch((err) => console.error('[jobApplication dual-write] unexpected error:', err.message));
         res.status(201).json({ message: "Application submitted successfully!", applicationId: saved._id });
     } catch (err) {
         console.error(err.message);
