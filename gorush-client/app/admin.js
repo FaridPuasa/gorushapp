@@ -830,7 +830,10 @@ function SlidesTab({ formStyles, colors, authHeader }) {
 }
 
 const APPLICATION_TYPE_OPTIONS = ['General', 'Freelancer', 'Dispatcher', 'Helper', 'OperationSupport'];
-const EMPTY_VACANCY = { title: '', department: '', employmentType: 'Full-time', description: '', requirements: '', responsibilities: '', applicationType: 'General', isOpen: true, closingDate: '', order: '0' };
+const VACANCY_TITLE_OPTIONS = ['Human Resource', 'Forwarding Support', 'Operation Support', 'Dispatcher', 'Customer Service', 'Account Clerk', 'Information Technology Technical Support'];
+const VACANCY_DEPARTMENT_OPTIONS = ['Human Resource', 'Logistics', 'Customer Relations', 'Accounting', 'IT'];
+const VACANCY_EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time'];
+const EMPTY_VACANCY = { title: VACANCY_TITLE_OPTIONS[0], department: VACANCY_DEPARTMENT_OPTIONS[0], employmentType: 'Full-time', description: '', requirements: '', responsibilities: '', applicationType: 'General', isOpen: true, closingDate: '', order: '0' };
 
 function VacanciesTab({ formStyles, colors, authHeader }) {
   const [vacancies, setVacancies] = useState([]);
@@ -851,7 +854,7 @@ function VacanciesTab({ formStyles, colors, authHeader }) {
   const startEdit = (item) => {
     setEditingId(item._id);
     setForm({
-      title: item.title, department: item.department || '', employmentType: item.employmentType || 'Full-time',
+      title: item.title || VACANCY_TITLE_OPTIONS[0], department: item.department || VACANCY_DEPARTMENT_OPTIONS[0], employmentType: item.employmentType || 'Full-time',
       description: item.description || '', requirements: item.requirements || '', responsibilities: item.responsibilities || '',
       applicationType: item.applicationType || 'General',
       isOpen: item.isOpen !== false, closingDate: item.closingDate || '', order: String(item.order ?? 0),
@@ -894,13 +897,25 @@ function VacanciesTab({ formStyles, colors, authHeader }) {
     <>
       <Card icon="💼" title={editingId ? 'Edit vacancy' : 'Add a vacancy'}>
         <Field label="Title" required>
-          <TextInput style={formStyles.input} value={form.title} onChangeText={(v) => onChange('title', v)} placeholderTextColor={colors.textMuted} />
+          <View style={formStyles.pickerContainer}>
+            <Picker style={formStyles.pickerControl} selectedValue={form.title} onValueChange={(v) => onChange('title', v)}>
+              {VACANCY_TITLE_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
+            </Picker>
+          </View>
         </Field>
-        <Field label="Department" hint="Optional, e.g. 'Logistics'">
-          <TextInput style={formStyles.input} value={form.department} onChangeText={(v) => onChange('department', v)} placeholderTextColor={colors.textMuted} />
+        <Field label="Department">
+          <View style={formStyles.pickerContainer}>
+            <Picker style={formStyles.pickerControl} selectedValue={form.department} onValueChange={(v) => onChange('department', v)}>
+              {VACANCY_DEPARTMENT_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
+            </Picker>
+          </View>
         </Field>
-        <Field label="Employment Type" hint="e.g. 'Full-time', 'Part-time'">
-          <TextInput style={formStyles.input} value={form.employmentType} onChangeText={(v) => onChange('employmentType', v)} placeholderTextColor={colors.textMuted} />
+        <Field label="Employment Type">
+          <View style={formStyles.pickerContainer}>
+            <Picker style={formStyles.pickerControl} selectedValue={form.employmentType} onValueChange={(v) => onChange('employmentType', v)}>
+              {VACANCY_EMPLOYMENT_TYPE_OPTIONS.map((opt) => <Picker.Item key={opt} label={opt} value={opt} />)}
+            </Picker>
+          </View>
         </Field>
         <Field label="Description" hint="Optional short summary shown on the careers page">
           <TextInput style={[formStyles.input, { height: 90, paddingTop: 10 }]} multiline value={form.description} onChangeText={(v) => onChange('description', v)} placeholderTextColor={colors.textMuted} />
