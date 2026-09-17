@@ -1,18 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const PublicHoliday = require('../models/PublicHoliday');
 const Announcement = require('../models/Announcement');
 const HeroSlide = require('../models/HeroSlide');
 const Vacancy = require('../models/Vacancy');
 const { isVacancyCurrentlyOpen } = require('../lib/vacancies');
-const PricingRule = require('../models/PricingRule');
+const { findAllHolidays, findAllPricingRules } = require('../lib/postgresPricingHoliday');
 
 // Public, unauthenticated reads — the storefront (and its own order-availability checks)
 // need these regardless of who's browsing. Admin-only writes live in routes/admin.js.
 
 router.get('/holidays', async (req, res) => {
     try {
-        const holidays = await PublicHoliday.find().sort({ date: 1 }).lean();
+        const holidays = await findAllHolidays();
         res.status(200).json(holidays);
     } catch (err) {
         console.error(err.message);
@@ -63,7 +62,7 @@ router.get('/vacancies', async (req, res) => {
 
 router.get('/pricing', async (req, res) => {
     try {
-        const rules = await PricingRule.find().lean();
+        const rules = await findAllPricingRules();
         res.status(200).json(rules);
     } catch (err) {
         console.error(err.message);

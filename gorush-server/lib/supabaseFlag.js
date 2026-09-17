@@ -26,15 +26,11 @@ function isCmsDualWriteEnabled() {
         && process.env.SUPABASE_CMS_ENABLED === 'true';
 }
 
-// PricingRule/PublicHoliday get their OWN flag, deliberately not folded into
-// SUPABASE_CMS_ENABLED - grfmxstatusupdate reads these two directly
-// (GorushPricingRule/GorushPublicHoliday), so their eventual read-cutover
-// needs independent control from the other 3 CMS collections, which have no
-// other reader at all.
-function isPricingHolidayDualWriteEnabled() {
-    return process.env.SUPABASE_ENABLED === 'true'
-        && process.env.SUPABASE_PRICING_HOLIDAY_ENABLED === 'true';
-}
+// PricingRule/PublicHoliday were dual-write here (flag
+// SUPABASE_PRICING_HOLIDAY_ENABLED, kept separate from SUPABASE_CMS_ENABLED
+// since grfmxstatusupdate reads these two directly) before being fully cut
+// over to Postgres-only 2026-09-17 (see lib/postgresPricingHoliday.js) - no
+// flag needed anymore, there's no Mongo path left to gate.
 
 // User was dual-write here (2026-09-16, flag SUPABASE_USER_ENABLED) before
 // being fully cut over to Postgres-only the next day (2026-09-17, see
@@ -44,5 +40,4 @@ function isPricingHolidayDualWriteEnabled() {
 module.exports = {
     isPostgresWargaEmasEnabled,
     isCmsDualWriteEnabled,
-    isPricingHolidayDualWriteEnabled,
 };

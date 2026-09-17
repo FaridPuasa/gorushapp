@@ -7,7 +7,7 @@
 const express = require('express');
 const XLSX = require('xlsx');
 const prisma = require('../lib/prismaClient');
-const PublicHoliday = require('../models/PublicHoliday');
+const { findAllHolidays } = require('../lib/postgresPricingHoliday');
 const { requireRole } = require('../middleware/auth');
 const { currentWindow, windowForDate } = require('../lib/jpmcWindow');
 const { getPaymentProofSignedUrl } = require('../lib/jpmcPaymentStorage');
@@ -178,7 +178,7 @@ async function buildFilteredWhere(req) {
         where.currentStatus = req.query.goRushStatus;
     }
 
-    const holidayDates = (await PublicHoliday.find().lean()).map((h) => h.date);
+    const holidayDates = (await findAllHolidays()).map((h) => h.date);
     const view = req.query.view || 'all';
 
     let windowRange = null;
@@ -364,7 +364,7 @@ router.patch('/orders/:id', requireRole('jpmc', 'admin'), async (req, res) => {
         data.jpmcFieldsUpdatedAt = new Date();
 
         const order = await prisma.order.update({ where: { id }, data, include: { history: true } });
-        const holidayDates = (await PublicHoliday.find().lean()).map((h) => h.date);
+        const holidayDates = (await findAllHolidays()).map((h) => h.date);
         res.json(toApiShape(order, holidayDates));
     } catch (err) {
         console.error(err.message);

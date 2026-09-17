@@ -1,7 +1,7 @@
-const PricingRule = require('../models/PricingRule');
+const { findPricingRule } = require('./postgresPricingHoliday');
 
 function findCharge(product, district, code) {
-  return PricingRule.findOne({ product, district, chargeCode: code }).lean();
+  return findPricingRule(product, district, code);
 }
 
 function computeWeightSurcharge(weightKg) {

@@ -1,18 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const { requireAdmin } = require('../middleware/auth');
-const PublicHoliday = require('../models/PublicHoliday');
 const Announcement = require('../models/Announcement');
 const HeroSlide = require('../models/HeroSlide');
 const Vacancy = require('../models/Vacancy');
-const PricingRule = require('../models/PricingRule');
 const { compressBase64Image } = require('../lib/imageCompress');
 const { prisma, dualWriteCmsCreate, dualWriteCmsUpdate, dualWriteCmsDelete } = require('../lib/cmsDualWrite');
-const {
-    dualWriteCreate: dualWritePricingHolidayCreate,
-    dualWriteUpdate: dualWritePricingHolidayUpdate,
-    dualWriteDelete: dualWritePricingHolidayDelete,
-} = require('../lib/pricingHolidayDualWrite');
+const { createHoliday, deleteHolidayById, updatePricingRuleById } = require('../lib/postgresPricingHoliday');
 
 router.use(requireAdmin);
 
@@ -22,8 +16,7 @@ router.post('/holidays', async (req, res) => {
     try {
         const { date, label } = req.body;
         if (!date) return res.status(400).json({ error: "A date is required." });
-        const holiday = await PublicHoliday.create({ date, label });
-        await dualWritePricingHolidayCreate(prisma.publicHoliday, holiday, { date: holiday.date, label: holiday.label });
+        const holiday = await createHoliday({ date, label });
         res.status(201).json(holiday);
     } catch (err) {
         console.error(err.message);
@@ -33,9 +26,8 @@ router.post('/holidays', async (req, res) => {
 
 router.delete('/holidays/:id', async (req, res) => {
     try {
-        const result = await PublicHoliday.findByIdAndDelete(req.params.id);
+        const result = await deleteHolidayById(req.params.id);
         if (!result) return res.status(404).json({ error: "Holiday not found." });
-        await dualWritePricingHolidayDelete(prisma.publicHoliday, result._id);
         res.status(200).json({ message: "Holiday removed." });
     } catch (err) {
         console.error(err.message);
@@ -264,7 +256,7 @@ router.delete('/vacancies/:id', async (req, res) => {
 // --- Pricing ---
 // Price-only editing of existing rows — no add/remove of which product/district/charge-code
 // combinations exist, since that also requires touching availability rules and delivery-type
-// mapping elsewhere. Rows are seeded once via scripts/seedPricingRules.js.
+// mapping elsewhere.
 
 router.put('/pricing/:id', async (req, res) => {
     try {
@@ -272,19 +264,8 @@ router.put('/pricing/:id', async (req, res) => {
         if (typeof price !== 'number' || !Number.isFinite(price) || price < 0) {
             return res.status(400).json({ error: "Price must be a non-negative number." });
         }
-        const rule = await PricingRule.findByIdAndUpdate(
-            req.params.id,
-            { price, note },
-            { new: true }
-        );
+        const rule = await updatePricingRuleById(req.params.id, { price, note });
         if (!rule) return res.status(404).json({ error: "Pricing rule not found." });
-        // Full field set, not just price/note - this upsert may be the FIRST
-        // time this specific row is mirrored (rows are seeded once via
-        // scripts/seedPricingRules.js, not through this route, so most rows
-        // only reach Postgres lazily, one at a time, as each gets edited).
-        await dualWritePricingHolidayUpdate(prisma.pricingRule, rule._id, {
-            product: rule.product, district: rule.district, chargeCode: rule.chargeCode, price: rule.price, note: rule.note,
-        });
         res.status(200).json(rule);
     } catch (err) {
         console.error(err.message);

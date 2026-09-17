@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const users = require('../lib/postgresUsers');
-const PublicHoliday = require('../models/PublicHoliday');
+const { findAllHolidays } = require('../lib/postgresPricingHoliday');
 const { optionalAuth, requireAuth } = require('../middleware/auth');
 const { computeTotalPrice } = require('../lib/pricing');
 const { isChargeCurrentlyAvailable } = require('../lib/availability');
@@ -293,7 +293,7 @@ router.post('/', optionalAuth, async (req, res) => {
         if (totalPriceValue == null) {
             return res.status(400).json({ error: "Selected charges are not valid for this district." });
         }
-        const holidays = await PublicHoliday.find().lean();
+        const holidays = await findAllHolidays();
         const holidayDates = holidays.map((h) => h.date);
         if (!isChargeCurrentlyAvailable(product, deliveryTypeCode, holidayDates)) {
             return res.status(400).json({ error: "The selected charges are not available right now — please choose a different option." });
