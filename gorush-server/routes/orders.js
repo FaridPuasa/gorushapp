@@ -1,15 +1,12 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const Order = require('../models/Order');
 const users = require('../lib/postgresUsers');
 const PublicHoliday = require('../models/PublicHoliday');
 const { optionalAuth, requireAuth } = require('../middleware/auth');
 const { computeTotalPrice } = require('../lib/pricing');
 const { isChargeCurrentlyAvailable } = require('../lib/availability');
 const { getOrderCreatedAt, getOrderUpdatedAt, getOrderDeliveryDate } = require('../lib/orderDates');
-const { isPostgresOrderIntakeEnabled } = require('../lib/supabaseFlag');
 const postgresOrders = require('../lib/postgresOrders');
 const { generateTrackingNumber } = require('../lib/trackingNumber');
 const { createDetrackJob } = require('../lib/detrack');
@@ -34,9 +31,6 @@ const STATUS_FILTER_VALUES = [
     'Out For Delivery', 'Return to Warehouse', 'Completed', 'Failed',
 ];
 
-function escapeRegex(value) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
 const PHARMACY_PRODUCTS = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc'];
 
 // pharmacymoh is the only product with two separate districts - the delivery
@@ -396,75 +390,58 @@ router.post('/', optionalAuth, async (req, res) => {
             currentStatus: "Info Received",
         };
 
-        if (isPostgresOrderIntakeEnabled()) {
-            const { trackingNumber, sequence } = await generateTrackingNumber(product);
-            const row = postgresOrders.buildPostgresOrderRow(orderData, { trackingNumber, sequence });
-            const pgOrder = await postgresOrders.insertOrder(row, {
-                statusHistory: "Info Received",
-                dateUpdated: now,
-            });
-            const legacyShaped = postgresOrders.toLegacyShape(pgOrder);
+        const { trackingNumber, sequence } = await generateTrackingNumber(product);
+        const row = postgresOrders.buildPostgresOrderRow(orderData, { trackingNumber, sequence });
+        const pgOrder = await postgresOrders.insertOrder(row, {
+            statusHistory: "Info Received",
+            dateUpdated: now,
+        });
+        const legacyShaped = postgresOrders.toLegacyShape(pgOrder);
 
-            // Synchronous Detrack job creation replaces the old async change-
-            // stream-watcher trigger - reuses lib/detrack.js completely unchanged.
-            const detrackResult = await createDetrackJob(legacyShaped);
-            if (detrackResult.ok) {
-                await postgresOrders.recordDetrackJobId(pgOrder.id, detrackResult.id);
-            } else {
-                console.error(`[detrack] failed to create job for ${trackingNumber}: ${detrackResult.error}`);
-                // Do not fail the order-creation request over a Detrack failure -
-                // same fire-and-forget tolerance the old watcher had.
-            }
-
-            // Notification side effects (email/WhatsApp/Excel) run AFTER the
-            // response below, not awaited here - a CBSL order with several
-            // items needs its own Excel row + screenshot upload + hyperlink
-            // call per item, which chained sequentially blew well past
-            // Heroku's 30s router timeout (H12) even though every step
-            // itself succeeded. None of these affect what the customer sees
-            // (their tracking number), so there's no reason to make them
-            // wait on it.
-            (async () => {
-                try {
-                    const alertReason = getOrderAlertReason(orderData);
-                    if (alertReason) {
-                        await sendOrderAlert(buildOrderAlertEmail(alertReason, orderData, trackingNumber));
-                    }
-                    await sendWhatsAppMessage(orderData.receiverPhoneNumber, orderData.receiverName, trackingNumber, product);
-                    await notifyTeams(orderData, trackingNumber);
-                    // JPMC's own Excel append was removed 2026-09-08 - JPMC has fully
-                    // cut over to gorushapp's /jpmc-portal, so new orders no longer
-                    // need to land in the old "JPMC PJSC Forms.xlsx" workbook.
-                    if (product === 'cbsl') {
-                        await appendCbslManifestRows(orderData, trackingNumber);
-                    }
-                } catch (err) {
-                    console.error(`[post-order notifications] failed for ${trackingNumber}:`, err.message);
-                }
-            })();
-
-            return res.status(201).json({
-                message: "Order placed successfully!",
-                orderId: legacyShaped._id,
-                trackingNumber,
-                status: legacyShaped.currentStatus,
-                totalPrice: legacyShaped.totalPrice,
-            });
+        // Synchronous Detrack job creation replaces the old async change-
+        // stream-watcher trigger - reuses lib/detrack.js completely unchanged.
+        const detrackResult = await createDetrackJob(legacyShaped);
+        if (detrackResult.ok) {
+            await postgresOrders.recordDetrackJobId(pgOrder.id, detrackResult.id);
+        } else {
+            console.error(`[detrack] failed to create job for ${trackingNumber}: ${detrackResult.error}`);
+            // Do not fail the order-creation request over a Detrack failure -
+            // same fire-and-forget tolerance the old watcher had.
         }
 
-        const newOrder = new Order({
-            ...orderData,
-            history: [{ statusHistory: "Info Received", dateUpdated: now }],
-        });
+        // Notification side effects (email/WhatsApp/Excel) run AFTER the
+        // response below, not awaited here - a CBSL order with several
+        // items needs its own Excel row + screenshot upload + hyperlink
+        // call per item, which chained sequentially blew well past
+        // Heroku's 30s router timeout (H12) even though every step
+        // itself succeeded. None of these affect what the customer sees
+        // (their tracking number), so there's no reason to make them
+        // wait on it.
+        (async () => {
+            try {
+                const alertReason = getOrderAlertReason(orderData);
+                if (alertReason) {
+                    await sendOrderAlert(buildOrderAlertEmail(alertReason, orderData, trackingNumber));
+                }
+                await sendWhatsAppMessage(orderData.receiverPhoneNumber, orderData.receiverName, trackingNumber, product);
+                await notifyTeams(orderData, trackingNumber);
+                // JPMC's own Excel append was removed 2026-09-08 - JPMC has fully
+                // cut over to gorushapp's /jpmc-portal, so new orders no longer
+                // need to land in the old "JPMC PJSC Forms.xlsx" workbook.
+                if (product === 'cbsl') {
+                    await appendCbslManifestRows(orderData, trackingNumber);
+                }
+            } catch (err) {
+                console.error(`[post-order notifications] failed for ${trackingNumber}:`, err.message);
+            }
+        })();
 
-        // doTrackingNumber is intentionally left unset here — an external service watches
-        // this collection's inserts and assigns it asynchronously via its own sequence.
-        const savedOrder = await newOrder.save();
-        res.status(201).json({
+        return res.status(201).json({
             message: "Order placed successfully!",
-            orderId: savedOrder._id,
-            status: savedOrder.currentStatus,
-            totalPrice: savedOrder.totalPrice,
+            orderId: legacyShaped._id,
+            trackingNumber,
+            status: legacyShaped.currentStatus,
+            totalPrice: legacyShaped.totalPrice,
         });
     } catch (err) {
         console.error(err.message);
@@ -488,41 +465,15 @@ router.get('/mine', requireAuth, async (req, res) => {
         const product = req.query.product && PRODUCT_CODES.includes(req.query.product) ? req.query.product : null;
         const status = req.query.status && STATUS_FILTER_VALUES.includes(req.query.status) ? req.query.status : null;
 
-        let orders, totalCount;
-        if (isPostgresOrderIntakeEnabled()) {
-            ({ orders, totalCount } = await postgresOrders.findMine({
-                userId: req.userId,
-                identityValues,
-                product,
-                status,
-                search,
-                page,
-                limit,
-            }));
-        } else {
-            const orConditions = [{ userId: req.userId }];
-            if (identityValues.length > 0) {
-                orConditions.push({ icPassNum: { $in: identityValues } });
-                orConditions.push({ bruhimsnum: { $in: identityValues } });
-                orConditions.push({ patientNumber: { $in: identityValues } });
-            }
-            const identityFilter = { $or: orConditions };
-
-            // Optional filters, AND-combined with the identity match above — a user can only
-            // ever search/filter within their own orders, never anyone else's.
-            const andConditions = [identityFilter];
-            if (product) andConditions.push({ product });
-            if (status) andConditions.push({ currentStatus: status });
-            if (search) {
-                andConditions.push({ doTrackingNumber: { $regex: escapeRegex(search), $options: 'i' } });
-            }
-            const filter = andConditions.length > 1 ? { $and: andConditions } : identityFilter;
-
-            [orders, totalCount] = await Promise.all([
-                Order.find(filter).sort({ _id: -1 }).skip((page - 1) * limit).limit(limit).lean(),
-                Order.countDocuments(filter),
-            ]);
-        }
+        const { orders, totalCount } = await postgresOrders.findMine({
+            userId: req.userId,
+            identityValues,
+            product,
+            status,
+            search,
+            page,
+            limit,
+        });
 
         res.status(200).json({
             orders: orders.map((order) => ({
@@ -549,24 +500,12 @@ router.get('/mine', requireAuth, async (req, res) => {
 // Polled by the client right after submit, until the external watcher assigns doTrackingNumber.
 router.get('/status/:id', async (req, res) => {
     try {
-        const isMongoId = mongoose.Types.ObjectId.isValid(req.params.id);
-        // Postgres bigint id, as a plain digit string - returned by POST / once
-        // isPostgresOrderIntakeEnabled() is on (see above). Gated behind the
-        // same flag here too - otherwise an all-digit, non-ObjectId id would
-        // be accepted by this guard even with the feature off, changing this
-        // route's flag-off behavior (400 -> 404) for that input shape.
-        const isPgId = isPostgresOrderIntakeEnabled() && /^\d+$/.test(req.params.id);
-        if (!isMongoId && !isPgId) {
+        // Postgres bigint id, as a plain digit string - always what POST / returns.
+        if (!/^\d+$/.test(req.params.id)) {
             return res.status(400).json({ error: "Invalid order id." });
         }
 
-        // The flag alone decides which DB is authoritative right now - not which
-        // ID shape was passed - so an in-flight poll started just before a flag
-        // flip doesn't 400 on a shape mismatch, it just won't find the order
-        // (matching a real "not found" for an id from the other DB).
-        const order = isPostgresOrderIntakeEnabled()
-            ? (isPgId ? await postgresOrders.findStatusById(req.params.id) : null)
-            : (isMongoId ? await Order.findById(req.params.id).lean() : null);
+        const order = await postgresOrders.findStatusById(req.params.id);
         if (!order) {
             return res.status(404).json({ error: "Order not found." });
         }
@@ -593,15 +532,9 @@ router.get('/track/:trackingNumber', async (req, res) => {
             return res.status(404).json({ error: "No order found with that tracking number." });
         }
         // CBSL customers often only have the original courier's (e.g. SPX/J&T) tracking
-        // number, not our own — so for that product, match on either.
-        const order = isPostgresOrderIntakeEnabled()
-            ? await postgresOrders.findByTrackingNumber(req.params.trackingNumber)
-            : await Order.findOne({
-                $or: [
-                    { doTrackingNumber: req.params.trackingNumber },
-                    { product: 'cbsl', parcelTrackingNum: req.params.trackingNumber },
-                ],
-            }).lean();
+        // number, not our own — so for that product, match on either (postgresOrders.
+        // findByTrackingNumber handles both cases).
+        const order = await postgresOrders.findByTrackingNumber(req.params.trackingNumber);
         if (!order) {
             return res.status(404).json({ error: "No order found with that tracking number." });
         }

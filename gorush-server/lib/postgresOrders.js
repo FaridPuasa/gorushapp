@@ -1,13 +1,11 @@
 // Postgres-backed order intake + reads, for the 5 product types this app
 // creates orders for (pharmacymoh/pharmacyjpmc/pharmacyphc/localdelivery/
-// cbsl). Only active when lib/supabaseFlag.js's isPostgresOrderIntakeEnabled()
-// is true - see routes/orders.js for the branch points.
+// cbsl). Fully cut over 2026-09-17 - no Mongo path left in routes/orders.js.
 const prisma = require('./prismaClient');
 const { toNumber } = require('./detrack');
 const { parseGorushIso } = require('./dateHelpers');
 
-// Maps the exact object shape routes/orders.js already builds for the Mongo
-// path (the argument passed to `new Order({...})`) into a Prisma Order
+// Maps the object shape routes/orders.js builds (orderData) into a Prisma Order
 // create() data object. Reuses that object rather than re-deriving pricing/
 // delivery-type-code/sendOrderTo/etc. business logic a second time - those
 // stay the DB-agnostic single source of truth in routes/orders.js.

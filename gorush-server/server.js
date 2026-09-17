@@ -2,8 +2,6 @@ require('dotenv').config(); // This loads the hidden keys from your .env file
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const { startDetrackWatcher } = require('./lib/detrackWatcher');
-const { isPostgresOrderIntakeEnabled } = require('./lib/supabaseFlag');
 
 const path = require('path');
 const fs = require('fs');
@@ -11,10 +9,9 @@ const fs = require('fs');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Only enforced when the Postgres order-intake flag is on - every environment
-// where this stays dormant (the default) needs zero new required config.
-if (isPostgresOrderIntakeEnabled() && (!process.env.DATABASE_URL || !process.env.DIRECT_URL)) {
-  console.error("❌ SUPABASE_ORDER_INTAKE_ENABLED=true but DATABASE_URL/DIRECT_URL are missing from your .env file!");
+// Order intake is Postgres-only (see routes/orders.js) - these are always required now.
+if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
+  console.error("❌ DATABASE_URL/DIRECT_URL are missing from your .env file!");
   process.exit(1);
 }
 
@@ -52,18 +49,6 @@ if (!MONGO_URI) {
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("✅ Successfully connected to your paid MongoDB cluster!");
-    // Once Postgres order intake is on, orders for these 5 products never land
-    // in Mongo anymore - the watcher would have nothing left to see. Detrack
-    // job creation happens synchronously instead (see routes/orders.js).
-    if (isPostgresOrderIntakeEnabled()) {
-      console.log("⏸️  Detrack watcher not started - Postgres order intake is enabled (synchronous Detrack creation instead).");
-    } else if (process.env.DETRACK_WATCHER_ENABLED === 'true') {
-      // Set DETRACK_WATCHER_ENABLED=true in .env to turn this back on — left off by default
-      // to avoid creating live Detrack jobs while testing locally.
-      startDetrackWatcher().catch((err) => console.error("❌ Detrack watcher failed to start:", err));
-    } else {
-      console.log("⏸️  Detrack watcher disabled (set DETRACK_WATCHER_ENABLED=true in .env to enable).");
-    }
   })
   .catch((err) => console.error("❌ MongoDB connection error:", err));
 
