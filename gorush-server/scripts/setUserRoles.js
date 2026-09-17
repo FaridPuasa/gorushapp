@@ -3,10 +3,12 @@
 // a new email list comes in:
 //   node scripts/setUserRoles.js jpmc alice@jpmc.gov.bn bob@jpmc.gov.bn
 // Every email listed must already have registered a normal account first -
-// this only changes `role` on an existing doc, it doesn't create accounts.
+// this only changes `role` on an existing row, it doesn't create accounts.
+//
+// Postgres-only (2026-09-17 full cutover) - no more Mongo involved at all.
 require('dotenv').config();
-const mongoose = require('mongoose');
-const User = require('../models/User');
+const users = require('../lib/postgresUsers');
+const prisma = require('../lib/prismaClient');
 
 const VALID_ROLES = ['customer', 'admin', 'jpmc'];
 
@@ -17,32 +19,21 @@ async function run() {
         process.exit(1);
     }
 
-    const MONGO_URI = process.env.MONGO_URI;
-    if (!MONGO_URI) {
-        console.error('MONGO_URI is missing from your .env file.');
-        process.exit(1);
-    }
-
-    await mongoose.connect(MONGO_URI);
-    console.log(`Connected. Setting role='${role}' for ${emails.length} account(s)...`);
+    console.log(`Setting role='${role}' for ${emails.length} account(s)...`);
 
     let updated = 0;
     for (const email of emails) {
-        // Loaded and saved as a document (not User.updateOne) so the
-        // Postgres dual-write post('save') hook in models/User.js still
-        // fires - updateOne bypasses document middleware entirely.
-        const user = await User.findOne({ email: email.trim().toLowerCase() });
+        const user = await users.findByEmail(email.trim().toLowerCase());
         if (!user) {
             console.warn(`  no account found for ${email} - skipped (they must register first)`);
             continue;
         }
-        user.role = role;
-        await user.save();
+        await prisma.user.update({ where: { id: BigInt(user._id) }, data: { role } });
         updated += 1;
     }
 
     console.log(`Done. Updated ${updated}/${emails.length} account(s).`);
-    await mongoose.disconnect();
+    await prisma.$disconnect();
 }
 
 run().catch((err) => {

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+const users = require('../lib/postgresUsers');
 const { requireAuth } = require('../middleware/auth');
 const { validateJpmcPatientNumber } = require('../lib/jpmcValidation');
 
@@ -48,7 +48,7 @@ router.post('/register', async (req, res) => {
             return res.status(400).json({ error: jpmcFormatError });
         }
 
-        const existingUser = await User.findOne({ email });
+        const existingUser = await users.findByEmail(email);
         if (existingUser) {
             return res.status(400).json({ error: "An account with this email already exists." });
         }
@@ -56,28 +56,16 @@ router.post('/register', async (req, res) => {
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        const newUser = new User({
+        const savedUser = await users.createUser({
             email,
             password: hashedPassword,
-            addresses: [{ houseunitno, jalan, kampong, simpang, district, postalcode, isDefault: true }],
-            phonenumbers: [{ phonenum, isDefault: true }],
-            additionalphonenumbers: addphonenum ? [{ addphonenum }] : [],
-            userdetails: [{
-                receivername,
-                dateofbirth,
-                icnum: icnum || undefined,
-                passportnum: passportnum || undefined,
-                bruhimsnum,
-                patientphcnum,
-                patientjpmcnum,
-                appointmentplace,
-                isDefault: true
-            }],
+            houseunitno, jalan, kampong, simpang, district, postalcode,
+            phonenum, addphonenum,
+            receivername, dateofbirth, icnum, passportnum, bruhimsnum, patientphcnum, patientjpmcnum, appointmentplace,
             Agreepolicy,
             Receivemarketing: Receivemarketing || false
         });
 
-        const savedUser = await newUser.save();
         const token = signToken(savedUser);
         res.status(201).json({
             message: "Go Rush Account successfully created!",
@@ -102,7 +90,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: "Email and password are required." });
         }
 
-        const user = await User.findOne({ email });
+        const user = await users.findByEmail(email);
         if (!user) {
             return res.status(401).json({ error: "Invalid email or password." });
         }
@@ -130,7 +118,7 @@ router.post('/login', async (req, res) => {
 
 router.get('/me', requireAuth, async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) {
             return res.status(404).json({ error: "Account not found." });
         }

@@ -3,7 +3,7 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 const Order = require('../models/Order');
-const User = require('../models/User');
+const users = require('../lib/postgresUsers');
 const PublicHoliday = require('../models/PublicHoliday');
 const { optionalAuth, requireAuth } = require('../middleware/auth');
 const { computeTotalPrice } = require('../lib/pricing');
@@ -482,13 +482,7 @@ router.get('/mine', requireAuth, async (req, res) => {
         const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
         const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 10, 1), 50);
 
-        const user = await User.findById(req.userId).lean();
-        const identityValues = new Set();
-        for (const d of user?.userdetails || []) {
-            [d.icnum, d.passportnum, d.bruhimsnum, d.patientphcnum, d.patientjpmcnum]
-                .filter(Boolean)
-                .forEach((v) => identityValues.add(v));
-        }
+        const identityValues = await users.findIdentityValues(req.userId);
 
         const search = typeof req.query.search === 'string' ? req.query.search.trim() : '';
         const product = req.query.product && PRODUCT_CODES.includes(req.query.product) ? req.query.product : null;
@@ -498,7 +492,7 @@ router.get('/mine', requireAuth, async (req, res) => {
         if (isPostgresOrderIntakeEnabled()) {
             ({ orders, totalCount } = await postgresOrders.findMine({
                 userId: req.userId,
-                identityValues: [...identityValues],
+                identityValues,
                 product,
                 status,
                 search,
@@ -507,11 +501,10 @@ router.get('/mine', requireAuth, async (req, res) => {
             }));
         } else {
             const orConditions = [{ userId: req.userId }];
-            if (identityValues.size > 0) {
-                const values = [...identityValues];
-                orConditions.push({ icPassNum: { $in: values } });
-                orConditions.push({ bruhimsnum: { $in: values } });
-                orConditions.push({ patientNumber: { $in: values } });
+            if (identityValues.length > 0) {
+                orConditions.push({ icPassNum: { $in: identityValues } });
+                orConditions.push({ bruhimsnum: { $in: identityValues } });
+                orConditions.push({ patientNumber: { $in: identityValues } });
             }
             const identityFilter = { $or: orConditions };
 

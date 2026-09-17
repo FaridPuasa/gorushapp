@@ -1,40 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
-const User = require('../models/User');
+const users = require('../lib/postgresUsers');
 const { requireAuth } = require('../middleware/auth');
 const { validateJpmcPatientNumber } = require('../lib/jpmcValidation');
 
 router.use(requireAuth);
 
-function setDefaultInList(list, id) {
-    let found = false;
-    list.forEach((item) => {
-        const isMatch = String(item._id) === String(id);
-        if (isMatch) found = true;
-        item.isDefault = isMatch;
-    });
-    return found;
-}
-
-// Removes an entry from a list that must always keep at least one item.
-// If the removed entry was the default, promotes the first remaining entry.
-function deleteFromRequiredList(list, id) {
-    const entry = list.id(id);
-    if (!entry) return { error: 'notfound' };
-    if (list.length <= 1) return { error: 'lastitem' };
-
-    const wasDefault = entry.isDefault;
-    list.pull(id);
-    if (wasDefault && list.length > 0) {
-        list[0].isDefault = true;
-    }
-    return { ok: true };
-}
-
 router.get('/', async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
         res.status(200).json({
@@ -57,18 +32,13 @@ router.put('/basic', async (req, res) => {
             return res.status(400).json({ error: "Email is required." });
         }
 
-        const existing = await User.findOne({ email, _id: { $ne: req.userId } });
+        const existing = await users.findByEmailExcludingId(email, req.userId);
         if (existing) {
             return res.status(400).json({ error: "Another account is already using this email." });
         }
 
-        const user = await User.findById(req.userId);
-        if (!user) return res.status(404).json({ error: "Account not found." });
-
-        user.email = email;
-        await user.save();
-
-        res.status(200).json({ message: "Account details updated.", email: user.email });
+        const updated = await users.updateEmail(req.userId, email);
+        res.status(200).json({ message: "Account details updated.", email: updated.email });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -98,17 +68,16 @@ router.post('/userdetails', async (req, res) => {
         const jpmcFormatError = validateJpmcPatientNumber(appointmentplace, patientjpmcnum);
         if (jpmcFormatError) return res.status(400).json({ error: jpmcFormatError });
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        user.userdetails.push({
+        const userdetails = await users.userdetails.add(req.userId, {
             receivername, dateofbirth,
-            icnum: icnum || undefined, passportnum: passportnum || undefined,
+            icnum: icnum || null, passportnum: passportnum || null,
             bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, appointmentplace, payingpatient,
             isDefault: false,
         });
-        await user.save();
-        res.status(201).json({ message: "Personal details added.", userdetails: user.userdetails });
+        res.status(201).json({ message: "Personal details added.", userdetails });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -123,25 +92,17 @@ router.put('/userdetails/:id', async (req, res) => {
         const jpmcFormatError = validateJpmcPatientNumber(appointmentplace, patientjpmcnum);
         if (jpmcFormatError) return res.status(400).json({ error: jpmcFormatError });
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const details = user.userdetails.id(req.params.id);
-        if (!details) return res.status(404).json({ error: "Personal details entry not found." });
+        const result = await users.userdetails.update(req.userId, req.params.id, {
+            receivername, dateofbirth,
+            icnum: icnum || null, passportnum: passportnum || null,
+            bruhimsnum, appointmentdistrict, patientphcnum, patientjpmcnum, appointmentplace, payingpatient,
+        });
+        if (result.error === 'notfound') return res.status(404).json({ error: "Personal details entry not found." });
 
-        details.receivername = receivername;
-        details.dateofbirth = dateofbirth;
-        details.icnum = icnum || undefined;
-        details.passportnum = passportnum || undefined;
-        details.bruhimsnum = bruhimsnum;
-        details.appointmentdistrict = appointmentdistrict;
-        details.patientphcnum = patientphcnum;
-        details.patientjpmcnum = patientjpmcnum;
-        details.appointmentplace = appointmentplace;
-        details.payingpatient = payingpatient;
-
-        await user.save();
-        res.status(200).json({ message: "Personal details updated.", userdetails: user.userdetails });
+        res.status(200).json({ message: "Personal details updated.", userdetails: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -150,15 +111,14 @@ router.put('/userdetails/:id', async (req, res) => {
 
 router.delete('/userdetails/:id', async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const result = deleteFromRequiredList(user.userdetails, req.params.id);
+        const result = await users.userdetails.deleteWithMinimumGuard(req.userId, req.params.id);
         if (result.error === 'notfound') return res.status(404).json({ error: "Personal details entry not found." });
         if (result.error === 'lastitem') return res.status(400).json({ error: "You must keep at least one personal details entry." });
 
-        await user.save();
-        res.status(200).json({ message: "Personal details entry removed.", userdetails: user.userdetails });
+        res.status(200).json({ message: "Personal details entry removed.", userdetails: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -167,14 +127,13 @@ router.delete('/userdetails/:id', async (req, res) => {
 
 router.put('/userdetails/:id/default', async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const found = setDefaultInList(user.userdetails, req.params.id);
-        if (!found) return res.status(404).json({ error: "Personal details entry not found." });
+        const result = await users.userdetails.setDefault(req.userId, req.params.id);
+        if (result.error === 'notfound') return res.status(404).json({ error: "Personal details entry not found." });
 
-        await user.save();
-        res.status(200).json({ message: "Default personal details updated.", userdetails: user.userdetails });
+        res.status(200).json({ message: "Default personal details updated.", userdetails: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -188,7 +147,7 @@ router.put('/password', async (req, res) => {
             return res.status(400).json({ error: "Current password and new password are required." });
         }
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
         const isMatch = await bcrypt.compare(currentPassword, user.password);
@@ -197,8 +156,8 @@ router.put('/password', async (req, res) => {
         }
 
         const salt = await bcrypt.genSalt(10);
-        user.password = await bcrypt.hash(newPassword, salt);
-        await user.save();
+        const hashedPassword = await bcrypt.hash(newPassword, salt);
+        await users.updatePassword(req.userId, hashedPassword);
 
         res.status(200).json({ message: "Password updated successfully." });
     } catch (err) {
@@ -216,12 +175,11 @@ router.post('/addresses', async (req, res) => {
             return res.status(400).json({ error: "Missing required address fields." });
         }
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        user.addresses.push({ houseunitno, jalan, kampong, simpang, district, postalcode, isDefault: false });
-        await user.save();
-        res.status(201).json({ message: "Address added.", addresses: user.addresses });
+        const addresses = await users.addresses.add(req.userId, { houseunitno, jalan, kampong, simpang, district, postalcode, isDefault: false });
+        res.status(201).json({ message: "Address added.", addresses });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -235,15 +193,13 @@ router.put('/addresses/:id', async (req, res) => {
             return res.status(400).json({ error: "Missing required address fields." });
         }
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const address = user.addresses.id(req.params.id);
-        if (!address) return res.status(404).json({ error: "Address not found." });
+        const result = await users.addresses.update(req.userId, req.params.id, { houseunitno, jalan, kampong, simpang, district, postalcode });
+        if (result.error === 'notfound') return res.status(404).json({ error: "Address not found." });
 
-        Object.assign(address, { houseunitno, jalan, kampong, simpang, district, postalcode });
-        await user.save();
-        res.status(200).json({ message: "Address updated.", addresses: user.addresses });
+        res.status(200).json({ message: "Address updated.", addresses: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -252,15 +208,14 @@ router.put('/addresses/:id', async (req, res) => {
 
 router.delete('/addresses/:id', async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const result = deleteFromRequiredList(user.addresses, req.params.id);
+        const result = await users.addresses.deleteWithMinimumGuard(req.userId, req.params.id);
         if (result.error === 'notfound') return res.status(404).json({ error: "Address not found." });
         if (result.error === 'lastitem') return res.status(400).json({ error: "You must keep at least one address." });
 
-        await user.save();
-        res.status(200).json({ message: "Address removed.", addresses: user.addresses });
+        res.status(200).json({ message: "Address removed.", addresses: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -269,14 +224,13 @@ router.delete('/addresses/:id', async (req, res) => {
 
 router.put('/addresses/:id/default', async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const found = setDefaultInList(user.addresses, req.params.id);
-        if (!found) return res.status(404).json({ error: "Address not found." });
+        const result = await users.addresses.setDefault(req.userId, req.params.id);
+        if (result.error === 'notfound') return res.status(404).json({ error: "Address not found." });
 
-        await user.save();
-        res.status(200).json({ message: "Default address updated.", addresses: user.addresses });
+        res.status(200).json({ message: "Default address updated.", addresses: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -290,12 +244,11 @@ router.post('/phonenumbers', async (req, res) => {
         const { phonenum } = req.body;
         if (!phonenum) return res.status(400).json({ error: "Phone number is required." });
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        user.phonenumbers.push({ phonenum, isDefault: false });
-        await user.save();
-        res.status(201).json({ message: "Phone number added.", phonenumbers: user.phonenumbers });
+        const phonenumbers = await users.phonenumbers.add(req.userId, { phonenum, isDefault: false });
+        res.status(201).json({ message: "Phone number added.", phonenumbers });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -307,15 +260,13 @@ router.put('/phonenumbers/:id', async (req, res) => {
         const { phonenum } = req.body;
         if (!phonenum) return res.status(400).json({ error: "Phone number is required." });
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const entry = user.phonenumbers.id(req.params.id);
-        if (!entry) return res.status(404).json({ error: "Phone number not found." });
+        const result = await users.phonenumbers.update(req.userId, req.params.id, { phonenum });
+        if (result.error === 'notfound') return res.status(404).json({ error: "Phone number not found." });
 
-        entry.phonenum = phonenum;
-        await user.save();
-        res.status(200).json({ message: "Phone number updated.", phonenumbers: user.phonenumbers });
+        res.status(200).json({ message: "Phone number updated.", phonenumbers: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -324,15 +275,14 @@ router.put('/phonenumbers/:id', async (req, res) => {
 
 router.delete('/phonenumbers/:id', async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const result = deleteFromRequiredList(user.phonenumbers, req.params.id);
+        const result = await users.phonenumbers.deleteWithMinimumGuard(req.userId, req.params.id);
         if (result.error === 'notfound') return res.status(404).json({ error: "Phone number not found." });
         if (result.error === 'lastitem') return res.status(400).json({ error: "You must keep at least one phone number." });
 
-        await user.save();
-        res.status(200).json({ message: "Phone number removed.", phonenumbers: user.phonenumbers });
+        res.status(200).json({ message: "Phone number removed.", phonenumbers: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -341,14 +291,13 @@ router.delete('/phonenumbers/:id', async (req, res) => {
 
 router.put('/phonenumbers/:id/default', async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const found = setDefaultInList(user.phonenumbers, req.params.id);
-        if (!found) return res.status(404).json({ error: "Phone number not found." });
+        const result = await users.phonenumbers.setDefault(req.userId, req.params.id);
+        if (result.error === 'notfound') return res.status(404).json({ error: "Phone number not found." });
 
-        await user.save();
-        res.status(200).json({ message: "Default phone number updated.", phonenumbers: user.phonenumbers });
+        res.status(200).json({ message: "Default phone number updated.", phonenumbers: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -362,12 +311,11 @@ router.post('/additionalphonenumbers', async (req, res) => {
         const { addphonenum } = req.body;
         if (!addphonenum) return res.status(400).json({ error: "Phone number is required." });
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        user.additionalphonenumbers.push({ addphonenum });
-        await user.save();
-        res.status(201).json({ message: "Additional phone number added.", additionalphonenumbers: user.additionalphonenumbers });
+        const additionalphonenumbers = await users.additionalPhonenumbers.add(req.userId, { addphonenum });
+        res.status(201).json({ message: "Additional phone number added.", additionalphonenumbers });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -379,15 +327,13 @@ router.put('/additionalphonenumbers/:id', async (req, res) => {
         const { addphonenum } = req.body;
         if (!addphonenum) return res.status(400).json({ error: "Phone number is required." });
 
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const entry = user.additionalphonenumbers.id(req.params.id);
-        if (!entry) return res.status(404).json({ error: "Additional phone number not found." });
+        const result = await users.additionalPhonenumbers.update(req.userId, req.params.id, { addphonenum });
+        if (result.error === 'notfound') return res.status(404).json({ error: "Additional phone number not found." });
 
-        entry.addphonenum = addphonenum;
-        await user.save();
-        res.status(200).json({ message: "Additional phone number updated.", additionalphonenumbers: user.additionalphonenumbers });
+        res.status(200).json({ message: "Additional phone number updated.", additionalphonenumbers: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
@@ -396,15 +342,13 @@ router.put('/additionalphonenumbers/:id', async (req, res) => {
 
 router.delete('/additionalphonenumbers/:id', async (req, res) => {
     try {
-        const user = await User.findById(req.userId);
+        const user = await users.findById(req.userId);
         if (!user) return res.status(404).json({ error: "Account not found." });
 
-        const entry = user.additionalphonenumbers.id(req.params.id);
-        if (!entry) return res.status(404).json({ error: "Additional phone number not found." });
+        const result = await users.additionalPhonenumbers.deleteSimple(req.userId, req.params.id);
+        if (result.error === 'notfound') return res.status(404).json({ error: "Additional phone number not found." });
 
-        user.additionalphonenumbers.pull(req.params.id);
-        await user.save();
-        res.status(200).json({ message: "Additional phone number removed.", additionalphonenumbers: user.additionalphonenumbers });
+        res.status(200).json({ message: "Additional phone number removed.", additionalphonenumbers: result.list });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server profile error." });
