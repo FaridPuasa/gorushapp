@@ -170,6 +170,27 @@ router.delete('/slides/:id', async (req, res) => {
 // so admin needs its own GET returning every vacancy, not just the public /api/vacancies
 // list (open ones only).
 
+// Mirrors gorush-client's admin.js VACANCY_TITLE_OPTIONS/VACANCY_DEPARTMENT_OPTIONS/
+// VACANCY_EMPLOYMENT_TYPE_OPTIONS exactly - the client only offers these via a
+// Picker, but nothing stopped a direct API call from setting anything else
+// until now.
+const VACANCY_TITLE_OPTIONS = ['Human Resource', 'Forwarding Support', 'Operation Support', 'Dispatcher', 'Customer Service', 'Account Clerk', 'Information Technology Technical Support'];
+const VACANCY_DEPARTMENT_OPTIONS = ['Human Resource', 'Logistics', 'Customer Relations', 'Accounting', 'IT'];
+const VACANCY_EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time'];
+
+function validateVacancyEnums({ title, department, employmentType }) {
+    if (title && !VACANCY_TITLE_OPTIONS.includes(title)) {
+        return `Title must be one of: ${VACANCY_TITLE_OPTIONS.join(', ')}.`;
+    }
+    if (department && !VACANCY_DEPARTMENT_OPTIONS.includes(department)) {
+        return `Department must be one of: ${VACANCY_DEPARTMENT_OPTIONS.join(', ')}.`;
+    }
+    if (employmentType && !VACANCY_EMPLOYMENT_TYPE_OPTIONS.includes(employmentType)) {
+        return `Employment Type must be one of: ${VACANCY_EMPLOYMENT_TYPE_OPTIONS.join(', ')}.`;
+    }
+    return null;
+}
+
 router.get('/vacancies', async (req, res) => {
     try {
         const vacancies = await Vacancy.find().sort({ order: 1 }).lean();
@@ -184,6 +205,8 @@ router.post('/vacancies', async (req, res) => {
     try {
         const { title, department, employmentType, description, requirements, responsibilities, applicationType, isOpen, closingDate, order } = req.body;
         if (!title) return res.status(400).json({ error: "A title is required." });
+        const enumError = validateVacancyEnums({ title, department, employmentType });
+        if (enumError) return res.status(400).json({ error: enumError });
         const vacancy = await Vacancy.create({
             title, department, employmentType, description, requirements, responsibilities,
             applicationType, isOpen: isOpen !== false, closingDate, order: order || 0,
@@ -205,6 +228,8 @@ router.put('/vacancies/:id', async (req, res) => {
     try {
         const { title, department, employmentType, description, requirements, responsibilities, applicationType, isOpen, closingDate, order } = req.body;
         if (!title) return res.status(400).json({ error: "A title is required." });
+        const enumError = validateVacancyEnums({ title, department, employmentType });
+        if (enumError) return res.status(400).json({ error: enumError });
         const vacancy = await Vacancy.findByIdAndUpdate(
             req.params.id,
             { title, department, employmentType, description, requirements, responsibilities, applicationType, isOpen, closingDate, order },
