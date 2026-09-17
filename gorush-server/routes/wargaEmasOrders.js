@@ -1,12 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
-const WargaEmasOrder = require('../models/WargaEmasOrder');
+const crypto = require('crypto');
 const { optionalAuth } = require('../middleware/auth');
 const { sendOrderAlert } = require('../lib/mailer');
 const { notifyTeams } = require('../lib/teamsNotify');
-const { isPostgresWargaEmasEnabled } = require('../lib/supabaseFlag');
 const prisma = require('../lib/prismaClient');
+
+// Generates a Mongo-ObjectId-shaped hex string (24 hex chars) with zero I/O -
+// no real Mongo document is created anymore (fully cut over 2026-09-17), but
+// grfmxstatusupdate's own read path (data/waorders.js's `_id: row.mongoId`)
+// still expects this id shape, so the column/format stays even though the
+// origin no longer has anything to do with a real ObjectId.
+function generateMongoIdShape() {
+    return crypto.randomBytes(12).toString('hex');
+}
 
 function formatBruneiDateTime(date) {
     return date ? new Date(date).toLocaleString('en-GB', { timeZone: 'Asia/Brunei' }) : '';
@@ -39,47 +46,10 @@ router.post('/', optionalAuth, async (req, res) => {
         }
 
         const dateTimeSubmission = new Date();
-        let mongoId;
-
-        if (isPostgresWargaEmasEnabled()) {
-            // Postgres-primary, matching the same flip already applied to
-            // grfmxstatusupdate's other 10 collections (users, reports,
-            // inventoryStock, etc.): Postgres write happens first and its
-            // failure fails the request - it's the real record now, not a
-            // mirror. Mongo is kept only as a best-effort rollback safety
-            // net during the transition (its failure is logged, never
-            // fatal) - a real MongoDB-shaped ObjectId is still generated
-            // locally (no DB round-trip needed to make one) so both sides
-            // share the same identifier, which grfmxstatusupdate's own read
-            // path (data/waorders.js's `_id: row.mongoId`) already expects.
-            mongoId = new mongoose.Types.ObjectId().toString();
-            await prisma.waOrder.create({
-                data: { mongoId, icPictureFront, icPictureBack, dateTimeSubmission, receiverPhoneNumber },
-            });
-
-            try {
-                await new WargaEmasOrder({
-                    _id: mongoId,
-                    receiverPhoneNumber,
-                    icPictureFront,
-                    icPictureBack,
-                    dateTimeSubmission: dateTimeSubmission.toISOString(),
-                }).save();
-            } catch (mongoErr) {
-                console.error('[Mongo] Warga Emas mirror write failed (Postgres already has the real record, this is just the rollback-safety mirror):', mongoErr.message);
-            }
-        } else {
-            // Flag off - original pure-Mongo path, unchanged, so this can be
-            // rolled back to instantly by flipping SUPABASE_WARGA_EMAS_ENABLED.
-            const newOrder = new WargaEmasOrder({
-                receiverPhoneNumber,
-                icPictureFront,
-                icPictureBack,
-                dateTimeSubmission: dateTimeSubmission.toISOString(),
-            });
-            const savedOrder = await newOrder.save();
-            mongoId = savedOrder._id.toString();
-        }
+        const mongoId = generateMongoIdShape();
+        await prisma.waOrder.create({
+            data: { mongoId, icPictureFront, icPictureBack, dateTimeSubmission, receiverPhoneNumber },
+        });
 
         // Same tolerance as the Postgres order-intake path's own Teams/email
         // side effects (both already swallow their own errors internally) -

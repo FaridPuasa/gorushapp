@@ -1,6 +1,5 @@
 require('dotenv').config(); // This loads the hidden keys from your .env file
 const express = require('express');
-const mongoose = require('mongoose');
 const cors = require('cors');
 
 const path = require('path');
@@ -37,20 +36,6 @@ app.use('/api/careers', require('./routes/careers'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/jpmc', require('./routes/jpmc'));
 app.use('/api', require('./routes/content'));
-
-// Pull the connection string securely from the environment file
-const MONGO_URI = process.env.MONGO_URI; 
-
-if (!MONGO_URI) {
-  console.error("❌ Error: MONGO_URI is missing from your .env file!");
-  process.exit(1);
-}
-
-mongoose.connect(MONGO_URI)
-  .then(() => {
-    console.log("✅ Successfully connected to your paid MongoDB cluster!");
-  })
-  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
 // Serves the Expo Router web export's index.html for every non-API route,
 // so client-side routing (e.g. refreshing on /my-orders) resolves instead
