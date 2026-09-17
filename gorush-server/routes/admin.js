@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { requireAdmin } = require('../middleware/auth');
-const Announcement = require('../models/Announcement');
-const HeroSlide = require('../models/HeroSlide');
-const Vacancy = require('../models/Vacancy');
 const { compressBase64Image } = require('../lib/imageCompress');
-const { prisma, dualWriteCmsCreate, dualWriteCmsUpdate, dualWriteCmsDelete } = require('../lib/cmsDualWrite');
 const { createHoliday, deleteHolidayById, updatePricingRuleById } = require('../lib/postgresPricingHoliday');
+const {
+    findAllAnnouncements, createAnnouncement, updateAnnouncementById, deleteAnnouncementById,
+    findAllHeroSlides, createHeroSlide, updateHeroSlideById, deleteHeroSlideById,
+    findAllVacancies, createVacancy, updateVacancyById, deleteVacancyById,
+} = require('../lib/postgresContent');
 
 router.use(requireAdmin);
 
@@ -42,7 +43,7 @@ router.delete('/holidays/:id', async (req, res) => {
 // below, all behind requireAdmin.
 router.get('/announcements', async (req, res) => {
     try {
-        const announcements = await Announcement.find().sort({ date: -1 }).lean();
+        const announcements = await findAllAnnouncements();
         res.status(200).json(announcements);
     } catch (err) {
         console.error(err.message);
@@ -56,14 +57,9 @@ router.post('/announcements', async (req, res) => {
         if (!titleEn || !bodyEn || !date) {
             return res.status(400).json({ error: "English title, body, and a date are required." });
         }
-        const announcement = await Announcement.create({
+        const announcement = await createAnnouncement({
             titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign,
             showOnBannerToGuests: showOnBannerToGuests !== false, showOnBannerToLoggedIn: showOnBannerToLoggedIn !== false,
-        });
-        await dualWriteCmsCreate(prisma.announcement, announcement, {
-            titleEn: announcement.titleEn, bodyEn: announcement.bodyEn, titleBm: announcement.titleBm, bodyBm: announcement.bodyBm,
-            date: announcement.date, bodyAlign: announcement.bodyAlign,
-            showOnBannerToGuests: announcement.showOnBannerToGuests, showOnBannerToLoggedIn: announcement.showOnBannerToLoggedIn,
         });
         res.status(201).json(announcement);
     } catch (err) {
@@ -78,17 +74,10 @@ router.put('/announcements/:id', async (req, res) => {
         if (!titleEn || !bodyEn || !date) {
             return res.status(400).json({ error: "English title, body, and a date are required." });
         }
-        const announcement = await Announcement.findByIdAndUpdate(
-            req.params.id,
-            { titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, showOnBannerToGuests, showOnBannerToLoggedIn },
-            { new: true }
-        );
-        if (!announcement) return res.status(404).json({ error: "Announcement not found." });
-        await dualWriteCmsUpdate(prisma.announcement, announcement._id, {
-            titleEn: announcement.titleEn, bodyEn: announcement.bodyEn, titleBm: announcement.titleBm, bodyBm: announcement.bodyBm,
-            date: announcement.date, bodyAlign: announcement.bodyAlign,
-            showOnBannerToGuests: announcement.showOnBannerToGuests, showOnBannerToLoggedIn: announcement.showOnBannerToLoggedIn,
+        const announcement = await updateAnnouncementById(req.params.id, {
+            titleEn, bodyEn, titleBm, bodyBm, date, bodyAlign, showOnBannerToGuests, showOnBannerToLoggedIn,
         });
+        if (!announcement) return res.status(404).json({ error: "Announcement not found." });
         res.status(200).json(announcement);
     } catch (err) {
         console.error(err.message);
@@ -98,9 +87,8 @@ router.put('/announcements/:id', async (req, res) => {
 
 router.delete('/announcements/:id', async (req, res) => {
     try {
-        const result = await Announcement.findByIdAndDelete(req.params.id);
+        const result = await deleteAnnouncementById(req.params.id);
         if (!result) return res.status(404).json({ error: "Announcement not found." });
-        await dualWriteCmsDelete(prisma.announcement, result._id);
         res.status(200).json({ message: "Announcement removed." });
     } catch (err) {
         console.error(err.message);
@@ -114,10 +102,7 @@ router.post('/slides', async (req, res) => {
     try {
         const { image, headline, subtext, linkUrl, order } = req.body;
         const compressedImage = await compressBase64Image(image);
-        const slide = await HeroSlide.create({ image: compressedImage, headline, subtext, linkUrl, order: order || 0 });
-        await dualWriteCmsCreate(prisma.heroSlide, slide, {
-            image: slide.image, headline: slide.headline, subtext: slide.subtext, linkUrl: slide.linkUrl, order: slide.order,
-        });
+        const slide = await createHeroSlide({ image: compressedImage, headline, subtext, linkUrl, order: order || 0 });
         res.status(201).json(slide);
     } catch (err) {
         console.error(err.message);
@@ -129,15 +114,10 @@ router.put('/slides/:id', async (req, res) => {
     try {
         const { image, headline, subtext, linkUrl, order } = req.body;
         const compressedImage = image ? await compressBase64Image(image) : undefined;
-        const slide = await HeroSlide.findByIdAndUpdate(
-            req.params.id,
-            { ...(compressedImage ? { image: compressedImage } : {}), headline, subtext, linkUrl, order },
-            { new: true }
-        );
-        if (!slide) return res.status(404).json({ error: "Slide not found." });
-        await dualWriteCmsUpdate(prisma.heroSlide, slide._id, {
-            image: slide.image, headline: slide.headline, subtext: slide.subtext, linkUrl: slide.linkUrl, order: slide.order,
+        const slide = await updateHeroSlideById(req.params.id, {
+            ...(compressedImage ? { image: compressedImage } : {}), headline, subtext, linkUrl, order,
         });
+        if (!slide) return res.status(404).json({ error: "Slide not found." });
         res.status(200).json(slide);
     } catch (err) {
         console.error(err.message);
@@ -147,9 +127,8 @@ router.put('/slides/:id', async (req, res) => {
 
 router.delete('/slides/:id', async (req, res) => {
     try {
-        const result = await HeroSlide.findByIdAndDelete(req.params.id);
+        const result = await deleteHeroSlideById(req.params.id);
         if (!result) return res.status(404).json({ error: "Slide not found." });
-        await dualWriteCmsDelete(prisma.heroSlide, result._id);
         res.status(200).json({ message: "Slide removed." });
     } catch (err) {
         console.error(err.message);
@@ -185,7 +164,7 @@ function validateVacancyEnums({ title, department, employmentType }) {
 
 router.get('/vacancies', async (req, res) => {
     try {
-        const vacancies = await Vacancy.find().sort({ order: 1 }).lean();
+        const vacancies = await findAllVacancies();
         res.status(200).json(vacancies);
     } catch (err) {
         console.error(err.message);
@@ -199,15 +178,9 @@ router.post('/vacancies', async (req, res) => {
         if (!title) return res.status(400).json({ error: "A title is required." });
         const enumError = validateVacancyEnums({ title, department, employmentType });
         if (enumError) return res.status(400).json({ error: enumError });
-        const vacancy = await Vacancy.create({
+        const vacancy = await createVacancy({
             title, department, employmentType, description, requirements, responsibilities,
-            applicationType, isOpen: isOpen !== false, closingDate, order: order || 0,
-        });
-        await dualWriteCmsCreate(prisma.vacancy, vacancy, {
-            title: vacancy.title, department: vacancy.department, employmentType: vacancy.employmentType,
-            description: vacancy.description, requirements: vacancy.requirements, responsibilities: vacancy.responsibilities,
-            applicationType: vacancy.applicationType, isOpen: vacancy.isOpen, closingDate: vacancy.closingDate,
-            order: vacancy.order, createdAt: vacancy.createdAt,
+            applicationType, isOpen: isOpen !== false, closingDate, order: order || 0, createdAt: new Date(),
         });
         res.status(201).json(vacancy);
     } catch (err) {
@@ -222,18 +195,10 @@ router.put('/vacancies/:id', async (req, res) => {
         if (!title) return res.status(400).json({ error: "A title is required." });
         const enumError = validateVacancyEnums({ title, department, employmentType });
         if (enumError) return res.status(400).json({ error: enumError });
-        const vacancy = await Vacancy.findByIdAndUpdate(
-            req.params.id,
-            { title, department, employmentType, description, requirements, responsibilities, applicationType, isOpen, closingDate, order },
-            { new: true }
-        );
-        if (!vacancy) return res.status(404).json({ error: "Vacancy not found." });
-        await dualWriteCmsUpdate(prisma.vacancy, vacancy._id, {
-            title: vacancy.title, department: vacancy.department, employmentType: vacancy.employmentType,
-            description: vacancy.description, requirements: vacancy.requirements, responsibilities: vacancy.responsibilities,
-            applicationType: vacancy.applicationType, isOpen: vacancy.isOpen, closingDate: vacancy.closingDate,
-            order: vacancy.order,
+        const vacancy = await updateVacancyById(req.params.id, {
+            title, department, employmentType, description, requirements, responsibilities, applicationType, isOpen, closingDate, order,
         });
+        if (!vacancy) return res.status(404).json({ error: "Vacancy not found." });
         res.status(200).json(vacancy);
     } catch (err) {
         console.error(err.message);
@@ -243,9 +208,8 @@ router.put('/vacancies/:id', async (req, res) => {
 
 router.delete('/vacancies/:id', async (req, res) => {
     try {
-        const result = await Vacancy.findByIdAndDelete(req.params.id);
+        const result = await deleteVacancyById(req.params.id);
         if (!result) return res.status(404).json({ error: "Vacancy not found." });
-        await dualWriteCmsDelete(prisma.vacancy, result._id);
         res.status(200).json({ message: "Vacancy removed." });
     } catch (err) {
         console.error(err.message);

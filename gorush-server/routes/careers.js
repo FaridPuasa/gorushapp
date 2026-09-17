@@ -1,8 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
-const Vacancy = require('../models/Vacancy');
+const { findVacancyById } = require('../lib/postgresContent');
 const { optionalAuth } = require('../middleware/auth');
 const { isVacancyCurrentlyOpen } = require('../lib/vacancies');
 const prisma = require('../lib/prismaClient');
@@ -92,10 +91,10 @@ router.post('/apply', optionalAuth, async (req, res) => {
             return res.status(400).json({ error: "Captcha answer did not match." });
         }
 
-        if (!vacancyId || !mongoose.Types.ObjectId.isValid(vacancyId)) {
+        if (!vacancyId || !/^\d+$/.test(String(vacancyId))) {
             return res.status(400).json({ error: "A valid vacancy is required." });
         }
-        const vacancy = await Vacancy.findById(vacancyId);
+        const vacancy = await findVacancyById(vacancyId);
         if (!vacancy || !isVacancyCurrentlyOpen(vacancy)) {
             return res.status(404).json({ error: "This position is no longer open." });
         }

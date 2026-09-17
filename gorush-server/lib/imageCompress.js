@@ -1,6 +1,6 @@
 // Compresses a base64 data-URL image (the storage format used for Hero
-// Slides and CBSL invoice screenshots alike - see models/HeroSlide.js) down
-// to a reasonable size for web delivery. Found 2026-08-28: uncompressed
+// Slides and CBSL invoice screenshots alike - see prisma/schema.prisma's
+// HeroSlide model) down to a reasonable size for web delivery. Found 2026-08-28: uncompressed
 // slide uploads (camera-resolution photos, 500KB-1.7MB each) made the
 // homepage's hero carousel one of the slowest things on the site - 3
 // slides totaling 3.38MB, re-fetched in full on every single page load

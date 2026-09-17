@@ -1,10 +1,8 @@
 const express = require('express');
 const router = express.Router();
-const Announcement = require('../models/Announcement');
-const HeroSlide = require('../models/HeroSlide');
-const Vacancy = require('../models/Vacancy');
 const { isVacancyCurrentlyOpen } = require('../lib/vacancies');
 const { findAllHolidays, findAllPricingRules } = require('../lib/postgresPricingHoliday');
+const { findAllAnnouncements, findAllHeroSlides, findOpenVacancies } = require('../lib/postgresContent');
 
 // Public, unauthenticated reads — the storefront (and its own order-availability checks)
 // need these regardless of who's browsing. Admin-only writes live in routes/admin.js.
@@ -24,7 +22,7 @@ router.get('/announcements', async (req, res) => {
         // Always visible to everyone here - only the top notification bar
         // (AnnouncementContext.js, client-side) filters by audience, via
         // showOnBannerToGuests/showOnBannerToLoggedIn on each announcement.
-        const announcements = await Announcement.find().sort({ date: -1 }).lean();
+        const announcements = await findAllAnnouncements();
         res.status(200).json(announcements);
     } catch (err) {
         console.error(err.message);
@@ -34,7 +32,7 @@ router.get('/announcements', async (req, res) => {
 
 router.get('/slides', async (req, res) => {
     try {
-        const slides = await HeroSlide.find().sort({ order: 1 }).lean();
+        const slides = await findAllHeroSlides();
         // Admin-managed content that rarely changes, but still several MB of
         // base64 image data - without this, every single page load re-fetches
         // the full payload from scratch. 5 minutes balances not going stale
@@ -51,8 +49,8 @@ router.get('/slides', async (req, res) => {
 router.get('/vacancies', async (req, res) => {
     try {
         // isOpen is a static DB flag; closingDate is a time-based cutoff (5pm Brunei time on
-        // that date) that can't be expressed as a Mongo query filter — checked in JS instead.
-        const vacancies = await Vacancy.find({ isOpen: true }).sort({ order: 1 }).lean();
+        // that date) that can't be expressed as a query filter — checked in JS instead.
+        const vacancies = await findOpenVacancies();
         res.status(200).json(vacancies.filter((v) => isVacancyCurrentlyOpen(v)));
     } catch (err) {
         console.error(err.message);
