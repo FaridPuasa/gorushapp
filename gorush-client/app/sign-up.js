@@ -469,12 +469,15 @@ export default function Register() {
           <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('appointmentplace', el) : undefined}>
             <AnimatedPressable scaleTo={1.02} style={[formStyles.toggleBtn, formData.appointmentplace === 'JPMC' && formStyles.toggleBtnActive]} onPress={() => updateField('appointmentplace', 'JPMC')}>
               <Text style={formData.appointmentplace === 'JPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.jpmc')}</Text>
+              <Text style={[formStyles.toggleCaption, formData.appointmentplace === 'JPMC' && formStyles.toggleCaptionActive]}>{t('identity.jpmcSpecialty')}</Text>
             </AnimatedPressable>
             <AnimatedPressable scaleTo={1.02} style={[formStyles.toggleBtn, formData.appointmentplace === 'PJSC' && formStyles.toggleBtnActive]} onPress={() => updateField('appointmentplace', 'PJSC')}>
               <Text style={formData.appointmentplace === 'PJSC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.pjsc')}</Text>
+              <Text style={[formStyles.toggleCaption, formData.appointmentplace === 'PJSC' && formStyles.toggleCaptionActive]}>{t('identity.pjscSpecialty')}</Text>
             </AnimatedPressable>
             <AnimatedPressable scaleTo={1.02} style={[formStyles.toggleBtn, formData.appointmentplace === 'GJPMC' && formStyles.toggleBtnActive]} onPress={() => updateField('appointmentplace', 'GJPMC')}>
               <Text style={formData.appointmentplace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.gjpmc')}</Text>
+              <Text style={[formStyles.toggleCaption, formData.appointmentplace === 'GJPMC' && formStyles.toggleCaptionActive]}>{t('identity.gjpmcSpecialty')}</Text>
             </AnimatedPressable>
           </View>
           {formData.appointmentplace ? (

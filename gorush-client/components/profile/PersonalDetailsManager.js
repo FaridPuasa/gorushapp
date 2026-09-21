@@ -193,12 +193,15 @@ function DetailsForm({ initial, onSave, onCancel, saving, scrollRef }) {
       <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('appointmentplace', el) : undefined}>
         <AnimatedPressable style={[formStyles.toggleBtn, data.appointmentplace === 'JPMC' && formStyles.toggleBtnActive]} onPress={() => update('appointmentplace', 'JPMC')} scaleTo={1.04}>
           <Text style={data.appointmentplace === 'JPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.jpmc')}</Text>
+          <Text style={[formStyles.toggleCaption, data.appointmentplace === 'JPMC' && formStyles.toggleCaptionActive]}>{t('identity.jpmcSpecialty')}</Text>
         </AnimatedPressable>
         <AnimatedPressable style={[formStyles.toggleBtn, data.appointmentplace === 'PJSC' && formStyles.toggleBtnActive]} onPress={() => update('appointmentplace', 'PJSC')} scaleTo={1.04}>
           <Text style={data.appointmentplace === 'PJSC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.pjsc')}</Text>
+          <Text style={[formStyles.toggleCaption, data.appointmentplace === 'PJSC' && formStyles.toggleCaptionActive]}>{t('identity.pjscSpecialty')}</Text>
         </AnimatedPressable>
         <AnimatedPressable style={[formStyles.toggleBtn, data.appointmentplace === 'GJPMC' && formStyles.toggleBtnActive]} onPress={() => update('appointmentplace', 'GJPMC')} scaleTo={1.04}>
           <Text style={data.appointmentplace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.gjpmc')}</Text>
+          <Text style={[formStyles.toggleCaption, data.appointmentplace === 'GJPMC' && formStyles.toggleCaptionActive]}>{t('identity.gjpmcSpecialty')}</Text>
         </AnimatedPressable>
       </View>
       {data.appointmentplace ? (

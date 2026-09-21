@@ -27,12 +27,15 @@ export default function JpmcFields({ values, onChange, errors = {}, focusedField
           <View style={formStyles.toggleRow} ref={registerFieldRef ? (el) => registerFieldRef('appointmentPlace', el) : undefined}>
             <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'JPMC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'JPMC')}>
               <Text style={values.appointmentPlace === 'JPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.jpmc')}</Text>
+              <Text style={[formStyles.toggleCaption, values.appointmentPlace === 'JPMC' && formStyles.toggleCaptionActive]}>{t('order.jpmcSpecialty')}</Text>
             </AnimatedPressable>
             <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'PJSC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'PJSC')}>
               <Text style={values.appointmentPlace === 'PJSC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.pjsc')}</Text>
+              <Text style={[formStyles.toggleCaption, values.appointmentPlace === 'PJSC' && formStyles.toggleCaptionActive]}>{t('order.pjscSpecialty')}</Text>
             </AnimatedPressable>
             <AnimatedPressable style={[formStyles.toggleBtn, values.appointmentPlace === 'GJPMC' && formStyles.toggleBtnActive]} scaleTo={1.04} onPress={() => onChange('appointmentPlace', 'GJPMC')}>
               <Text style={values.appointmentPlace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.gjpmc')}</Text>
+              <Text style={[formStyles.toggleCaption, values.appointmentPlace === 'GJPMC' && formStyles.toggleCaptionActive]}>{t('order.gjpmcSpecialty')}</Text>
             </AnimatedPressable>
           </View>
           {values.appointmentPlace ? (

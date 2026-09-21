@@ -406,6 +406,8 @@ export function useFormStyles() {
     toggleBtnActive: { backgroundColor: colors.primary },
     toggleText: { color: colors.textPrimary, fontWeight: 'bold', fontSize: scaleFont(14) },
     toggleTextActive: { color: '#fff', fontWeight: 'bold', fontSize: scaleFont(14) },
+    toggleCaption: { color: colors.textMuted, fontSize: scaleFont(10), marginTop: 2, textAlign: 'center' },
+    toggleCaptionActive: { color: 'rgba(255,255,255,0.85)' },
 
     checkboxFake: { padding: 12, backgroundColor: colors.subtleBackground, borderRadius: 8, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
     checkboxActive: { backgroundColor: colors.primaryLight, borderColor: colors.primary },
