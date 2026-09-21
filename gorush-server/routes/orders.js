@@ -9,7 +9,7 @@ const { isChargeCurrentlyAvailable } = require('../lib/availability');
 const { getOrderCreatedAt, getOrderUpdatedAt, getOrderDeliveryDate } = require('../lib/orderDates');
 const postgresOrders = require('../lib/postgresOrders');
 const { generateTrackingNumber } = require('../lib/trackingNumber');
-const { createDetrackJob } = require('../lib/detrack');
+const { createDetrackJob, getDetrackJobByTrackingNumber } = require('../lib/detrack');
 const { validateJpmcPatientNumber, JPMC_APPOINTMENT_PLACES } = require('../lib/jpmcValidation');
 const { parseGorushDateOnly } = require('../lib/dateHelpers');
 const { sendOrderAlert } = require('../lib/mailer');
@@ -536,6 +536,15 @@ router.get('/track/:trackingNumber', async (req, res) => {
         // findByTrackingNumber handles both cases).
         const order = await postgresOrders.findByTrackingNumber(req.params.trackingNumber);
         if (!order) {
+            // Manifest-upload courier products (EWE/PDU/MGLOBAL/GDEX) get their
+            // Detrack job registered before the parcel physically reaches our
+            // warehouse - our own Order isn't created until warehouse scan-in.
+            // So a tracking number that's on Detrack as "info_recv" but not yet
+            // in our own records just means it's still in transit to us.
+            const detrackJob = await getDetrackJobByTrackingNumber(req.params.trackingNumber);
+            if (detrackJob && detrackJob.status === 'info_recv') {
+                return res.status(404).json({ error: "This parcel hasn't arrived at Go Rush yet. Please check back later." });
+            }
             return res.status(404).json({ error: "No order found with that tracking number." });
         }
         res.status(200).json({

@@ -2,6 +2,7 @@ const { getBruneiNow } = require('./bruneiTime');
 
 const DETRACK_JOBS_URL = 'https://app.detrack.com/api/v2/dn/jobs';
 const DETRACK_UPDATE_URL = 'https://app.detrack.com/api/v2/dn/jobs/update';
+const DETRACK_SHOW_URL = 'https://app.detrack.com/api/v2/dn/jobs/show/';
 
 const GROUP_NAME_MAP = {
     localdelivery: 'LD',
@@ -164,4 +165,27 @@ async function cancelDetrackJob(doNumber) {
     return putDetrackUpdate(doNumber, apiKey, { status: 'cancelled' });
 }
 
-module.exports = { createDetrackJob, cancelDetrackJob, buildJobPayload, toNumber };
+// Looks up a job on Detrack by tracking number - used by the public tracking
+// endpoint to tell "genuinely no such order" apart from "manifest-upload
+// courier has already registered this parcel with Detrack, but it hasn't
+// physically reached our warehouse yet" (that's still status "info_recv" on
+// Detrack with no matching Postgres Order, since our own Order isn't created
+// until warehouse scan-in). Never throws - a Detrack outage should just fall
+// back to the plain "not found" message, not break the tracking page.
+async function getDetrackJobByTrackingNumber(doNumber) {
+    const apiKey = process.env.DETRACK_API_KEY;
+    if (!apiKey || !doNumber) return null;
+    try {
+        const response = await fetch(`${DETRACK_SHOW_URL}?do_number=${encodeURIComponent(doNumber)}`, {
+            headers: { 'Content-Type': 'application/json', 'X-API-KEY': apiKey },
+        });
+        if (!response.ok) return null;
+        const body = await response.json().catch(() => null);
+        return body?.data || null;
+    } catch (err) {
+        console.log(`[detrack] lookup failed for ${doNumber}:`, err.message);
+        return null;
+    }
+}
+
+module.exports = { createDetrackJob, cancelDetrackJob, buildJobPayload, toNumber, getDetrackJobByTrackingNumber };
