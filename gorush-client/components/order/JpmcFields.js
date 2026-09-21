@@ -35,6 +35,11 @@ export default function JpmcFields({ values, onChange, errors = {}, focusedField
               <Text style={values.appointmentPlace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('order.gjpmc')}</Text>
             </AnimatedPressable>
           </View>
+          {values.appointmentPlace ? (
+            <Text style={formStyles.fieldHint}>
+              {t(`order.${values.appointmentPlace.toLowerCase()}FullNameHint`)}
+            </Text>
+          ) : null}
         </>
       )}
 
