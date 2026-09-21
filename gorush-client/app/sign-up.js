@@ -477,6 +477,11 @@ export default function Register() {
               <Text style={formData.appointmentplace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.gjpmc')}</Text>
             </AnimatedPressable>
           </View>
+          {formData.appointmentplace ? (
+            <Text style={formStyles.fieldHint}>
+              {t(`identity.${formData.appointmentplace.toLowerCase()}FullNameHint`)}
+            </Text>
+          ) : null}
 
           <Field
             label={t('auth.register.jpmcPatientNo')}

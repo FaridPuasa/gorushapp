@@ -201,6 +201,11 @@ function DetailsForm({ initial, onSave, onCancel, saving, scrollRef }) {
           <Text style={data.appointmentplace === 'GJPMC' ? formStyles.toggleTextActive : formStyles.toggleText}>{t('identity.gjpmc')}</Text>
         </AnimatedPressable>
       </View>
+      {data.appointmentplace ? (
+        <Text style={formStyles.fieldHint}>
+          {t(`identity.${data.appointmentplace.toLowerCase()}FullNameHint`)}
+        </Text>
+      ) : null}
 
       <Field
         label={t('identity.jpmcPatientNo')}
