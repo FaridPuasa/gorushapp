@@ -31,6 +31,10 @@ import { AnimatedPressable } from '../lib/animations';
 const WIDE_MAX_WIDTH = 1800;
 
 const STATUS_OPTIONS = ['New Order', 'Entered', 'Pending Payment', 'Pending Query', 'Completed', 'Duplicate Order', 'Cancelled Order'];
+// Mirrors gorush-server's routes/jpmc.js CANCEL_TRIGGER_STATUSES - saving
+// either of these also cancels the order (Postgres + Detrack) on the
+// backend, so the save button warns about that before it happens.
+const CANCEL_TRIGGER_STATUSES = new Set(['Duplicate Order', 'Cancelled Order']);
 const PATIENT_INFORMED_OPTIONS = ['Yes', 'No'];
 const FRIDGE_ITEM_OPTIONS = ['No', 'Yes'];
 // currentStatus values actually set by grfmxstatusupdate's Detrack sync - shown verbatim,
@@ -543,6 +547,22 @@ function GoRushDetailCard({ order, onClose, colors, scaleFont }) {
 // Patient Informed, Remarks from Pharmacy, Paying Patient Total, and the
 // payment-proof upload/reupload), nothing about the order itself - that's
 // already fully visible in the row and the View More card.
+// Danger Zone-style confirm before a save that will also cancel the order -
+// window.confirm on web (Alert.alert has no web equivalent that blocks for a
+// real yes/no), Alert.alert's button callbacks on native.
+function confirmCancelTrigger(status) {
+  const message = `Setting JPMC status to "${status}" will also cancel this order in GO RUSH and on Detrack. This cannot be undone. Continue?`;
+  if (Platform.OS === 'web') {
+    return Promise.resolve(window.confirm(message));
+  }
+  return new Promise((resolve) => {
+    Alert.alert('Please Confirm', message, [
+      { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+      { text: 'Continue', style: 'destructive', onPress: () => resolve(true) },
+    ]);
+  });
+}
+
 function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles, colors, scaleFont }) {
   const [status, setStatus] = useState(order.jpmcPharmacyStatus || 'New Order');
   const [fridgeItem, setFridgeItem] = useState(order.jpmcFridgeItem || 'No');
@@ -566,6 +586,11 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
       setError('Paying Patient Total must be a number.');
       return;
     }
+    const triggersCancel = CANCEL_TRIGGER_STATUSES.has(status) && status !== (order.jpmcPharmacyStatus || 'New Order');
+    if (triggersCancel) {
+      const confirmed = await confirmCancelTrigger(status);
+      if (!confirmed) return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -579,6 +604,7 @@ function JpmcEditCard({ order, canEdit, authHeader, onSaved, onClose, formStyles
       onSaved(order.id, res.data);
       setSaved(true);
       setTimeout(() => setSaved(false), 1500);
+      if (res.data.detrackCancelWarning) setError(res.data.detrackCancelWarning);
     } catch (e) {
       setError(e.response?.data?.error || 'Something went wrong.');
     } finally {

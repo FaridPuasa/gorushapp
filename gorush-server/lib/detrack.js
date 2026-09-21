@@ -1,6 +1,7 @@
 const { getBruneiNow } = require('./bruneiTime');
 
 const DETRACK_JOBS_URL = 'https://app.detrack.com/api/v2/dn/jobs';
+const DETRACK_UPDATE_URL = 'https://app.detrack.com/api/v2/dn/jobs/update';
 
 const GROUP_NAME_MAP = {
     localdelivery: 'LD',
@@ -116,4 +117,51 @@ async function createDetrackJob(order) {
     }
 }
 
-module.exports = { createDetrackJob, buildJobPayload, toNumber };
+// Single PUT to Detrack's job-update endpoint, retried up to `attempts` times
+// with linear backoff - Detrack's API occasionally 5xxs transiently, and
+// grfmxstatusupdate's equivalent (updateDetrackStatusWithRetry) retries for
+// the same reason.
+async function putDetrackUpdate(doNumber, apiKey, data, attempts = 3) {
+    let lastError;
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            const response = await fetch(DETRACK_UPDATE_URL, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-API-KEY': apiKey,
+                },
+                body: JSON.stringify({ do_number: doNumber, data }),
+            });
+            if (response.ok) return { ok: true };
+            const body = await response.json().catch(() => null);
+            lastError = `Detrack responded ${response.status}: ${JSON.stringify(body)}`;
+        } catch (err) {
+            lastError = err.message;
+        }
+        if (attempt < attempts) await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+    }
+    return { ok: false, error: lastError };
+}
+
+// Cancels an already-created Detrack job - never throws, mirrors
+// createDetrackJob's "degrade to { ok: false }" contract so a Detrack outage
+// never blocks the caller's own (Postgres-side) cancellation.
+//
+// Two-step on purpose: confirmed against grfmxstatusupdate's own "Cancel
+// Job" Danger Zone action - Detrack silently ignores a status change on a
+// job whose `date` isn't today, so the date is patched first and the status
+// is only patched once that succeeds.
+async function cancelDetrackJob(doNumber) {
+    if (!doNumber) return { ok: false, error: 'No tracking number to cancel on Detrack.' };
+    const apiKey = process.env.DETRACK_API_KEY;
+    if (!apiKey) {
+        console.log(`[detrack] DRY RUN — would cancel job ${doNumber}`);
+        return { ok: true };
+    }
+    const dateResult = await putDetrackUpdate(doNumber, apiKey, { date: todayBruneiDateString() });
+    if (!dateResult.ok) return dateResult;
+    return putDetrackUpdate(doNumber, apiKey, { status: 'cancelled' });
+}
+
+module.exports = { createDetrackJob, cancelDetrackJob, buildJobPayload, toNumber };

@@ -8,6 +8,7 @@ const express = require('express');
 const XLSX = require('xlsx');
 const prisma = require('../lib/prismaClient');
 const { findAllHolidays } = require('../lib/postgresPricingHoliday');
+const { cancelDetrackJob } = require('../lib/detrack');
 const { requireRole } = require('../middleware/auth');
 const { currentWindow, windowForDate } = require('../lib/jpmcWindow');
 const { getPaymentProofSignedUrl } = require('../lib/jpmcPaymentStorage');
@@ -75,6 +76,12 @@ function isInternalHistoryNote(h) {
     if (h.statusHistory) return !ALLOWED_DELIVERY_STATUSES.has(h.statusHistory.toLowerCase());
     return Boolean(h.reason) && h.reason.toUpperCase() !== 'N/A' && INTERNAL_NOTE_RE.test(h.reason);
 }
+
+// Marking a JPMC order Duplicate/Cancelled means it's dead on GO RUSH's side
+// too, not just in the JPMC-facing status column - so saving either one also
+// mirrors grfmxstatusupdate's own "Cancel Job" Danger Zone action: the shared
+// currentStatus/history + the Detrack job both get cancelled to match.
+const CANCEL_TRIGGER_STATUSES = new Set(['Duplicate Order', 'Cancelled Order']);
 
 const EDITABLE_FIELDS = [
     'jpmcPharmacyStatus',
@@ -351,21 +358,60 @@ router.patch('/orders/:id', requireRole('jpmc', 'admin'), async (req, res) => {
         // when unchanged, so this has to compare against the stored value -
         // otherwise saving an unrelated field while already Completed would
         // reset the timestamp on every save.
+        // Set only when this save is the one that newly moves the order into
+        // Duplicate/Cancelled - re-saving an already-Duplicate/Cancelled order
+        // (e.g. just editing remarks) must not re-fire the Detrack cancel call
+        // or push a second "Cancelled" history row every time.
+        let triggersCancel = false;
         if ('jpmcPharmacyStatus' in data) {
-            const existing = await prisma.order.findUnique({ where: { id }, select: { jpmcPharmacyStatus: true } });
+            const existing = await prisma.order.findUnique({
+                where: { id },
+                select: { jpmcPharmacyStatus: true, currentStatus: true, doTrackingNumber: true },
+            });
             if (!existing) return res.status(404).json({ error: 'Order not found.' });
             const wasCompleted = existing.jpmcPharmacyStatus === 'Completed';
             const nowCompleted = data.jpmcPharmacyStatus === 'Completed';
             if (nowCompleted && !wasCompleted) data.jpmcCompletedAt = new Date();
             else if (!nowCompleted && wasCompleted) data.jpmcCompletedAt = null;
+
+            triggersCancel = CANCEL_TRIGGER_STATUSES.has(data.jpmcPharmacyStatus) && existing.currentStatus !== 'Cancelled';
+            if (triggersCancel) {
+                const cancelReason = `${data.jpmcPharmacyStatus} - confirmed by JPMC`;
+                data.currentStatus = 'Cancelled';
+                data.lastUpdateDateTime = new Date();
+                data.latestReason = cancelReason;
+                data.assignedTo = 'N/A';
+                data.lastUpdatedBy = req.userEmail;
+                data.history = {
+                    create: [{
+                        statusHistory: 'Cancelled',
+                        dateUpdated: new Date(),
+                        updatedBy: req.userEmail,
+                        reason: cancelReason,
+                    }],
+                };
+            }
         }
 
         data.jpmcFieldsUpdatedBy = req.userEmail;
         data.jpmcFieldsUpdatedAt = new Date();
 
         const order = await prisma.order.update({ where: { id }, data, include: { history: true } });
+
+        // Best-effort - a Detrack outage must not stop the order from being
+        // saved as Duplicate/Cancelled on GO RUSH's own side; surface it to
+        // the caller instead so staff know Detrack still needs a manual fix.
+        let detrackCancelWarning;
+        if (triggersCancel) {
+            const detrackResult = await cancelDetrackJob(order.doTrackingNumber);
+            if (!detrackResult.ok) {
+                console.error(`[jpmc] Failed to cancel Detrack job for ${order.doTrackingNumber}: ${detrackResult.error}`);
+                detrackCancelWarning = 'Saved, but the Detrack job could not be cancelled automatically - please cancel it there manually.';
+            }
+        }
+
         const holidayDates = (await findAllHolidays()).map((h) => h.date);
-        res.json(toApiShape(order, holidayDates));
+        res.json({ ...toApiShape(order, holidayDates), ...(detrackCancelWarning ? { detrackCancelWarning } : {}) });
     } catch (err) {
         console.error(err.message);
         if (err.code === 'P2025') {
