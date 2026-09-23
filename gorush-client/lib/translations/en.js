@@ -351,6 +351,8 @@ export default {
     productLocalDelivery: 'Local Delivery',
     productCrossBorder: 'Cross Border Service Limbang',
     yourDetails: 'Your Details',
+    patientDetails: "Patient's Details",
+    patientFullName: "Patient's Full Name",
     senderDetails: 'Sender Details',
     receiverDetails: 'Receiver Details',
     updateInEditProfile: 'Update these in Edit Profile',

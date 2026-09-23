@@ -496,7 +496,12 @@ export default function Order() {
           {product && (
             <>
               <PartyDetailsForm
-                title={product === 'Local Delivery' ? t('order.senderDetails') : t('order.yourDetails')}
+                title={
+                  product === 'Local Delivery' ? t('order.senderDetails')
+                    : ['MOH', 'JPMC', 'PHC'].includes(product) ? t('order.patientDetails')
+                      : t('order.yourDetails')
+                }
+                fullNameLabel={['MOH', 'JPMC', 'PHC'].includes(product) ? t('order.patientFullName') : undefined}
                 values={party}
                 onChange={updateParty}
                 errors={errors.party}

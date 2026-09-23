@@ -23,7 +23,7 @@ function ViewOnlyRow({ label, value }) {
 export default function PartyDetailsForm({
   icon = '📇', title, values, onChange, errors = {}, focusedField, setFocusedField,
   viewOnly = false, showAdditionalPhone = false, isGuest = false, addressLocked = false, requireEmail = !isGuest,
-  fieldKeyPrefix = '', registerFieldRef,
+  fieldKeyPrefix = '', registerFieldRef, fullNameLabel,
 }) {
   const fk = (name) => `${fieldKeyPrefix}${name}`;
   const router = useRouter();
@@ -33,6 +33,7 @@ export default function PartyDetailsForm({
   const { scaleFont } = useFontScale();
   const inputStyle = makeInputStyle(formStyles, focusedField, errors);
   const focusHandlers = makeFocusHandlers(setFocusedField);
+  const fullNameLabelText = fullNameLabel || t('contact.fullName');
 
   const DISTRICT_ITEMS = [
     { label: t('address.districtBrunei'), value: 'Brunei' },
@@ -44,7 +45,7 @@ export default function PartyDetailsForm({
   if (viewOnly) {
     return (
       <Card icon={icon} title={title}>
-        <ViewOnlyRow label={t('contact.fullName')} value={values.fullName} />
+        <ViewOnlyRow label={fullNameLabelText} value={values.fullName} />
         <ViewOnlyRow
           label={t('order.summary.address')}
           value={`${values.houseunitno}, ${values.jalan}, ${values.kampong}${values.simpang ? `, ${values.simpang}` : ''}, ${values.district}, ${values.postalcode}`}
@@ -61,8 +62,8 @@ export default function PartyDetailsForm({
 
   return (
     <Card icon={icon} title={title}>
-      <Field label={t('contact.fullName')} required error={errors.fullName} fieldKey={fk('fullName')} registerRef={registerFieldRef}>
-        <TextInput accessibilityLabel={t('contact.fullName')} style={inputStyle('fullName')} value={values.fullName} onChangeText={(v) => onChange('fullName', v)} {...focusHandlers('fullName')} />
+      <Field label={fullNameLabelText} required error={errors.fullName} fieldKey={fk('fullName')} registerRef={registerFieldRef}>
+        <TextInput accessibilityLabel={fullNameLabelText} style={inputStyle('fullName')} value={values.fullName} onChangeText={(v) => onChange('fullName', v)} {...focusHandlers('fullName')} />
       </Field>
 
       {addressLocked && (

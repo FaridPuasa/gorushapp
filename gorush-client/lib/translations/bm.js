@@ -351,6 +351,8 @@ export default {
     productLocalDelivery: 'Penghantaran Tempatan',
     productCrossBorder: 'Perkhidmatan Rentas Sempadan Limbang',
     yourDetails: 'Butiran Anda',
+    patientDetails: 'Butiran Pesakit',
+    patientFullName: 'Nama Penuh Pesakit',
     senderDetails: 'Butiran Penghantar',
     receiverDetails: 'Butiran Penerima',
     updateInEditProfile: 'Kemaskini di Sunting Profil',
