@@ -127,6 +127,13 @@ async function insertOrder(row, historyEntry) {
                 create: [{
                     statusHistory: historyEntry.statusHistory,
                     dateUpdated: parseGorushIso(historyEntry.dateUpdated),
+                    // 2026-09-25: this always used to be omitted, leaving
+                    // every real website order's first history entry with
+                    // no lastLocation at all - every other order-creation
+                    // path in grfmxstatusupdate sets 'Origin' for this same
+                    // "Info Received" stage (this function is only ever
+                    // called at order creation, so it's always that stage).
+                    lastLocation: historyEntry.lastLocation ?? 'Origin',
                 }],
             },
         },
