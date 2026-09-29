@@ -126,6 +126,7 @@ export default {
     androidManualStep1Body: 'Di penjuru kanan atas pelayar anda.',
     androidManualStep2: '2. Ketik "Add to Home screen" atau "Install app"',
     androidManualStep2Body: 'Sahkan, dan ikon Go Rush akan muncul di Skrin Utama seperti aplikasi lain.',
+    androidPromptDismissedHint: 'Tidak berjaya pasang? Muat semula halaman ini untuk cuba butang Install App sekali lagi.',
     iosTitle: 'Untuk iPhone/iPad',
     iosNonSafariNote: '⚠️ Sila buka halaman ini dalam Safari untuk memasang - pelayar lain di iPhone/iPad (Chrome, Firefox, Edge, dll.) tidak boleh menambah Go Rush ke Skrin Utama sebagai aplikasi sebenar.',
     iosStep1: '1. Ketik ikon Share',

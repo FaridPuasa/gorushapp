@@ -35,6 +35,12 @@ export default function GetTheApp() {
     // and the manual steps below (always shown) are what they use
     // instead. Nobody is stuck without SOME working path.
     const [canAutoInstall, setCanAutoInstall] = useState(false);
+    // A BeforeInstallPromptEvent can only ever be used once (accept OR
+    // cancel) - the browser invalidates it either way, and won't offer a
+    // fresh one on the same page load. This just tracks "they tried and
+    // it's gone now" so the copy below can explain why the button vanished
+    // instead of it just silently disappearing.
+    const [promptDismissed, setPromptDismissed] = useState(false);
 
     useEffect(() => {
         setPlatform(detectPlatform());
@@ -55,6 +61,7 @@ export default function GetTheApp() {
         }
         window.__deferredInstallPrompt = null;
         setCanAutoInstall(false);
+        if (choice?.outcome === 'dismissed') setPromptDismissed(true);
     }, []);
 
     const pageUrl = typeof window !== 'undefined' ? window.location.href : 'https://gorushbn.com/get-the-app';
@@ -84,6 +91,11 @@ export default function GetTheApp() {
                                         <Text style={styles.installButtonText}>{t('getApp.androidInstallButton')}</Text>
                                     </Pressable>
                                 </View>
+                            )}
+                            {promptDismissed && !canAutoInstall && (
+                                <Text style={[formStyles.bodyText, { color: colors.textMuted, marginBottom: 12, textAlign: 'center' }]}>
+                                    {t('getApp.androidPromptDismissedHint')}
+                                </Text>
                             )}
                             <Text style={[formStyles.fieldHint, { marginTop: canAutoInstall ? 20 : 0, marginBottom: 12 }]}>
                                 {t('getApp.androidManualEyebrow')}

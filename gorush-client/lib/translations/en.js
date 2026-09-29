@@ -126,6 +126,7 @@ export default {
     androidManualStep1Body: 'In the top-right corner of your browser.',
     androidManualStep2: '2. Tap "Add to Home screen" or "Install app"',
     androidManualStep2Body: 'Confirm, and the Go Rush icon appears on your Home Screen like any other app.',
+    androidPromptDismissedHint: 'Didn\'t install? Refresh this page to try the one-tap Install App button again.',
     iosTitle: 'For iPhone/iPad',
     iosNonSafariNote: '⚠️ Please open this page in Safari to install - other browsers on iPhone/iPad (Chrome, Firefox, Edge, etc.) can\'t add Go Rush to your Home Screen as a real app.',
     iosStep1: '1. Tap the Share icon',
