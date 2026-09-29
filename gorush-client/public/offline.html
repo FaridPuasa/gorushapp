@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Go Rush - Offline</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+    <meta name="theme-color" content="#1B75BB" />
+    <style>
+      html, body {
+        height: 100%;
+        margin: 0;
+        font-family: -apple-system, Roboto, Helvetica, Arial, sans-serif;
+        background: #f4f7fa;
+        color: #1c2733;
+      }
+      .wrap {
+        min-height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 24px;
+      }
+      img { width: 80px; height: 80px; margin-bottom: 16px; }
+      h1 { font-size: 20px; margin: 0 0 8px; }
+      p { font-size: 14px; color: #5b6b7c; margin: 0 0 20px; max-width: 320px; }
+      button {
+        background: #1b75bc;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-size: 15px;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <img src="/icon-192.png" alt="Go Rush" />
+      <h1>You're offline</h1>
+      <p>Check your internet connection and try again.</p>
+      <button onclick="window.location.reload()">Retry</button>
+    </div>
+  </body>
+</html>

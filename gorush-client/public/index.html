@@ -10,6 +10,9 @@
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="theme-color" content="#1B75BB" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Go Rush" />
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
       /* These styles make the body full-height */
@@ -34,6 +37,42 @@
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
       gtag('config', 'G-10LQXBS0FF', { send_page_view: false });
+    </script>
+
+    <!-- PWA install support (2026-09-29). Feature-detected/wrapped so any
+         browser too old to support one of these pieces just skips it -
+         nothing here is required for the site itself to work, it's purely
+         additive (progressive enhancement), so no version/browser is ever
+         left with a broken page because of this. -->
+    <script>
+      // Registers the service worker (unlocks "installable" standalone-app
+      // behavior on Chromium browsers). Safe no-op on any browser without
+      // service worker support at all (old Safari/old Android WebView).
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', function () {
+          navigator.serviceWorker.register('/sw.js').catch(function (err) {
+            console.warn('Service worker registration failed:', err);
+          });
+        });
+      }
+
+      // Chrome's install prompt can fire before the React app has even
+      // mounted (or the person may never visit the Get the App page at
+      // all) - captured here, once, for as long as the page stays open, so
+      // the Get the App page can trigger it later on demand instead of
+      // relying on Chrome's own address-bar icon.
+      window.addEventListener('beforeinstallprompt', function (e) {
+        e.preventDefault();
+        window.__deferredInstallPrompt = e;
+      });
+
+      // Fires once the install actually completes (from either Chrome's own
+      // UI or our triggered prompt) - not available on iOS Safari at all,
+      // which is fine, this is purely a nice-to-have analytics signal.
+      window.addEventListener('appinstalled', function () {
+        window.__deferredInstallPrompt = null;
+        if (window.gtag) window.gtag('event', 'pwa_installed');
+      });
     </script>
   </head>
 

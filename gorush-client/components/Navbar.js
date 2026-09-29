@@ -50,6 +50,7 @@ export default function Navbar() {
     { label: t('nav.deliveryPrice'), href: '/delivery-rates', icon: '🚚' },
     { label: t('nav.calculator'), href: '/local-delivery-calculator', icon: '🧮' },
     { label: t('nav.careers'), href: '/careers', icon: '💼' },
+    { label: t('nav.getApp'), href: '/get-the-app', icon: '📲' },
     { label: t('footer.privacyPolicy'), href: '/privacy-policy', icon: '🔒' },
   ];
 
@@ -187,6 +188,10 @@ export default function Navbar() {
                   onClose={closeAll}
                   align="right"
                 />
+
+                <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/get-the-app" onPress={() => goTo('/get-the-app')}>
+                  <Text style={styles.navText}>📲 {t('nav.getApp')}</Text>
+                </AnimatedPressable>
 
                 {!loading && (
                   isGuest ? (

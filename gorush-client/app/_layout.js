@@ -10,6 +10,7 @@ import { LanguageProvider } from '../context/LanguageContext';
 import { FontScaleProvider } from '../context/FontScaleContext';
 import Navbar from '../components/Navbar';
 import AnnouncementBar from '../components/AnnouncementBar';
+import InstallNudgeBanner from '../components/InstallNudgeBanner';
 
 // The app has its own Small/Regular/Large text-size setting (FontScaleContext), so it
 // should be the only thing controlling text size - without this, RN's default of
@@ -111,6 +112,7 @@ function AppShell() {
       <JpmcAppointmentGuard />
       <AnalyticsPageViews />
       <AnnouncementBar />
+      <InstallNudgeBanner />
       <Navbar />
       <Slot />
     </View>
