@@ -18,8 +18,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/smallgorushlogo.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/adaptive-icon-foreground.png",
+        "backgroundColor": "#1B75BB"
       },
       "edgeToEdgeEnabled": true
     },
