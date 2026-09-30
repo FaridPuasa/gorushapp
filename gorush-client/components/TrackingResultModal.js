@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '../context/ThemeContext';
@@ -21,6 +21,14 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
   const isMobile = useIsMobile();
   const currentStatusStyle = getStatusStyle(currentStatusValue, colors);
   const fallbackLabel = t('home.tracking.statusUpdate');
+  const [legendOpen, setLegendOpen] = useState(false);
+
+  // On mobile the vertical stepper reads top-to-bottom, so showing it oldest-first means
+  // the status the user actually cares about (the latest one) is buried at the bottom of
+  // a long scroll. Reversing just the mobile display order surfaces it immediately, while
+  // isCurrent still tracks the real latest entry (index 0 once reversed) rather than the
+  // last position in the (now-backwards) array.
+  const displayEntries = isMobile ? [...historyEntries].reverse() : historyEntries;
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -40,16 +48,20 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
             </AnimatedPressable>
           </View>
 
-          <View style={{ paddingHorizontal: 20, paddingVertical: 18, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}>
-            <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginBottom: 6 }}>{t('home.tracking.currentStatus')}</Text>
-            <Text style={{ fontSize: scaleFont(38), marginBottom: 6 }}>{currentStatusStyle.icon}</Text>
-            <Text style={{ fontSize: scaleFont(20), fontWeight: 'bold', color: currentStatusStyle.color }}>
-              {displayStatusLabel(currentStatusValue, t)}
-            </Text>
-          </View>
+          {!isMobile && (
+            <View style={{ paddingHorizontal: 20, paddingVertical: 18, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}>
+              <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginBottom: 6 }}>{t('home.tracking.currentStatus')}</Text>
+              <Text style={{ fontSize: scaleFont(38), marginBottom: 6 }}>{currentStatusStyle.icon}</Text>
+              <Text style={{ fontSize: scaleFont(20), fontWeight: 'bold', color: currentStatusStyle.color }}>
+                {displayStatusLabel(currentStatusValue, t)}
+              </Text>
+            </View>
+          )}
 
           <ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
-            <Text style={{ fontSize: scaleFont(14), fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12, paddingHorizontal: 20, textAlign: 'center' }}>{t('home.tracking.historyTitle')}</Text>
+            <Text style={{ fontSize: scaleFont(14), fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12, paddingHorizontal: 20, textAlign: 'center' }}>
+              {isMobile ? t('home.tracking.currentStatus') : t('home.tracking.historyTitle')}
+            </Text>
             {historyEntries.length === 0 ? (
               <Text style={{ fontSize: scaleFont(13), color: colors.textMuted, paddingHorizontal: 20, textAlign: 'center' }}>{t('home.tracking.noHistory')}</Text>
             ) : isMobile ? (
@@ -57,12 +69,12 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
               // stepper (top to bottom, connected by a line) reads the same way a delivery
               // app's own tracking screen normally does on mobile.
               <View style={{ paddingHorizontal: 20, alignItems: 'center' }}>
-                {historyEntries.map((entry, i) => {
+                {displayEntries.map((entry, i) => {
                   const status = canonicalStatus(entry, fallbackLabel);
                   const label = displayStatusLabel(status, t);
                   const reason = historyReason(entry);
                   const dotColor = getStatusStyle(status, colors).color;
-                  const isCurrent = i === historyEntries.length - 1;
+                  const isCurrent = i === 0;
                   return (
                     <View key={entry._id || i} style={{ flexDirection: 'row', width: '100%', maxWidth: 260 }}>
                       <View style={{ width: 24, alignItems: 'center' }}>
@@ -71,7 +83,7 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
                           backgroundColor: dotColor,
                           borderWidth: isCurrent ? 2 : 0, borderColor: colors.card,
                         }} />
-                        {i < historyEntries.length - 1 && (
+                        {i < displayEntries.length - 1 && (
                           <View style={{ width: 2, flex: 1, backgroundColor: colors.border, marginTop: 4 }} />
                         )}
                       </View>
@@ -136,8 +148,15 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
             )}
 
             <View style={{ paddingHorizontal: 20, marginTop: 18, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border }}>
-              <Text style={{ fontSize: scaleFont(12), fontWeight: 'bold', color: colors.textPrimary, marginBottom: 10, textAlign: 'center' }}>{t('home.tracking.legendTitle')}</Text>
-              {isMobile ? (
+              <AnimatedPressable
+                scaleTo={1.02}
+                onPress={() => setLegendOpen((v) => !v)}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 4 }}
+              >
+                <Text style={{ fontSize: scaleFont(12), fontWeight: 'bold', color: colors.textPrimary, textAlign: 'center' }}>{t('home.tracking.legendToggle')}</Text>
+                <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginLeft: 6 }}>{legendOpen ? '▴' : '▾'}</Text>
+              </AnimatedPressable>
+              {legendOpen && (isMobile ? (
                 // Same table-row treatment as desktop (icon, label, description, divider) —
                 // just one column instead of two, since a phone-width screen has no room to
                 // split it in half.
@@ -200,7 +219,7 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
                     </View>
                   ))}
                 </View>
-              )}
+              ))}
             </View>
           </ScrollView>
         </SafeAreaView>

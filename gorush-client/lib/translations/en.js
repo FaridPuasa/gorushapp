@@ -115,6 +115,7 @@ export default {
     menu: 'Menu',
     information: 'Information',
     getApp: 'Get the App',
+    getAppDesc: 'Install Go Rush on your phone',
   },
   getApp: {
     pageTitle: 'Get the Go Rush App',
@@ -187,6 +188,7 @@ export default {
       close: 'Close',
       failedDeliveryLabel: 'Failed Delivery',
       legendTitle: 'What each status means',
+      legendToggle: 'What do these statuses mean?',
       statusDescriptions: {
         'Info Received': "We've received your order details and are getting it ready.",
         'Custom Clearance': 'Your parcel is going through customs clearance.',

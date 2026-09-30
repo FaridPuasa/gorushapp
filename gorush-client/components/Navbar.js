@@ -40,6 +40,7 @@ export default function Navbar() {
     { label: t('nav.calculator'), description: t('nav.calculatorDesc'), href: '/local-delivery-calculator', icon: 'calculator-outline' },
     { label: t('nav.careers'), description: t('nav.careersDesc'), href: '/careers', icon: 'people-outline' },
     { label: t('nav.contactUs'), description: t('nav.contactUsDesc'), href: '/contact-us', icon: 'call-outline' },
+    { label: t('nav.getApp'), description: t('nav.getAppDesc'), href: '/get-the-app', icon: 'phone-portrait-outline' },
   ];
 
   // Same set as COMPANY_ITEMS plus Privacy Policy (previously footer-only), minus Contact
@@ -188,10 +189,6 @@ export default function Navbar() {
                   onClose={closeAll}
                   align="right"
                 />
-
-                <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/get-the-app" onPress={() => goTo('/get-the-app')}>
-                  <Text style={styles.navText}>📲 {t('nav.getApp')}</Text>
-                </AnimatedPressable>
 
                 {!loading && (
                   isGuest ? (

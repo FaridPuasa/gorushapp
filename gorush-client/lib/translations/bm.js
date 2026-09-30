@@ -115,6 +115,7 @@ export default {
     menu: 'Menu',
     information: 'Maklumat',
     getApp: 'Dapatkan Aplikasi',
+    getAppDesc: 'Pasang Go Rush pada telefon anda',
   },
   getApp: {
     pageTitle: 'Dapatkan Aplikasi Go Rush',
@@ -187,6 +188,7 @@ export default {
       close: 'Tutup',
       failedDeliveryLabel: 'Penghantaran Gagal',
       legendTitle: 'Maksud setiap status',
+      legendToggle: 'Apakah maksud status ini?',
       statusDescriptions: {
         'Info Received': 'Kami telah menerima butiran tempahan anda dan sedang menyediakannya.',
         'Custom Clearance': 'Bungkusan anda sedang menjalani proses kastam.',
