@@ -73,22 +73,44 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
                   const status = canonicalStatus(entry, fallbackLabel);
                   const label = displayStatusLabel(status, t);
                   const reason = historyReason(entry);
-                  const dotColor = getStatusStyle(status, colors).color;
+                  const statusStyle = getStatusStyle(status, colors);
                   const isCurrent = i === 0;
+                  // The latest status (now first, since mobile shows newest-on-top) gets its
+                  // own big icon badge instead of a plain dot — replacing the old separate
+                  // "Current Status" block the timeline made redundant, without adding back a
+                  // second block above the timeline.
                   return (
-                    <View key={entry._id || i} style={{ flexDirection: 'row', width: '100%', maxWidth: 260 }}>
-                      <View style={{ width: 24, alignItems: 'center' }}>
-                        <View style={{
-                          width: isCurrent ? 16 : 12, height: isCurrent ? 16 : 12, borderRadius: 8,
-                          backgroundColor: dotColor,
-                          borderWidth: isCurrent ? 2 : 0, borderColor: colors.card,
-                        }} />
-                        {i < displayEntries.length - 1 && (
+                    <View
+                      key={entry._id || i}
+                      style={{
+                        flexDirection: 'row',
+                        width: '100%',
+                        maxWidth: 260,
+                        ...(isCurrent
+                          ? {
+                              backgroundColor: colors.background,
+                              borderRadius: 16,
+                              borderWidth: 1,
+                              borderColor: statusStyle.color,
+                              paddingVertical: 12,
+                              paddingHorizontal: 12,
+                              marginBottom: 16,
+                            }
+                          : null),
+                      }}
+                    >
+                      <View style={{ width: isCurrent ? 40 : 24, alignItems: 'center' }}>
+                        {isCurrent ? (
+                          <Text style={{ fontSize: scaleFont(28) }}>{statusStyle.icon}</Text>
+                        ) : (
+                          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: statusStyle.color }} />
+                        )}
+                        {!isCurrent && i < displayEntries.length - 1 && (
                           <View style={{ width: 2, flex: 1, backgroundColor: colors.border, marginTop: 4 }} />
                         )}
                       </View>
-                      <View style={{ flex: 1, marginLeft: 10, paddingBottom: 18 }}>
-                        <Text style={{ fontSize: scaleFont(13), fontWeight: isCurrent ? '700' : '600', color: colors.textPrimary }}>
+                      <View style={{ flex: 1, marginLeft: 10, paddingBottom: isCurrent ? 0 : 18, justifyContent: 'center' }}>
+                        <Text style={{ fontSize: isCurrent ? scaleFont(17) : scaleFont(13), fontWeight: isCurrent ? '700' : '600', color: isCurrent ? statusStyle.color : colors.textPrimary }}>
                           {label}
                         </Text>
                         <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2 }}>
