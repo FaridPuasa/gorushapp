@@ -76,52 +76,56 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
                   const statusStyle = getStatusStyle(status, colors);
                   const isCurrent = i === 0;
                   // The latest status (now first, since mobile shows newest-on-top) gets its
-                  // own big icon badge instead of a plain dot — replacing the old separate
-                  // "Current Status" block the timeline made redundant, without adding back a
-                  // second block above the timeline.
+                  // own highlighted card with a big icon — replacing the old separate
+                  // "Current Status" block the timeline made redundant. The dot itself stays
+                  // in the same left-hand column as every other step, so the connecting line
+                  // still visibly runs down into it; only the content to its right changes.
                   return (
-                    <View
-                      key={entry._id || i}
-                      style={{
-                        flexDirection: 'row',
-                        width: '100%',
-                        maxWidth: 260,
-                        ...(isCurrent
-                          ? {
-                              backgroundColor: colors.background,
-                              borderRadius: 16,
-                              borderWidth: 1,
-                              borderColor: statusStyle.color,
-                              paddingVertical: 12,
-                              paddingHorizontal: 12,
-                              marginBottom: 16,
-                            }
-                          : null),
-                      }}
-                    >
-                      <View style={{ width: isCurrent ? 40 : 24, alignItems: 'center' }}>
-                        {isCurrent ? (
-                          <Text style={{ fontSize: scaleFont(28) }}>{statusStyle.icon}</Text>
-                        ) : (
-                          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: statusStyle.color }} />
-                        )}
-                        {!isCurrent && i < displayEntries.length - 1 && (
+                    <View key={entry._id || i} style={{ flexDirection: 'row', width: '100%', maxWidth: 260 }}>
+                      <View style={{ width: 24, alignItems: 'center' }}>
+                        <View style={{
+                          width: isCurrent ? 16 : 12, height: isCurrent ? 16 : 12, borderRadius: 8,
+                          backgroundColor: statusStyle.color,
+                          borderWidth: isCurrent ? 2 : 0, borderColor: colors.card,
+                        }} />
+                        {i < displayEntries.length - 1 && (
                           <View style={{ width: 2, flex: 1, backgroundColor: colors.border, marginTop: 4 }} />
                         )}
                       </View>
-                      <View style={{ flex: 1, marginLeft: 10, paddingBottom: isCurrent ? 0 : 18, justifyContent: 'center' }}>
-                        <Text style={{ fontSize: isCurrent ? scaleFont(17) : scaleFont(13), fontWeight: isCurrent ? '700' : '600', color: isCurrent ? statusStyle.color : colors.textPrimary }}>
-                          {label}
-                        </Text>
-                        <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2 }}>
-                          {formatHistoryDate(entry.dateUpdated)}
-                        </Text>
-                        {reason && (
-                          <Text style={{ fontSize: scaleFont(11), color: colors.error, marginTop: 4, fontStyle: 'italic' }}>
-                            {reason}
+                      {isCurrent ? (
+                        <View style={{
+                          flex: 1, marginLeft: 10, marginTop: -6, marginBottom: 16, alignItems: 'center',
+                          backgroundColor: colors.background, borderRadius: 16, borderWidth: 1, borderColor: statusStyle.color,
+                          paddingVertical: 14, paddingHorizontal: 12,
+                        }}>
+                          <Text style={{ fontSize: scaleFont(28), marginBottom: 4 }}>{statusStyle.icon}</Text>
+                          <Text style={{ fontSize: scaleFont(17), fontWeight: '700', color: statusStyle.color, textAlign: 'center' }}>
+                            {label}
                           </Text>
-                        )}
-                      </View>
+                          <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2, textAlign: 'center' }}>
+                            {formatHistoryDate(entry.dateUpdated)}
+                          </Text>
+                          {reason && (
+                            <Text style={{ fontSize: scaleFont(11), color: colors.error, marginTop: 4, fontStyle: 'italic', textAlign: 'center' }}>
+                              {reason}
+                            </Text>
+                          )}
+                        </View>
+                      ) : (
+                        <View style={{ flex: 1, marginLeft: 10, paddingBottom: 18, justifyContent: 'center' }}>
+                          <Text style={{ fontSize: scaleFont(13), fontWeight: '600', color: colors.textPrimary }}>
+                            {label}
+                          </Text>
+                          <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2 }}>
+                            {formatHistoryDate(entry.dateUpdated)}
+                          </Text>
+                          {reason && (
+                            <Text style={{ fontSize: scaleFont(11), color: colors.error, marginTop: 4, fontStyle: 'italic' }}>
+                              {reason}
+                            </Text>
+                          )}
+                        </View>
+                      )}
                     </View>
                   );
                 })}
