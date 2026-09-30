@@ -19,7 +19,6 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
   const isMobile = useIsMobile();
-  const currentStatusStyle = getStatusStyle(currentStatusValue, colors);
   const fallbackLabel = t('home.tracking.statusUpdate');
   const [legendOpen, setLegendOpen] = useState(false);
 
@@ -47,16 +46,6 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
               <Text style={{ fontSize: scaleFont(20), color: colors.textPrimary }}>✕</Text>
             </AnimatedPressable>
           </View>
-
-          {!isMobile && (
-            <View style={{ paddingHorizontal: 20, paddingVertical: 18, alignItems: 'center', borderBottomWidth: 1, borderBottomColor: colors.border }}>
-              <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginBottom: 6 }}>{t('home.tracking.currentStatus')}</Text>
-              <Text style={{ fontSize: scaleFont(38), marginBottom: 6 }}>{currentStatusStyle.icon}</Text>
-              <Text style={{ fontSize: scaleFont(20), fontWeight: 'bold', color: currentStatusStyle.color }}>
-                {displayStatusLabel(currentStatusValue, t)}
-              </Text>
-            </View>
-          )}
 
           <ScrollView contentContainerStyle={{ paddingVertical: 16 }}>
             <Text style={{ fontSize: scaleFont(14), fontWeight: 'bold', color: colors.textPrimary, marginBottom: 12, paddingHorizontal: 20, textAlign: 'center' }}>
@@ -141,26 +130,49 @@ export default function TrackingResultModal({ visible, trackingNumber, historyEn
                     const status = canonicalStatus(entry, fallbackLabel);
                     const label = displayStatusLabel(status, t);
                     const reason = historyReason(entry);
-                    const dotColor = getStatusStyle(status, colors).color;
+                    const statusStyle = getStatusStyle(status, colors);
                     const isCurrent = i === historyEntries.length - 1;
                     return (
                       <View key={entry._id || i} style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                         <View style={{ width: 150, alignItems: 'center' }}>
                           <View style={{
                             width: isCurrent ? 16 : 12, height: isCurrent ? 16 : 12, borderRadius: 8,
-                            backgroundColor: dotColor,
+                            backgroundColor: statusStyle.color,
                             borderWidth: isCurrent ? 2 : 0, borderColor: colors.card,
                           }} />
-                          <Text style={{ fontSize: scaleFont(13), fontWeight: isCurrent ? '700' : '600', color: colors.textPrimary, textAlign: 'center', marginTop: 8 }}>
-                            {label}
-                          </Text>
-                          <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>
-                            {formatHistoryDate(entry.dateUpdated)}
-                          </Text>
-                          {reason && (
-                            <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>
-                              {reason}
-                            </Text>
+                          {isCurrent ? (
+                            <View style={{
+                              marginTop: 8, alignItems: 'center', width: 140,
+                              backgroundColor: colors.background, borderRadius: 16, borderWidth: 1, borderColor: statusStyle.color,
+                              paddingVertical: 12, paddingHorizontal: 10,
+                            }}>
+                              <Text style={{ fontSize: scaleFont(24), marginBottom: 4 }}>{statusStyle.icon}</Text>
+                              <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: statusStyle.color, textAlign: 'center' }}>
+                                {label}
+                              </Text>
+                              <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>
+                                {formatHistoryDate(entry.dateUpdated)}
+                              </Text>
+                              {reason && (
+                                <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>
+                                  {reason}
+                                </Text>
+                              )}
+                            </View>
+                          ) : (
+                            <>
+                              <Text style={{ fontSize: scaleFont(13), fontWeight: '600', color: colors.textPrimary, textAlign: 'center', marginTop: 8 }}>
+                                {label}
+                              </Text>
+                              <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>
+                                {formatHistoryDate(entry.dateUpdated)}
+                              </Text>
+                              {reason && (
+                                <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>
+                                  {reason}
+                                </Text>
+                              )}
+                            </>
                           )}
                         </View>
                         {i < historyEntries.length - 1 && (
