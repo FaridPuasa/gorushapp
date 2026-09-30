@@ -194,6 +194,7 @@ export default {
         'Custom Clearance': 'Your parcel is going through customs clearance.',
         'On Hold': "Your parcel's progress is temporarily paused — it'll resume shortly.",
         'At Warehouse': 'Your parcel has arrived at our warehouse.',
+        'In Sorting Area': "Your parcel is being sorted and arranged for delivery or self-collection.",
         'Out For Delivery': "It's on the road — your driver is on the way.",
         'Return to Warehouse': "A delivery attempt didn't go through, so it's back at our warehouse for the next attempt.",
         'Completed': 'Delivered successfully.',

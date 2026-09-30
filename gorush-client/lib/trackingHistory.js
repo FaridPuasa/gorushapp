@@ -134,13 +134,11 @@ export function truncateAfterCompleted(entries, fallbackLabel) {
   return idx === -1 ? entries : entries.slice(0, idx + 1);
 }
 
-// Based on the Order schema's currentStatus enum (gorush-server/models/Order.js), minus
-// "In Sorting Area" — that value exists in the schema but real orders' history never actually
-// logs it, so it would only ever show up as an always-empty legend row — plus three real
-// Detrack/legacy statuses that show up on real shared-collection orders but aren't in our own
-// schema: "Custom Clearance" and "On Hold" (both pre-warehouse holdups, so they sit before
+// Based on the Order schema's currentStatus enum (gorush-server/models/Order.js), plus three
+// real Detrack/legacy statuses that show up on real shared-collection orders but aren't in our
+// own schema: "Custom Clearance" and "On Hold" (both pre-warehouse holdups, so they sit before
 // "At Warehouse") and "Return to Warehouse".
-export const STATUS_ORDER = ['Info Received', 'Custom Clearance', 'On Hold', 'At Warehouse', 'Out For Delivery', 'Return to Warehouse', 'Completed', 'Failed'];
+export const STATUS_ORDER = ['Info Received', 'Custom Clearance', 'On Hold', 'At Warehouse', 'In Sorting Area', 'Out For Delivery', 'Return to Warehouse', 'Completed', 'Failed'];
 
 // Matched case-insensitively (and "return" by substring, since the exact real-world casing
 // of "Return to Warehouse" isn't guaranteed) rather than exact string equality, so a status
@@ -154,6 +152,9 @@ const STATUS_STYLE_RULES = [
   { test: (s) => s === 'completed', color: () => '#27ae60', icon: '✅' },
   { test: (s) => s === 'out for delivery', color: (c) => c.primary, icon: '🚚' },
   { test: (s) => s === 'at warehouse', color: (c) => c.tertiary, icon: '🏬' },
+  // Same color as "At Warehouse" — sorting happens at the warehouse too, so it reads as a
+  // continuation of that stage rather than a separate one.
+  { test: (s) => s.includes('sorting'), color: (c) => c.tertiary, icon: '🗂️' },
   // Same purple for both — a hue not used by any other status (tertiary/orange is already
   // "At Warehouse", so reusing it here would blur together with that on the timeline).
   { test: (s) => s === 'on hold', color: () => '#8e44ad', icon: '⏸️' },

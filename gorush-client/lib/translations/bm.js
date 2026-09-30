@@ -194,6 +194,7 @@ export default {
         'Custom Clearance': 'Bungkusan anda sedang menjalani proses kastam.',
         'On Hold': 'Kemajuan bungkusan anda buat sementara waktu tergendala — ia akan disambung semula tidak lama lagi.',
         'At Warehouse': 'Bungkusan anda telah tiba di gudang kami.',
+        'In Sorting Area': 'Bungkusan anda sedang disusun dan diatur untuk penghantaran atau pengambilan sendiri.',
         'Out For Delivery': 'Sedang dalam perjalanan — pemandu kami sedang menghantarnya.',
         'Return to Warehouse': 'Percubaan penghantaran tidak berjaya, jadi ia telah dikembalikan ke gudang kami untuk percubaan seterusnya.',
         'Completed': 'Berjaya dihantar.',
