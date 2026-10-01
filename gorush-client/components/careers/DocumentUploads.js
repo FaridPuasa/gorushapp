@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, View, Image } from 'react-native';
+import { Text, View, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { useFormStyles, Card, Field } from '../../lib/formPrimitives';
@@ -43,32 +43,46 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
   const formStyles = useFormStyles();
   const config = getApplicationTypeConfig(vacancy.applicationType);
   const [resumeError, setResumeError] = useState('');
+  // Tracks which specific picker is active (field name, or 'resume') - reading
+  // a large native file into base64 (readNativeDocumentAsBase64 especially)
+  // can take a visible moment with nothing shown previously while it ran.
+  const [pickingKey, setPickingKey] = useState(null);
 
   const pickImage = async (field) => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.5 });
-    if (!result.canceled && result.assets?.[0]?.base64) {
-      const asset = result.assets[0];
-      const mime = asset.mimeType || 'image/jpeg';
-      onChange(field, `data:${mime};base64,${stripDataUriPrefix(asset.base64)}`);
+    setPickingKey(field);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) return;
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.5 });
+      if (!result.canceled && result.assets?.[0]?.base64) {
+        const asset = result.assets[0];
+        const mime = asset.mimeType || 'image/jpeg';
+        onChange(field, `data:${mime};base64,${stripDataUriPrefix(asset.base64)}`);
+      }
+    } finally {
+      setPickingKey(null);
     }
   };
 
   const pickResume = async () => {
     setResumeError('');
-    const result = await DocumentPicker.getDocumentAsync({ type: RESUME_MIME_TYPES, base64: true });
-    if (result.canceled || !result.assets?.[0]) return;
-    const asset = result.assets[0];
-    if (asset.size && asset.size > MAX_FILE_BYTES) {
-      setResumeError(t('careers.fileTooLarge'));
-      return;
+    setPickingKey('resume');
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: RESUME_MIME_TYPES, base64: true });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      if (asset.size && asset.size > MAX_FILE_BYTES) {
+        setResumeError(t('careers.fileTooLarge'));
+        return;
+      }
+      const dataUri = asset.base64
+        ? `data:${asset.mimeType || 'application/octet-stream'};base64,${stripDataUriPrefix(asset.base64)}`
+        : await readNativeDocumentAsBase64(asset);
+      onChange('resumeCv', dataUri);
+      onChange('resumeCvName', asset.name);
+    } finally {
+      setPickingKey(null);
     }
-    const dataUri = asset.base64
-      ? `data:${asset.mimeType || 'application/octet-stream'};base64,${stripDataUriPrefix(asset.base64)}`
-      : await readNativeDocumentAsBase64(asset);
-    onChange('resumeCv', dataUri);
-    onChange('resumeCvName', asset.name);
   };
 
   return (
@@ -77,15 +91,15 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
         {values.icFront ? (
           <Image source={{ uri: values.icFront }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
         ) : null}
-        <AnimatedPressable scaleTo={1.04} style={formStyles.button} onPress={() => pickImage('icFront')}>
-          <Text style={formStyles.buttonText}>{values.icFront ? t('order.changeImage') : t('order.chooseImage')}</Text>
+        <AnimatedPressable scaleTo={1.04} style={[formStyles.button, pickingKey === 'icFront' && formStyles.buttonDisabled]} onPress={() => pickImage('icFront')} disabled={!!pickingKey}>
+          {pickingKey === 'icFront' ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>{values.icFront ? t('order.changeImage') : t('order.chooseImage')}</Text>}
         </AnimatedPressable>
       </Field>
 
       <Field label={t('careers.uploadResume')} required error={errors.resumeCv || resumeError} hint={t('careers.uploadResumeHint')} fieldKey="resumeCv" registerRef={registerFieldRef}>
         {values.resumeCvName ? <Text style={[formStyles.bodyText, { marginBottom: 10 }]}>📄 {values.resumeCvName}</Text> : null}
-        <AnimatedPressable scaleTo={1.04} style={formStyles.button} onPress={pickResume}>
-          <Text style={formStyles.buttonText}>{values.resumeCv ? t('careers.changeFile') : t('careers.chooseFile')}</Text>
+        <AnimatedPressable scaleTo={1.04} style={[formStyles.button, pickingKey === 'resume' && formStyles.buttonDisabled]} onPress={pickResume} disabled={!!pickingKey}>
+          {pickingKey === 'resume' ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>{values.resumeCv ? t('careers.changeFile') : t('careers.chooseFile')}</Text>}
         </AnimatedPressable>
       </Field>
 
@@ -95,8 +109,8 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
             {values.drivingLicenseFront ? (
               <Image source={{ uri: values.drivingLicenseFront }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
             ) : null}
-            <AnimatedPressable scaleTo={1.04} style={formStyles.button} onPress={() => pickImage('drivingLicenseFront')}>
-              <Text style={formStyles.buttonText}>{values.drivingLicenseFront ? t('order.changeImage') : t('order.chooseImage')}</Text>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.button, pickingKey === 'drivingLicenseFront' && formStyles.buttonDisabled]} onPress={() => pickImage('drivingLicenseFront')} disabled={!!pickingKey}>
+              {pickingKey === 'drivingLicenseFront' ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>{values.drivingLicenseFront ? t('order.changeImage') : t('order.chooseImage')}</Text>}
             </AnimatedPressable>
           </Field>
 
@@ -104,8 +118,8 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
             {values.drivingLicenseBack ? (
               <Image source={{ uri: values.drivingLicenseBack }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
             ) : null}
-            <AnimatedPressable scaleTo={1.04} style={formStyles.button} onPress={() => pickImage('drivingLicenseBack')}>
-              <Text style={formStyles.buttonText}>{values.drivingLicenseBack ? t('order.changeImage') : t('order.chooseImage')}</Text>
+            <AnimatedPressable scaleTo={1.04} style={[formStyles.button, pickingKey === 'drivingLicenseBack' && formStyles.buttonDisabled]} onPress={() => pickImage('drivingLicenseBack')} disabled={!!pickingKey}>
+              {pickingKey === 'drivingLicenseBack' ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>{values.drivingLicenseBack ? t('order.changeImage') : t('order.chooseImage')}</Text>}
             </AnimatedPressable>
           </Field>
         </>

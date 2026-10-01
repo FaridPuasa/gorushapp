@@ -2,7 +2,8 @@ import React, { useMemo, useRef, useEffect, forwardRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
 import Head from 'expo-router/head';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons, FontAwesome5 } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CONTROL_HEIGHT, CONTENT_MAX_WIDTH, BOTTOM_NAV_HEIGHT } from './theme';
 import { useIsMobile, isMobileWidth } from './responsive';
@@ -274,17 +275,22 @@ export function SaveCancelRow({ onSave, onCancel, saving, saveLabel }) {
   );
 }
 
-export function DeleteConfirm({ onConfirm, onCancel }) {
+// `deleting` (optional) - pass a boolean while the delete request is in
+// flight so both buttons disable and "Yes, delete" shows a spinner instead of
+// staying tappable for the whole round-trip (was previously un-gated at every
+// call site, risking a double-delete on a slow connection/double-tap).
+export function DeleteConfirm({ onConfirm, onCancel, deleting }) {
   const formStyles = useFormStyles();
   const { colors } = useTheme();
   const { t } = useLanguage();
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
       <Text style={{ fontSize: formStyles.fieldError.fontSize + 1, color: colors.error, fontWeight: '600', marginRight: 12 }}>{t('common.deleteThis')}</Text>
-      <AnimatedPressable scaleTo={1.06} onPress={onConfirm} style={{ marginRight: 14 }}>
+      <AnimatedPressable scaleTo={1.06} onPress={onConfirm} disabled={deleting} style={{ marginRight: 14, opacity: deleting ? 0.6 : 1, flexDirection: 'row', alignItems: 'center' }}>
+        {deleting ? <ActivityIndicator size="small" color={colors.error} style={{ marginRight: 6 }} /> : null}
         <Text style={{ color: colors.error, fontWeight: '700', fontSize: formStyles.fieldError.fontSize + 1 }}>{t('common.yesDelete')}</Text>
       </AnimatedPressable>
-      <AnimatedPressable scaleTo={1.06} onPress={onCancel}>
+      <AnimatedPressable scaleTo={1.06} onPress={onCancel} disabled={deleting} style={{ opacity: deleting ? 0.6 : 1 }}>
         <Text style={{ color: formStyles.subtitle.color, fontWeight: '600', fontSize: formStyles.fieldError.fontSize + 1 }}>{t('common.cancel')}</Text>
       </AnimatedPressable>
     </View>

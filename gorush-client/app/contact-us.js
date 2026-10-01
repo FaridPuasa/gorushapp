@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text, View, Linking, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { PageScroll, Card, useFormStyles, SocialIcon } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import { useTheme } from '../context/ThemeContext';

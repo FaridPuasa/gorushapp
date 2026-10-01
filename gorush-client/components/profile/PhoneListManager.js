@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput } from 'react-native';
+import { View, Text, TextInput, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Card, useFormStyles, SaveCancelRow, DeleteConfirm } from '../../lib/formPrimitives';
 import { COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber } from '../../lib/validators';
@@ -21,6 +21,8 @@ export default function PhoneListManager({ title, icon, items, valueKey, support
   const [localNumber, setLocalNumber] = useState('');
   const [formError, setFormError] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [settingDefaultId, setSettingDefaultId] = useState(null);
   const [error, setError] = useState(null);
 
   const openEdit = (item) => {
@@ -63,20 +65,26 @@ export default function PhoneListManager({ title, icon, items, valueKey, support
 
   const handleDelete = async (id) => {
     setError(null);
-    setConfirmingId(null);
+    setDeletingId(id);
     try {
       await onDelete(id);
+      setConfirmingId(null);
     } catch (err) {
       setError(err.response?.data?.error || t('editProfile.phoneRemoveError'));
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleSetDefault = async (id) => {
     setError(null);
+    setSettingDefaultId(id);
     try {
       await onSetDefault(id);
     } catch (err) {
       setError(err.response?.data?.error || t('editProfile.phoneDefaultError'));
+    } finally {
+      setSettingDefaultId(null);
     }
   };
 
@@ -120,7 +128,7 @@ export default function PhoneListManager({ title, icon, items, valueKey, support
             renderForm()
           ) : confirmingId === item._id ? (
             <View style={{ alignItems: isMobile ? 'center' : 'flex-start' }}>
-              <DeleteConfirm onConfirm={() => handleDelete(item._id)} onCancel={() => setConfirmingId(null)} />
+              <DeleteConfirm onConfirm={() => handleDelete(item._id)} onCancel={() => setConfirmingId(null)} deleting={deletingId === item._id} />
             </View>
           ) : (
             <View style={isMobile
@@ -138,7 +146,8 @@ export default function PhoneListManager({ title, icon, items, valueKey, support
                   <Text style={{ color: formStyles.button.backgroundColor, fontWeight: '600', fontSize: scaleFont(13) }}>{t('common.edit')}</Text>
                 </AnimatedPressable>
                 {supportsDefault && !item.isDefault && (
-                  <AnimatedPressable onPress={() => handleSetDefault(item._id)} style={{ marginRight: 14 }} scaleTo={1.12}>
+                  <AnimatedPressable onPress={() => handleSetDefault(item._id)} disabled={settingDefaultId === item._id} style={{ marginRight: 14, flexDirection: 'row', alignItems: 'center', opacity: settingDefaultId === item._id ? 0.6 : 1 }} scaleTo={1.12}>
+                    {settingDefaultId === item._id ? <ActivityIndicator size="small" color={formStyles.button.backgroundColor} style={{ marginRight: 6 }} /> : null}
                     <Text style={{ color: formStyles.button.backgroundColor, fontWeight: '600', fontSize: scaleFont(13) }}>{t('common.setDefault')}</Text>
                   </AnimatedPressable>
                 )}

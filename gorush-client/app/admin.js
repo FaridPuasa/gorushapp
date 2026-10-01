@@ -4,7 +4,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
 import { WebView } from 'react-native-webview';
-import { MaterialIcons } from '@expo/vector-icons';
+import MaterialIcons from '@expo/vector-icons/MaterialIcons';
 import { PageScroll, Card, Field, useFormStyles, DeleteConfirm } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import { useTheme } from '../context/ThemeContext';
@@ -441,6 +441,7 @@ function HolidaysTab({ formStyles, colors, authHeader }) {
   const [label, setLabel] = useState('');
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -465,9 +466,16 @@ function HolidaysTab({ formStyles, colors, authHeader }) {
   };
 
   const removeHoliday = async (id) => {
-    await api.delete(`/api/admin/holidays/${id}`, { headers: authHeader });
-    setConfirmDeleteId(null);
-    load();
+    setDeletingId(id);
+    try {
+      await api.delete(`/api/admin/holidays/${id}`, { headers: authHeader });
+      setConfirmDeleteId(null);
+      load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'Something went wrong.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -498,7 +506,7 @@ function HolidaysTab({ formStyles, colors, authHeader }) {
               {h.label ? <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 2 }}>{h.label}</Text> : null}
             </View>
             {confirmDeleteId === h._id ? (
-              <DeleteConfirm onConfirm={() => removeHoliday(h._id)} onCancel={() => setConfirmDeleteId(null)} />
+              <DeleteConfirm onConfirm={() => removeHoliday(h._id)} onCancel={() => setConfirmDeleteId(null)} deleting={deletingId === h._id} />
             ) : (
               <AnimatedPressable scaleTo={1.12} onPress={() => setConfirmDeleteId(h._id)}>
                 <Text style={{ color: colors.error, fontWeight: '600' }}>Remove</Text>
@@ -531,6 +539,7 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -585,9 +594,16 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
   };
 
   const remove = async (id) => {
-    await api.delete(`/api/admin/announcements/${id}`, { headers: authHeader });
-    setConfirmDeleteId(null);
-    load();
+    setDeletingId(id);
+    try {
+      await api.delete(`/api/admin/announcements/${id}`, { headers: authHeader });
+      setConfirmDeleteId(null);
+      load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'Something went wrong.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -659,7 +675,7 @@ function AnnouncementsTab({ formStyles, colors, authHeader }) {
                 <Text style={{ color: colors.primary, fontWeight: '600' }}>Edit</Text>
               </AnimatedPressable>
               {confirmDeleteId === item._id ? (
-                <DeleteConfirm onConfirm={() => remove(item._id)} onCancel={() => setConfirmDeleteId(null)} />
+                <DeleteConfirm onConfirm={() => remove(item._id)} onCancel={() => setConfirmDeleteId(null)} deleting={deletingId === item._id} />
               ) : (
                 <AnimatedPressable scaleTo={1.12} onPress={() => setConfirmDeleteId(item._id)}>
                   <Text style={{ color: colors.error, fontWeight: '600' }}>Remove</Text>
@@ -681,6 +697,8 @@ function SlidesTab({ formStyles, colors, authHeader }) {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [pickingImage, setPickingImage] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -691,13 +709,18 @@ function SlidesTab({ formStyles, colors, authHeader }) {
   const onChange = (field, value) => setForm((f) => ({ ...f, [field]: value }));
 
   const pickImage = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) return;
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.5 });
-    if (!result.canceled && result.assets?.[0]?.base64) {
-      const asset = result.assets[0];
-      const mime = asset.mimeType || 'image/jpeg';
-      onChange('image', `data:${mime};base64,${asset.base64}`);
+    setPickingImage(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) return;
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], base64: true, quality: 0.5 });
+      if (!result.canceled && result.assets?.[0]?.base64) {
+        const asset = result.assets[0];
+        const mime = asset.mimeType || 'image/jpeg';
+        onChange('image', `data:${mime};base64,${asset.base64}`);
+      }
+    } finally {
+      setPickingImage(false);
     }
   };
 
@@ -732,9 +755,16 @@ function SlidesTab({ formStyles, colors, authHeader }) {
   };
 
   const remove = async (id) => {
-    await api.delete(`/api/admin/slides/${id}`, { headers: authHeader });
-    setConfirmDeleteId(null);
-    load();
+    setDeletingId(id);
+    try {
+      await api.delete(`/api/admin/slides/${id}`, { headers: authHeader });
+      setConfirmDeleteId(null);
+      load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'Something went wrong.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -746,8 +776,8 @@ function SlidesTab({ formStyles, colors, authHeader }) {
               <Image source={{ uri: form.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             </AnimatedPressable>
           ) : null}
-          <AnimatedPressable scaleTo={1.04} style={[formStyles.button, { backgroundColor: colors.subtleBackground }]} onPress={pickImage}>
-            <Text style={[formStyles.buttonText, { color: colors.textPrimary }]}>{form.image ? 'Change image' : 'Choose image'}</Text>
+          <AnimatedPressable scaleTo={1.04} style={[formStyles.button, { backgroundColor: colors.subtleBackground }, pickingImage && formStyles.buttonDisabled]} onPress={pickImage} disabled={pickingImage}>
+            {pickingImage ? <ActivityIndicator color={colors.textPrimary} /> : <Text style={[formStyles.buttonText, { color: colors.textPrimary }]}>{form.image ? 'Change image' : 'Choose image'}</Text>}
           </AnimatedPressable>
         </Field>
         <Field label="Headline" hint="Select text, then tap a toolbar button to format">
@@ -816,7 +846,7 @@ function SlidesTab({ formStyles, colors, authHeader }) {
                 <Text style={{ color: colors.primary, fontWeight: '600' }}>Edit</Text>
               </AnimatedPressable>
               {confirmDeleteId === item._id ? (
-                <DeleteConfirm onConfirm={() => remove(item._id)} onCancel={() => setConfirmDeleteId(null)} />
+                <DeleteConfirm onConfirm={() => remove(item._id)} onCancel={() => setConfirmDeleteId(null)} deleting={deletingId === item._id} />
               ) : (
                 <AnimatedPressable scaleTo={1.12} onPress={() => setConfirmDeleteId(item._id)}>
                   <Text style={{ color: colors.error, fontWeight: '600' }}>Remove</Text>
@@ -864,6 +894,7 @@ function VacanciesTab({ formStyles, colors, authHeader }) {
   const [editingId, setEditingId] = useState(null);
   const [saving, setSaving] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [error, setError] = useState('');
 
   const load = useCallback(() => {
@@ -911,9 +942,16 @@ function VacanciesTab({ formStyles, colors, authHeader }) {
   };
 
   const remove = async (id) => {
-    await api.delete(`/api/admin/vacancies/${id}`, { headers: authHeader });
-    setConfirmDeleteId(null);
-    load();
+    setDeletingId(id);
+    try {
+      await api.delete(`/api/admin/vacancies/${id}`, { headers: authHeader });
+      setConfirmDeleteId(null);
+      load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'Something went wrong.');
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -1020,7 +1058,7 @@ function VacanciesTab({ formStyles, colors, authHeader }) {
                 <Text style={{ color: colors.primary, fontWeight: '600' }}>Edit</Text>
               </AnimatedPressable>
               {confirmDeleteId === item._id ? (
-                <DeleteConfirm onConfirm={() => remove(item._id)} onCancel={() => setConfirmDeleteId(null)} />
+                <DeleteConfirm onConfirm={() => remove(item._id)} onCancel={() => setConfirmDeleteId(null)} deleting={deletingId === item._id} />
               ) : (
                 <AnimatedPressable scaleTo={1.12} onPress={() => setConfirmDeleteId(item._id)}>
                   <Text style={{ color: colors.error, fontWeight: '600' }}>Remove</Text>

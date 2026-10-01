@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Animated, Easing, Platform, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { AnimatedPressable } from '../lib/animations';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';

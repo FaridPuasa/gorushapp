@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput } from 'react-native';
+import { View, Text, TextInput, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, SaveCancelRow, DeleteConfirm } from '../../lib/formPrimitives';
 import { formatPostalCode, isValidPostalCode, applyPrefix, isPrefixOnly } from '../../lib/validators';
@@ -119,6 +119,8 @@ export default function AddressManager({ addresses, onAdd, onEdit, onDelete, onS
   const [editingId, setEditingId] = useState(null); // address _id, 'new', or null
   const [confirmingId, setConfirmingId] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const [settingDefaultId, setSettingDefaultId] = useState(null);
   const [error, setError] = useState(null);
   const isMobile = useIsMobile();
 
@@ -140,20 +142,26 @@ export default function AddressManager({ addresses, onAdd, onEdit, onDelete, onS
 
   const handleDelete = async (id) => {
     setError(null);
-    setConfirmingId(null);
+    setDeletingId(id);
     try {
       await onDelete(id);
+      setConfirmingId(null);
     } catch (err) {
       setError(err.response?.data?.error || t('editProfile.addressRemoveError'));
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleSetDefault = async (id) => {
     setError(null);
+    setSettingDefaultId(id);
     try {
       await onSetDefault(id);
     } catch (err) {
       setError(err.response?.data?.error || t('editProfile.addressDefaultError'));
+    } finally {
+      setSettingDefaultId(null);
     }
   };
 
@@ -190,15 +198,16 @@ export default function AddressManager({ addresses, onAdd, onEdit, onDelete, onS
 
               {confirmingId === addr._id ? (
                 <View style={{ marginTop: 8, alignItems: isMobile ? 'center' : 'flex-start' }}>
-                  <DeleteConfirm onConfirm={() => handleDelete(addr._id)} onCancel={() => setConfirmingId(null)} />
+                  <DeleteConfirm onConfirm={() => handleDelete(addr._id)} onCancel={() => setConfirmingId(null)} deleting={deletingId === addr._id} />
                 </View>
               ) : (
-                <View style={{ flexDirection: 'row', marginTop: 8, justifyContent: isMobile ? 'center' : 'flex-start' }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, justifyContent: isMobile ? 'center' : 'flex-start' }}>
                   <AnimatedPressable onPress={() => setEditingId(addr._id)} style={{ marginRight: 16 }} scaleTo={1.12}>
                     <Text style={{ color: formStyles.button.backgroundColor, fontWeight: '600', fontSize: scaleFont(13) }}>{t('common.edit')}</Text>
                   </AnimatedPressable>
                   {!addr.isDefault && (
-                    <AnimatedPressable onPress={() => handleSetDefault(addr._id)} style={{ marginRight: 16 }} scaleTo={1.12}>
+                    <AnimatedPressable onPress={() => handleSetDefault(addr._id)} disabled={settingDefaultId === addr._id} style={{ marginRight: 16, flexDirection: 'row', alignItems: 'center', opacity: settingDefaultId === addr._id ? 0.6 : 1 }} scaleTo={1.12}>
+                      {settingDefaultId === addr._id ? <ActivityIndicator size="small" color={formStyles.button.backgroundColor} style={{ marginRight: 6 }} /> : null}
                       <Text style={{ color: formStyles.button.backgroundColor, fontWeight: '600', fontSize: scaleFont(13) }}>{t('common.setDefault')}</Text>
                     </AnimatedPressable>
                   )}

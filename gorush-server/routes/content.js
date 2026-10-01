@@ -10,6 +10,10 @@ const { findAllAnnouncements, findAllHeroSlides, findOpenVacancies } = require('
 router.get('/holidays', async (req, res) => {
     try {
         const holidays = await findAllHolidays();
+        // Admin-managed, rarely-changes list (see /slides below for the same
+        // reasoning) - 5 minutes of staleness is inconsequential for
+        // order-availability blocking, which is planned well in advance.
+        res.set('Cache-Control', 'public, max-age=300');
         res.status(200).json(holidays);
     } catch (err) {
         console.error(err.message);
@@ -23,6 +27,8 @@ router.get('/announcements', async (req, res) => {
         // (AnnouncementContext.js, client-side) filters by audience, via
         // showOnBannerToGuests/showOnBannerToLoggedIn on each announcement.
         const announcements = await findAllAnnouncements();
+        // Same reasoning as /slides below - admin-managed, rarely changes.
+        res.set('Cache-Control', 'public, max-age=300');
         res.status(200).json(announcements);
     } catch (err) {
         console.error(err.message);
@@ -51,6 +57,10 @@ router.get('/vacancies', async (req, res) => {
         // isOpen is a static DB flag; closingDate is a time-based cutoff (5pm Brunei time on
         // that date) that can't be expressed as a query filter — checked in JS instead.
         const vacancies = await findOpenVacancies();
+        // Same reasoning as /slides above - admin-managed, rarely changes.
+        // 5 minutes of staleness means a vacancy that just closed at 5pm could
+        // still show for a few more minutes, same tradeoff already accepted there.
+        res.set('Cache-Control', 'public, max-age=300');
         res.status(200).json(vacancies.filter((v) => isVacancyCurrentlyOpen(v)));
     } catch (err) {
         console.error(err.message);

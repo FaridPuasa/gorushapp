@@ -53,7 +53,7 @@ export default function Captcha({ answer, onAnswerChange, onTokenChange, focused
             ))
           )}
         </View>
-        <AnimatedPressable style={styles.refreshBtn} scaleTo={1.1} onPress={fetchCaptcha}>
+        <AnimatedPressable style={[styles.refreshBtn, loading && { opacity: 0.6 }]} scaleTo={1.1} onPress={fetchCaptcha} disabled={loading}>
           <Text style={styles.refreshText}>⟳</Text>
         </AnimatedPressable>
       </View>
