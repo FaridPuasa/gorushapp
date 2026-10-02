@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const users = require('../lib/postgresUsers');
 const { requireAuth } = require('../middleware/auth');
 const { validateJpmcPatientNumber } = require('../lib/jpmcValidation');
+const { normalizePhoneNumber } = require('../lib/phoneNumber');
 
 function signToken(user) {
     return jwt.sign(
@@ -19,10 +20,15 @@ router.post('/register', async (req, res) => {
         const {
             email, password,
             houseunitno, jalan, kampong, simpang, district, postalcode,
-            phonenum, addphonenum,
             receivername, dateofbirth, icnum, passportnum, bruhimsnum, patientphcnum, patientjpmcnum, appointmentplace,
             Agreepolicy, Receivemarketing
         } = req.body;
+        // Normalized before storage - this seeds the profile phone number
+        // every future order form prefills from, so a malformed value here
+        // (missing "+673", or a double-prefixed one) would otherwise keep
+        // resurfacing on every order the account places. See lib/phoneNumber.js.
+        const phonenum = normalizePhoneNumber(req.body.phonenum);
+        const addphonenum = normalizePhoneNumber(req.body.addphonenum);
 
         // 1. Basic text fields checks
         if (!email || !password || !houseunitno || !jalan || !kampong || !district || !phonenum || !receivername || !dateofbirth) {

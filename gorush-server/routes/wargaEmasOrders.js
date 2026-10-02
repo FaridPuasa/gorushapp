@@ -5,6 +5,7 @@ const { optionalAuth } = require('../middleware/auth');
 const { sendOrderAlert } = require('../lib/mailer');
 const { notifyTeams } = require('../lib/teamsNotify');
 const prisma = require('../lib/prismaClient');
+const { normalizePhoneNumber } = require('../lib/phoneNumber');
 
 // Generates a Mongo-ObjectId-shaped hex string (24 hex chars) with zero I/O -
 // no real Mongo document is created anymore (fully cut over 2026-09-17), but
@@ -36,7 +37,8 @@ router.post('/', optionalAuth, async (req, res) => {
             return res.status(403).json({ error: "Warga Emas requests are for guest submissions only." });
         }
 
-        const { receiverPhoneNumber, icPictureFront, icPictureBack } = req.body;
+        const { icPictureFront, icPictureBack } = req.body;
+        const receiverPhoneNumber = normalizePhoneNumber(req.body.receiverPhoneNumber);
 
         if (!receiverPhoneNumber) {
             return res.status(400).json({ error: "Phone number is required." });

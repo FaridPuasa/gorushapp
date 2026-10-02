@@ -18,6 +18,7 @@ const { sendWhatsAppMessage } = require('../lib/whatsapp');
 const { getAreaFromAddress } = require('../lib/area');
 const { notifyTeams } = require('../lib/teamsNotify');
 const { getDistrictLabel, extractBaseJobMethod, formatJobMethod } = require('../lib/jobMethodFormat');
+const { normalizePhoneNumber } = require('../lib/phoneNumber');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
@@ -188,8 +189,8 @@ router.post('/', optionalAuth, async (req, res) => {
     try {
         const {
             product,
-            receiverName, address, receiverEmail, receiverPhoneNumber, additionalPhoneNumber,
-            senderName, senderAddressDetail, senderEmail, senderPhoneNumber,
+            receiverName, address, receiverEmail,
+            senderName, senderAddressDetail, senderEmail,
             deliveryTypeCode, paymentMethod, remarks,
             dateOfBirth, icNum, passport, bruhimsnum, patientNumber,
             appointmentDistrict, appointmentPlace, payingPatient,
@@ -198,6 +199,11 @@ router.post('/', optionalAuth, async (req, res) => {
             shipmentMethod, parcelTrackingNum, supplierName, items,
             agreedTerms, captchaToken, captchaAnswer, orderOrigin,
         } = req.body;
+        // Normalized before validation/storage - see lib/phoneNumber.js for why
+        // this can't be trusted to the client alone.
+        const receiverPhoneNumber = normalizePhoneNumber(req.body.receiverPhoneNumber);
+        const additionalPhoneNumber = normalizePhoneNumber(req.body.additionalPhoneNumber);
+        const senderPhoneNumber = normalizePhoneNumber(req.body.senderPhoneNumber);
 
         // Pharmacy products and CBSL don't collect a real parcel weight — fixed at 1kg;
         // Local Delivery is the only product where the customer actually supplies one.

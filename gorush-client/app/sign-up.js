@@ -16,7 +16,7 @@ import { AnimatedPressable } from '../lib/animations';
 import {
   isValidEmail, formatPostalCode, isValidPostalCode, formatICNumber,
   formatBruHims, applyPrefix, isPrefixOnly, getPasswordStrength, COUNTRY_CODES,
-  formatJpmcPatientNumber, isValidJpmcPatientNumber,
+  formatJpmcPatientNumber, isValidJpmcPatientNumber, sanitizePhoneDigits,
 } from '../lib/validators';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -339,7 +339,7 @@ export default function Register() {
                 placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
                 value={formData.phonenum}
-                onChangeText={(val) => updateField('phonenum', val.replace(/[^0-9]/g, ''))}
+                onChangeText={(val) => updateField('phonenum', sanitizePhoneDigits(formData.countryCodeMain, val))}
                 {...focusHandlers('phonenum')}
               />
             </View>
@@ -358,7 +358,7 @@ export default function Register() {
                 placeholderTextColor={colors.textMuted}
                 keyboardType="phone-pad"
                 value={formData.addphonenum}
-                onChangeText={(val) => updateField('addphonenum', val.replace(/[^0-9]/g, ''))}
+                onChangeText={(val) => updateField('addphonenum', sanitizePhoneDigits(formData.countryCodeAdd, val))}
                 {...focusHandlers('addphonenum')}
               />
             </View>

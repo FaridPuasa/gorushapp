@@ -9,7 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { useAuth } from '../context/AuthContext';
-import { COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber } from '../lib/validators';
+import { COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber, sanitizePhoneDigits } from '../lib/validators';
 import { api } from '../lib/api';
 
 export default function WargaEmas() {
@@ -122,7 +122,7 @@ export default function WargaEmas() {
               placeholderTextColor={colors.textMuted}
               keyboardType="phone-pad"
               value={splitPhoneNumber(phone).localNumber}
-              onChangeText={(v) => setPhone(combinePhoneNumber(splitPhoneNumber(phone).countryCode, v.replace(/[^0-9]/g, '')))}
+              onChangeText={(v) => setPhone(combinePhoneNumber(splitPhoneNumber(phone).countryCode, sanitizePhoneDigits(splitPhoneNumber(phone).countryCode, v)))}
               {...focusHandlers('phone')}
             />
           </View>

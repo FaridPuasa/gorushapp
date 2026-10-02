@@ -6,7 +6,7 @@ import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers } from '.
 import { useTheme } from '../../context/ThemeContext';
 import { useLanguage } from '../../context/LanguageContext';
 import { useFontScale } from '../../context/FontScaleContext';
-import { formatPostalCode, COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber, applyPrefix } from '../../lib/validators';
+import { formatPostalCode, COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber, sanitizePhoneDigits, applyPrefix } from '../../lib/validators';
 import { AnimatedPressable } from '../../lib/animations';
 
 function ViewOnlyRow({ label, value }) {
@@ -165,7 +165,7 @@ export default function PartyDetailsForm({
             placeholderTextColor={colors.textMuted}
             keyboardType="phone-pad"
             value={splitPhoneNumber(values.phone).localNumber}
-            onChangeText={(v) => onChange('phone', combinePhoneNumber(splitPhoneNumber(values.phone).countryCode, v.replace(/[^0-9]/g, '')))}
+            onChangeText={(v) => onChange('phone', combinePhoneNumber(splitPhoneNumber(values.phone).countryCode, sanitizePhoneDigits(splitPhoneNumber(values.phone).countryCode, v)))}
             {...focusHandlers('phone')}
           />
         </View>
@@ -189,7 +189,7 @@ export default function PartyDetailsForm({
               placeholderTextColor={colors.textMuted}
               keyboardType="phone-pad"
               value={splitPhoneNumber(values.additionalPhone).localNumber}
-              onChangeText={(v) => onChange('additionalPhone', combinePhoneNumber(splitPhoneNumber(values.additionalPhone).countryCode, v.replace(/[^0-9]/g, '')))}
+              onChangeText={(v) => onChange('additionalPhone', combinePhoneNumber(splitPhoneNumber(values.additionalPhone).countryCode, sanitizePhoneDigits(splitPhoneNumber(values.additionalPhone).countryCode, v)))}
               {...focusHandlers('additionalPhone')}
             />
           </View>

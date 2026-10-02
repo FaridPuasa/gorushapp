@@ -8,6 +8,7 @@ const prisma = require('../lib/prismaClient');
 const { sendJobApplicationAlert, dataUriToAttachment } = require('../lib/mailer');
 const { notifyTeamsJobApplication } = require('../lib/teamsNotify');
 const { uploadJobApplicationDoc } = require('../lib/jobApplicationDocsStorage');
+const { normalizePhoneNumber } = require('../lib/phoneNumber');
 
 const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 function generateCaptchaCode() {
@@ -72,11 +73,13 @@ router.post('/apply', optionalAuth, async (req, res) => {
             vacancyId,
             name, dateofbirth, icnumber,
             houseunitno, jalan, kampong, simpang, district, postalcode,
-            email, phonenum, addphonenum,
+            email,
             highestAchievement, partTimeDuration, carOwn, deliverBefore, experienceDelivery, parcelNum, driveManual,
             icFront, resumeCv, drivingLicenseFront, drivingLicenseBack,
             captchaToken, captchaAnswer,
         } = req.body;
+        const phonenum = normalizePhoneNumber(req.body.phonenum);
+        const addphonenum = normalizePhoneNumber(req.body.addphonenum);
 
         if (!captchaToken || !captchaAnswer) {
             return res.status(400).json({ error: "Please complete the captcha." });

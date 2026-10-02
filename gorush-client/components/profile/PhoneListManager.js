@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, ActivityIndicator } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { Card, useFormStyles, SaveCancelRow, DeleteConfirm } from '../../lib/formPrimitives';
-import { COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber } from '../../lib/validators';
+import { COUNTRY_CODES, splitPhoneNumber, combinePhoneNumber, sanitizePhoneDigits } from '../../lib/validators';
 import { useIsMobile } from '../../lib/responsive';
 import { AnimatedPressable } from '../../lib/animations';
 import { useLanguage } from '../../context/LanguageContext';
@@ -99,7 +99,7 @@ export default function PhoneListManager({ title, icon, items, valueKey, support
         <TextInput
           style={[formStyles.input, formStyles.phoneInput]}
           value={localNumber}
-          onChangeText={(v) => setLocalNumber(v.replace(/[^0-9]/g, ''))}
+          onChangeText={(v) => setLocalNumber(sanitizePhoneDigits(countryCode, v))}
           keyboardType="phone-pad"
           placeholder={t('contact.phoneNoPlaceholder')}
           placeholderTextColor={colors.textMuted}

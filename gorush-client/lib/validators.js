@@ -64,15 +64,40 @@ export const COUNTRY_CODES = [
 ];
 
 export function splitPhoneNumber(fullNumber) {
-  const match = COUNTRY_CODES.find((c) => (fullNumber || '').startsWith(c.value));
+  const raw = fullNumber || '';
+  const match = COUNTRY_CODES.find((c) => raw.startsWith(c.value));
   if (match) {
-    return { countryCode: match.value, localNumber: fullNumber.slice(match.value.length) };
+    return { countryCode: match.value, localNumber: raw.slice(match.value.length) };
   }
-  return { countryCode: COUNTRY_CODES[0].value, localNumber: (fullNumber || '').replace(/^\+/, '') };
+  // A dial code without its leading "+" (e.g. "6738667445", stored before
+  // normalization existed or typed as a single paste) - recognize it so it
+  // isn't redisplayed/resubmitted as one giant "local number", which is what
+  // let a user re-type "+673" on top of it and produce a double-prefixed
+  // value like "673+6738667445".
+  const bareMatch = COUNTRY_CODES.find((c) => raw.startsWith(c.value.slice(1)));
+  if (bareMatch) {
+    return { countryCode: bareMatch.value, localNumber: raw.slice(bareMatch.value.length - 1) };
+  }
+  return { countryCode: COUNTRY_CODES[0].value, localNumber: raw.replace(/^\+/, '') };
 }
 
 export function combinePhoneNumber(countryCode, localNumber) {
   return `${countryCode}${localNumber}`;
+}
+
+// Used by every phone TextInput's onChangeText in place of a bare
+// `v.replace(/[^0-9]/g, '')` - strips non-digits same as before, but also
+// drops a redundant leading copy of the currently-selected country code, so
+// a user pasting/typing "+6738667445" into a field whose picker already
+// shows "+673" ends up with the plain 7-digit local number instead of
+// "673" + "6738667445" concatenated on submit.
+export function sanitizePhoneDigits(countryCode, text) {
+  const digits = (text || '').replace(/[^0-9]/g, '');
+  const dial = (countryCode || '').replace('+', '');
+  if (dial && digits.length > dial.length && digits.startsWith(dial)) {
+    return digits.slice(dial.length);
+  }
+  return digits;
 }
 
 // A lazy prefix mask: the prefix word (e.g. "Jln") is shown as a

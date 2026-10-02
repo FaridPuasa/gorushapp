@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const users = require('../lib/postgresUsers');
 const { requireAuth } = require('../middleware/auth');
 const { validateJpmcPatientNumber } = require('../lib/jpmcValidation');
+const { normalizePhoneNumber } = require('../lib/phoneNumber');
 
 router.use(requireAuth);
 
@@ -241,7 +242,7 @@ router.put('/addresses/:id/default', async (req, res) => {
 
 router.post('/phonenumbers', async (req, res) => {
     try {
-        const { phonenum } = req.body;
+        const phonenum = normalizePhoneNumber(req.body.phonenum);
         if (!phonenum) return res.status(400).json({ error: "Phone number is required." });
 
         const user = await users.findById(req.userId);
@@ -257,7 +258,7 @@ router.post('/phonenumbers', async (req, res) => {
 
 router.put('/phonenumbers/:id', async (req, res) => {
     try {
-        const { phonenum } = req.body;
+        const phonenum = normalizePhoneNumber(req.body.phonenum);
         if (!phonenum) return res.status(400).json({ error: "Phone number is required." });
 
         const user = await users.findById(req.userId);
@@ -308,7 +309,7 @@ router.put('/phonenumbers/:id/default', async (req, res) => {
 
 router.post('/additionalphonenumbers', async (req, res) => {
     try {
-        const { addphonenum } = req.body;
+        const addphonenum = normalizePhoneNumber(req.body.addphonenum);
         if (!addphonenum) return res.status(400).json({ error: "Phone number is required." });
 
         const user = await users.findById(req.userId);
@@ -324,7 +325,7 @@ router.post('/additionalphonenumbers', async (req, res) => {
 
 router.put('/additionalphonenumbers/:id', async (req, res) => {
     try {
-        const { addphonenum } = req.body;
+        const addphonenum = normalizePhoneNumber(req.body.addphonenum);
         if (!addphonenum) return res.status(400).json({ error: "Phone number is required." });
 
         const user = await users.findById(req.userId);

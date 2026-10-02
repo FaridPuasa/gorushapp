@@ -10,7 +10,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useFontScale } from '../../context/FontScaleContext';
 import {
   formatPostalCode, formatICNumber, applyPrefix, COUNTRY_CODES,
-  splitPhoneNumber, combinePhoneNumber, dmyToIso, dmyToDate,
+  splitPhoneNumber, combinePhoneNumber, sanitizePhoneDigits, dmyToIso, dmyToDate,
 } from '../../lib/validators';
 import { getBruneiNow, getBruneiTodayISO } from '../../lib/bruneiTime';
 
@@ -218,7 +218,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
             placeholderTextColor={colors.textMuted}
             keyboardType="phone-pad"
             value={splitPhoneNumber(values.phonenum).localNumber}
-            onChangeText={(v) => onChange('phonenum', combinePhoneNumber(splitPhoneNumber(values.phonenum).countryCode, v.replace(/[^0-9]/g, '')))}
+            onChangeText={(v) => onChange('phonenum', combinePhoneNumber(splitPhoneNumber(values.phonenum).countryCode, sanitizePhoneDigits(splitPhoneNumber(values.phonenum).countryCode, v)))}
             {...focusHandlers('phonenum')}
           />
         </View>
@@ -241,7 +241,7 @@ export default function PersonalDetailsFields({ values, onChange, errors = {}, f
             placeholderTextColor={colors.textMuted}
             keyboardType="phone-pad"
             value={splitPhoneNumber(values.addphonenum).localNumber}
-            onChangeText={(v) => onChange('addphonenum', combinePhoneNumber(splitPhoneNumber(values.addphonenum).countryCode, v.replace(/[^0-9]/g, '')))}
+            onChangeText={(v) => onChange('addphonenum', combinePhoneNumber(splitPhoneNumber(values.addphonenum).countryCode, sanitizePhoneDigits(splitPhoneNumber(values.addphonenum).countryCode, v)))}
             {...focusHandlers('addphonenum')}
           />
         </View>
