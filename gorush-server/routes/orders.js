@@ -15,7 +15,7 @@ const { parseGorushDateOnly } = require('../lib/dateHelpers');
 const { sendOrderAlert } = require('../lib/mailer');
 const { appendCbslManifestRows } = require('../lib/msGraphExcel');
 const { sendWhatsAppMessage } = require('../lib/whatsapp');
-const { getAreaFromAddress } = require('../lib/area');
+const { determineArea } = require('../lib/area');
 const { notifyTeams } = require('../lib/teamsNotify');
 const { getDistrictLabel, extractBaseJobMethod, formatJobMethod } = require('../lib/jobMethodFormat');
 const { normalizePhoneNumber } = require('../lib/phoneNumber');
@@ -338,10 +338,11 @@ router.post('/', optionalAuth, async (req, res) => {
             receiverName,
             address,
             receiverAddress: `${address.houseunitno}, ${address.jalan}, ${address.kampong}${address.simpang ? `, ${address.simpang}` : ''}, ${address.district}`,
-            // Derived from the same string, not stored separately by the client -
-            // matches grfmxstatusupdate's own getAreaFromAddress() so this order's
-            // area/Detrack zone lines up with how every other order gets classified.
-            area: getAreaFromAddress(`${address.houseunitno}, ${address.jalan}, ${address.kampong}${address.simpang ? `, ${address.simpang}` : ''}, ${address.district}`),
+            // Postal code checked first (customer's own postalcode field, matched
+            // against the Brunei postcode table), falling back to keyword/typo-
+            // tolerant matching on the free-text address - same priority and same
+            // area codes as grfmxstatusupdate's determineArea().
+            area: determineArea(`${address.houseunitno}, ${address.jalan}, ${address.kampong}${address.simpang ? `, ${address.simpang}` : ''}, ${address.district}`, address.postalcode),
             receiverPostalCode: address.postalcode,
             receiverEmail,
             receiverPhoneNumber,
