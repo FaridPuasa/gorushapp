@@ -28,6 +28,7 @@ function formatJobMethod(rawMethod, district, product) {
     const base = extractBaseJobMethod(rawMethod);
     if (base === 'Self Collect') return base;
     if (base === 'Express') return base; // Express is Brunei-Muara only, so the district is redundant
+    if (base === 'Immediate') return base; // Immediate (MOH/JPMC) is Brunei-Muara only too, same reasoning
     if (product === 'pharmacymoh' && base === 'Standard') return base;
     const label = getDistrictLabel(district);
     return label ? `${base} ${label}`.trim() : base;
