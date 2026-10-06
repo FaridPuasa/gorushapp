@@ -65,9 +65,16 @@ function previousCutover(from, holidaySet) {
 
 // The processing window currently open as of `from` (defaults to now).
 // `holidayDates` is the plain array of 'YYYY-MM-DD' strings from PublicHoliday.find().
+// `from == null` (not just a default-parameter `undefined`) falls back to now
+// too - a caller passing a nullable DB column (e.g. order.dateTimeSubmission)
+// straight through would otherwise crash inside previousCutover/nextCutover's
+// unguarded `.getTime()` the moment that column is actually null (found
+// 2026-10-06: a batch of imported historical orders had it null, taking down
+// the whole JPMC portal page on their very first fetch).
 function currentWindow(holidayDates, from = new Date()) {
   const holidaySet = new Set(holidayDates);
-  return { start: previousCutover(from, holidaySet), end: nextCutover(from, holidaySet) };
+  const safeFrom = from == null ? new Date() : from;
+  return { start: previousCutover(safeFrom, holidaySet), end: nextCutover(safeFrom, holidaySet) };
 }
 
 // Real UTC instant for noon Brunei time on a plain 'YYYY-MM-DD' date string.
