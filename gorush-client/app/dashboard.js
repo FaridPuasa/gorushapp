@@ -460,26 +460,40 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
             />
           </View>
           {completedLoading ? <ActivityIndicator color={colors.primary} /> : completed && (
-            <Collapsible
-              defaultOpen
-              colors={colors}
-              scaleFont={scaleFont}
-              header={
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, flexWrap: 'wrap', gap: 8 }}>
-                  <View style={{ flexDirection: 'row', gap: 10 }}>
-                    <Badge label="Total" value={completed.summary.total} bg={colors.subtleBackground} fg={colors.textPrimary} scaleFont={scaleFont} />
-                    <Badge label="Completed" value={completed.summary.completed} bg={colors.successLight} fg={colors.success} scaleFont={scaleFont} />
-                    <Badge label="Not Completed" value={completed.summary.notCompleted} bg={colors.warningLight} fg={colors.warning} scaleFont={scaleFont} />
-                  </View>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <ToolbarButton label="📋 Copy Tracking No." doneLabel="Copied!" colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(completed.orders)} />
-                    <ToolbarButton label="📊 Download Excel" doneLabel="Done" variant="success" colors={colors} scaleFont={scaleFont} onPress={() => exportOrdersToExcel(completed.orders, JOBS_EXPORT_COLUMNS, `Completed Jobs ${completed.date}`)} />
-                  </View>
-                </View>
-              }
-            >
-              <OrdersTable orders={completed.orders} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
-            </Collapsible>
+            <>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                <Badge label="Total" value={completed.summary.total} bg={colors.subtleBackground} fg={colors.textPrimary} scaleFont={scaleFont} />
+                <Badge label="Completed" value={completed.summary.completed} bg={colors.successLight} fg={colors.success} scaleFont={scaleFont} />
+                <Badge label="Not Completed" value={completed.summary.notCompleted} bg={colors.warningLight} fg={colors.warning} scaleFont={scaleFont} />
+              </View>
+
+              {/* Split by outcome (Completed/Out for Delivery/Failed) instead
+                  of one flat mixed list - grfmxstatusupdate's own Completed
+                  Jobs tab splits by dispatcher; a single-product partner has
+                  no dispatcher concept, so outcome is the equivalent split. */}
+              <Collapsible
+                defaultOpen
+                colors={colors}
+                scaleFont={scaleFont}
+                header={<GroupHeader title="Completed" count={completed.groups.completed.length} orders={completed.groups.completed} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Completed ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
+              >
+                <OrdersTable orders={completed.groups.completed} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+              </Collapsible>
+              <Collapsible
+                colors={colors}
+                scaleFont={scaleFont}
+                header={<GroupHeader title="Out for Delivery" count={completed.groups.outForDelivery.length} orders={completed.groups.outForDelivery} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Out for Delivery ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
+              >
+                <OrdersTable orders={completed.groups.outForDelivery} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+              </Collapsible>
+              <Collapsible
+                colors={colors}
+                scaleFont={scaleFont}
+                header={<GroupHeader title="Failed" count={completed.groups.failed.length} orders={completed.groups.failed} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Failed ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
+              >
+                <OrdersTable orders={completed.groups.failed} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+              </Collapsible>
+            </>
           )}
         </>
       )}

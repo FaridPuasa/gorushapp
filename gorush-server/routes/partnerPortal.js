@@ -360,7 +360,11 @@ router.get('/active-jobs', async (req, res) => {
 });
 
 // GET /api/partner/completed-jobs?date=YYYY-MM-DD - grand-total summary (no
-// dispatcher breakdown) + the job list for that date.
+// dispatcher breakdown) + the day's jobs split into Completed / Out for
+// Delivery / Failed groups (grfmxstatusupdate's own Completed Jobs tab splits
+// by dispatcher; this is the partner-equivalent 3-way split by outcome
+// instead, since a single-product partner has no dispatcher concept to group
+// by).
 router.get('/completed-jobs', async (req, res) => {
     try {
         const { date } = req.query;
@@ -375,10 +379,13 @@ router.get('/completed-jobs', async (req, res) => {
         const orders = groupSimilarOrders(rawOrders.map((o) => toPartnerOrderShape(o)));
 
         const completed = orders.filter((o) => o.currentStatus === 'Completed');
+        const outForDelivery = orders.filter((o) => ACTIVE_STATUSES.includes(o.currentStatus));
+        const failed = orders.filter((o) => o.currentStatus !== 'Completed' && !ACTIVE_STATUSES.includes(o.currentStatus));
+
         res.json({
             date,
             summary: { total: orders.length, completed: completed.length, notCompleted: orders.length - completed.length },
-            orders,
+            groups: { completed, outForDelivery, failed },
         });
     } catch (err) {
         console.error(err.message);
