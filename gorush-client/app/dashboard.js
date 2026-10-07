@@ -397,7 +397,7 @@ function WarehouseCard({ token, colors, scaleFont }) {
   const groups = tab === 'current' ? (data?.current || []) : (data?.noAttempt || []);
 
   return (
-    <Card icon="🏭" title="Warehouse">
+    <Card icon="🏭" title="Go Rush Warehouse">
       <KpiStrip>
         <KpiTile icon="📦" value={data?.summary?.current ?? '—'} label="Current" colors={colors} scaleFont={scaleFont} />
         <KpiTile icon="⛔" value={data?.summary?.noAttempt ?? '—'} label="No Attempt" colors={colors} scaleFont={scaleFont} />

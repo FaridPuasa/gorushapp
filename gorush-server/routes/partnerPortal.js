@@ -236,7 +236,13 @@ router.get('/warehouse', async (req, res) => {
                 product: req.userRole,
                 currentStatus: { in: WAREHOUSE_STATUSES },
                 latestLocation: { in: WAREHOUSE_LOCATIONS },
-                archive: { not: 'Yes' },
+                // Prisma's `{ not: 'Yes' }` on a nullable column excludes NULL
+                // rows too (standard SQL three-valued logic) - and almost every
+                // non-archived order has `archive: null`, not an explicit value,
+                // so that alone was wiping out the entire Current/No Attempt
+                // result set. Confirmed live: 49 real "not archived" PDU orders
+                // all had archive === null, zero had any other non-'Yes' value.
+                OR: [{ archive: null }, { archive: { not: 'Yes' } }],
             },
         });
         const orders = rawOrders
