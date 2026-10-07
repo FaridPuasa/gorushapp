@@ -48,3 +48,17 @@ export function DetailField({ label, value, minWidth = 140, maxWidth = '100%', c
     </View>
   );
 }
+
+// Web-only native date input (a real calendar picker instead of a free-text
+// "type YYYY-MM-DD and hope" field) - shared by Search Jobs and the
+// dashboard's Completed/Job Status date field.
+export function DateField({ value, onChange, formStyles }) {
+  return (
+    <input
+      type="date"
+      value={value || ''}
+      style={formStyles.webDatePicker}
+      onChange={(e) => onChange(e.target.value)}
+    />
+  );
+}

@@ -63,24 +63,64 @@ function GpsLink({ entry, status, colors, scaleFont }) {
   );
 }
 
+// Full-screen lightbox - matches grfmxstatusupdate's own #podPhotoLightbox
+// exactly: near-black backdrop, image capped at 92% of the screen,
+// double-click/double-tap toggles 2x zoom, clicking the backdrop (not the
+// photo itself) or the X closes and resets zoom.
+const DOUBLE_TAP_MS = 300;
+function PodPhotoLightbox({ url, onClose, colors, scaleFont }) {
+  const [zoomed, setZoomed] = useState(false);
+  const lastTapRef = React.useRef(0);
+
+  const close = () => { setZoomed(false); onClose(); };
+  const handleImagePress = () => {
+    const now = Date.now();
+    if (now - lastTapRef.current < DOUBLE_TAP_MS) setZoomed((z) => !z);
+    lastTapRef.current = now;
+  };
+
+  return (
+    <Modal visible={!!url} transparent animationType="fade" onRequestClose={close}>
+      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.92)', justifyContent: 'center', alignItems: 'center' }} onPress={close}>
+        <AnimatedPressable scaleTo={1.1} onPress={close} style={{ position: 'absolute', top: 20, right: 20, width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
+          <Text style={{ color: '#fff', fontSize: scaleFont(22) }}>✕</Text>
+        </AnimatedPressable>
+        {url && (
+          // Double-click/double-tap toggles 2x zoom (same gesture
+          // grfmxstatusupdate's lightbox uses) - stopPropagation so tapping
+          // the photo itself never closes the viewer, only the backdrop does.
+          <Pressable onPress={(e) => { e.stopPropagation(); handleImagePress(); }} style={{ width: '92%', height: '92%' }}>
+            <Image
+              source={{ uri: url }}
+              style={{ width: '100%', height: '100%', transform: [{ scale: zoomed ? 2 : 1 }] }}
+              resizeMode="contain"
+            />
+          </Pressable>
+        )}
+      </Pressable>
+    </Modal>
+  );
+}
+
 // POD (proof-of-delivery) photos for this Complete/Fail event - fetched
 // lazily (signed URLs from a private Supabase bucket, see
-// gorush-server/lib/podImageStorage.js) only once the button is pressed, same
-// lazy-load-on-demand pattern jpmc-portal.js's PaymentProofControl uses.
+// gorush-server/lib/podImageStorage.js) only once the button is pressed.
+// Matches grfmxstatusupdate's own flow: "View Photos (N)" reveals small
+// clickable thumbnails inline, and clicking one opens the full-screen
+// lightbox above - not a single photo swapped inside a card.
 function PodPhotosButton({ historyId, token, colors, scaleFont }) {
   const [urls, setUrls] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [viewerUrl, setViewerUrl] = useState(null);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
 
-  const open = async () => {
-    if (urls) { setViewerUrl(urls[0]); return; }
+  const toggle = async () => {
+    if (urls) { setUrls(null); return; }
     setLoading(true);
     setError('');
     try {
       const res = await api.get(`/api/partner/history/${historyId}/pod-photos`, { headers: { Authorization: `Bearer ${token}` } });
       setUrls(res.data.urls);
-      if (res.data.urls[0]) setViewerUrl(res.data.urls[0]);
     } catch (e) {
       setError(e.response?.data?.error || 'Failed to load photos.');
     } finally {
@@ -90,33 +130,24 @@ function PodPhotosButton({ historyId, token, colors, scaleFont }) {
 
   return (
     <>
-      <AnimatedPressable scaleTo={1.04} onPress={open} disabled={loading} style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+      <AnimatedPressable scaleTo={1.04} onPress={toggle} disabled={loading} style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
         {loading ? <ActivityIndicator size="small" color={colors.primary} /> : (
-          <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.primary }}>🖼️ View Photo{urls && urls.length > 1 ? 's' : ''}</Text>
+          <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.primary }}>🖼️ View Photo{urls ? `s (${urls.length})` : 's'}</Text>
         )}
       </AnimatedPressable>
       {error ? <Text style={{ fontSize: scaleFont(10), color: colors.error, marginTop: 2 }}>{error}</Text> : null}
 
-      <Modal visible={!!viewerUrl} transparent animationType="fade" onRequestClose={() => setViewerUrl(null)}>
-        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 16 }} onPress={() => setViewerUrl(null)}>
-          <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, width: '100%', maxWidth: 560 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
-              <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: colors.textPrimary }}>POD Photo</Text>
-              <AnimatedPressable scaleTo={1.1} onPress={() => setViewerUrl(null)}><Text style={{ fontSize: scaleFont(16), color: colors.textMuted }}>✕</Text></AnimatedPressable>
-            </View>
-            {viewerUrl && <Image source={{ uri: viewerUrl }} style={{ width: '100%', height: 360, borderRadius: 8, backgroundColor: colors.subtleBackground }} resizeMode="contain" />}
-            {urls && urls.length > 1 && (
-              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                {urls.map((u, i) => (
-                  <AnimatedPressable key={i} scaleTo={1.05} onPress={() => setViewerUrl(u)} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, backgroundColor: u === viewerUrl ? colors.primary : colors.subtleBackground }}>
-                    <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: u === viewerUrl ? '#fff' : colors.textPrimary }}>{i + 1}</Text>
-                  </AnimatedPressable>
-                ))}
-              </View>
-            )}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      {urls && urls.length > 0 && (
+        <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+          {urls.map((u, i) => (
+            <AnimatedPressable key={i} scaleTo={1.08} onPress={() => setLightboxUrl(u)}>
+              <Image source={{ uri: u }} style={{ width: 48, height: 48, borderRadius: 6, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.subtleBackground }} resizeMode="cover" />
+            </AnimatedPressable>
+          ))}
+        </View>
+      )}
+
+      <PodPhotoLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} colors={colors} scaleFont={scaleFont} />
     </>
   );
 }

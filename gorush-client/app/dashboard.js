@@ -20,7 +20,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
 import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
-import { Badge, formatDMY } from '../lib/partnerUi';
+import { Badge, formatDMY, DateField } from '../lib/partnerUi';
 import TrackingDetailModal from '../components/TrackingDetailModal';
 
 const WIDE_MAX_WIDTH = 1500;
@@ -86,6 +86,50 @@ function KpiTile({ icon, value, label, bg, fg, colors, scaleFont }) {
 }
 function KpiStrip({ children }) {
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>{children}</View>;
+}
+
+// Section colors matching grfmxstatusupdate's own card-header classes
+// (bg-dark/bg-success/bg-primary) - a fixed categorical palette, not
+// theme-adaptive, same reasoning as the Status History stepper's colors.
+const SECTION_COLORS = { dark: '#212529', success: '#198754', primary: '#0d6efd' };
+
+// Card with a solid colored header bar (white text) instead of the shared
+// Card component's plain icon+text title - matches grfmxstatusupdate's own
+// Warehouse (dark)/In Progress-Completed (green)/New Orders (blue) section
+// headers, which the generic Card look doesn't replicate.
+function ColoredCard({ icon, title, color, children }) {
+  const { colors } = useTheme();
+  const { scaleFont } = useFontScale();
+  return (
+    <View style={{ backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 20, overflow: 'hidden' }}>
+      <View style={{ backgroundColor: SECTION_COLORS[color], paddingVertical: 14, paddingHorizontal: 20 }}>
+        <Text style={{ color: '#fff', fontWeight: '700', fontSize: scaleFont(16) }}>{icon} {title}</Text>
+      </View>
+      <View style={{ padding: 20 }}>{children}</View>
+    </View>
+  );
+}
+
+// Show/Hide toggle for a section's tab area - matches grfmxstatusupdate's own
+// collapse button exactly (outlined blue "▾ Show" when collapsed, solid blue
+// "▴ Hide" when expanded). Defaults to collapsed so the page loads compact;
+// the KPI strip above it is always visible regardless.
+function ShowHideToggle({ expanded, onToggle, colors, scaleFont }) {
+  return (
+    <AnimatedPressable
+      scaleTo={1.0}
+      onPress={onToggle}
+      style={{
+        paddingVertical: 10, borderRadius: 8, alignItems: 'center', marginBottom: 14,
+        borderWidth: 1, borderColor: colors.primary,
+        backgroundColor: expanded ? colors.primary : 'transparent',
+      }}
+    >
+      <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: expanded ? '#fff' : colors.primary }}>
+        {expanded ? '▴ Hide' : '▾ Show'}
+      </Text>
+    </AnimatedPressable>
+  );
 }
 
 // Toolbar button used by every group header (Copy/Excel) - a brief inline
@@ -314,6 +358,7 @@ function WarehouseCard({ token, onOpenTracking, colors, scaleFont }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -328,56 +373,62 @@ function WarehouseCard({ token, onOpenTracking, colors, scaleFont }) {
   const groups = tab === 'current' ? (data?.current || []) : (data?.noAttempt || []);
 
   return (
-    <Card icon="🏭" title="Go Rush Warehouse">
+    <ColoredCard icon="🏭" title="Go Rush Warehouse" color="dark">
       <KpiStrip>
         <KpiTile icon="📦" value={data?.summary?.current ?? '—'} label="Current" colors={colors} scaleFont={scaleFont} />
         <KpiTile icon="⛔" value={data?.summary?.noAttempt ?? '—'} label="No Attempt Yet" colors={colors} scaleFont={scaleFont} />
       </KpiStrip>
 
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-        {[{ key: 'current', label: 'Current' }, { key: 'noAttempt', label: 'No Attempt Yet' }].map((t) => (
-          <AnimatedPressable
-            key={t.key}
-            scaleTo={1.03}
-            onPress={() => setTab(t.key)}
-            style={[{ paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border }, tab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-          >
-            <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: tab === t.key ? '#fff' : colors.textPrimary }}>{t.label}</Text>
-          </AnimatedPressable>
-        ))}
-      </View>
+      <ShowHideToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} colors={colors} scaleFont={scaleFont} />
 
-      {loading && <ActivityIndicator color={colors.primary} />}
-      {!loading && error && <Text style={{ color: colors.error }}>{error}</Text>}
-      {!loading && !error && groups.length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>No orders in this tab.</Text>}
+      {expanded && (
+        <>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+            {[{ key: 'current', label: 'Current' }, { key: 'noAttempt', label: 'No Attempt Yet' }].map((t) => (
+              <AnimatedPressable
+                key={t.key}
+                scaleTo={1.03}
+                onPress={() => setTab(t.key)}
+                style={[{ paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border }, tab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              >
+                <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: tab === t.key ? '#fff' : colors.textPrimary }}>{t.label}</Text>
+              </AnimatedPressable>
+            ))}
+          </View>
 
-      {!loading && !error && groups.map((g) => {
-        const allOrders = tab === 'current' ? g.areas.flatMap((a) => a.orders) : g.orders;
-        return (
-          <Collapsible
-            key={g.mawbNo}
-            colors={colors}
-            scaleFont={scaleFont}
-            header={<MawbGroupHeader mawbNo={g.mawbNo} maxAge={g.maxAge} count={allOrders.length} orders={allOrders} exportColumns={FULL_EXPORT_COLUMNS} colors={colors} scaleFont={scaleFont} />}
-          >
-            {tab === 'current' ? (
-              g.areas.map((a) => (
-                <Collapsible
-                  key={a.area}
-                  colors={colors}
-                  scaleFont={scaleFont}
-                  header={<GroupHeader title={`Area: ${a.area}`} count={a.orders.length} orders={a.orders} exportColumns={FULL_EXPORT_COLUMNS} sectionName={`${g.mawbNo} ${a.area}`} colors={colors} scaleFont={scaleFont} />}
-                >
-                  <OrdersTable orders={a.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
-                </Collapsible>
-              ))
-            ) : (
-              <OrdersTable orders={g.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
-            )}
-          </Collapsible>
-        );
-      })}
-    </Card>
+          {loading && <ActivityIndicator color={colors.primary} />}
+          {!loading && error && <Text style={{ color: colors.error }}>{error}</Text>}
+          {!loading && !error && groups.length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>No orders in this tab.</Text>}
+
+          {!loading && !error && groups.map((g) => {
+            const allOrders = tab === 'current' ? g.areas.flatMap((a) => a.orders) : g.orders;
+            return (
+              <Collapsible
+                key={g.mawbNo}
+                colors={colors}
+                scaleFont={scaleFont}
+                header={<MawbGroupHeader mawbNo={g.mawbNo} maxAge={g.maxAge} count={allOrders.length} orders={allOrders} exportColumns={FULL_EXPORT_COLUMNS} colors={colors} scaleFont={scaleFont} />}
+              >
+                {tab === 'current' ? (
+                  g.areas.map((a) => (
+                    <Collapsible
+                      key={a.area}
+                      colors={colors}
+                      scaleFont={scaleFont}
+                      header={<GroupHeader title={`Area: ${a.area}`} count={a.orders.length} orders={a.orders} exportColumns={FULL_EXPORT_COLUMNS} sectionName={`${g.mawbNo} ${a.area}`} colors={colors} scaleFont={scaleFont} />}
+                    >
+                      <OrdersTable orders={a.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+                    </Collapsible>
+                  ))
+                ) : (
+                  <OrdersTable orders={g.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+                )}
+              </Collapsible>
+            );
+          })}
+        </>
+      )}
+    </ColoredCard>
   );
 }
 
@@ -408,8 +459,10 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
 
   useEffect(() => { if (tab === 'completed') loadCompleted(completedDate); }, [tab]);
 
+  const [expanded, setExpanded] = useState(false);
+
   return (
-    <Card icon="🚚" title="In Progress / Completed">
+    <ColoredCard icon="🚚" title="Out For Delivery / Completed / Failed" color="success">
       <KpiStrip>
         <KpiTile icon="🗂️" value={active?.summary?.total ?? '—'} label="Total" colors={colors} scaleFont={scaleFont} />
         <KpiTile icon="⚡" value={active?.summary?.active ?? '—'} label="Active" bg={colors.primaryLight} fg={colors.primary} colors={colors} scaleFont={scaleFont} />
@@ -418,86 +471,89 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
         <KpiTile icon="⚠️" value={active?.summary?.outdated ?? '—'} label="Outdated Jobs" bg={colors.warningLight} fg={colors.warning} colors={colors} scaleFont={scaleFont} />
       </KpiStrip>
 
-      <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-        {[{ key: 'active', label: 'Active Jobs' }, { key: 'completed', label: 'Completed Jobs' }].map((t) => (
-          <AnimatedPressable
-            key={t.key}
-            scaleTo={1.03}
-            onPress={() => setTab(t.key)}
-            style={[{ paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border }, tab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary }]}
-          >
-            <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: tab === t.key ? '#fff' : colors.textPrimary }}>{t.label}</Text>
-          </AnimatedPressable>
-        ))}
-      </View>
+      <ShowHideToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} colors={colors} scaleFont={scaleFont} />
 
-      {tab === 'active' ? (
-        activeLoading ? <ActivityIndicator color={colors.primary} /> : (
-          <>
-            {(active?.dates || []).length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>No active jobs.</Text>}
-            {(active?.dates || []).map((d) => (
-              <Collapsible
-                key={d.jobDate}
-                colors={colors}
-                scaleFont={scaleFont}
-                header={<GroupHeader title={d.jobDate === 'Unscheduled' ? 'Unscheduled' : formatDMY(d.jobDate)} count={d.orders.length} orders={d.orders} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={d.jobDate} colors={colors} scaleFont={scaleFont} />}
-              >
-                <OrdersTable orders={d.orders} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
-              </Collapsible>
-            ))}
-          </>
-        )
-      ) : (
+      {expanded && (
         <>
-          <View style={{ marginBottom: 14 }}>
-            <TextInput
-              style={[formStyles.input, { width: 180 }]}
-              value={completedDate}
-              onChangeText={(v) => setCompletedDate(v)}
-              onEndEditing={() => loadCompleted(completedDate)}
-              placeholder="YYYY-MM-DD"
-              placeholderTextColor={colors.textMuted}
-            />
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
+            {[{ key: 'active', label: 'Active Jobs' }, { key: 'completed', label: 'Job Status' }].map((t) => (
+              <AnimatedPressable
+                key={t.key}
+                scaleTo={1.03}
+                onPress={() => setTab(t.key)}
+                style={[{ paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, borderWidth: 1, borderColor: colors.border }, tab === t.key && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+              >
+                <Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: tab === t.key ? '#fff' : colors.textPrimary }}>{t.label}</Text>
+              </AnimatedPressable>
+            ))}
           </View>
-          {completedLoading ? <ActivityIndicator color={colors.primary} /> : completed && (
-            <>
-              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
-                <Badge label="Total" value={completed.summary.total} bg={colors.subtleBackground} fg={colors.textPrimary} scaleFont={scaleFont} />
-                <Badge label="Completed" value={completed.summary.completed} bg={colors.successLight} fg={colors.success} scaleFont={scaleFont} />
-                <Badge label="Not Completed" value={completed.summary.notCompleted} bg={colors.warningLight} fg={colors.warning} scaleFont={scaleFont} />
-              </View>
 
-              {/* Split by outcome (Completed/Out for Delivery/Failed) instead
-                  of one flat mixed list - grfmxstatusupdate's own Completed
-                  Jobs tab splits by dispatcher; a single-product partner has
-                  no dispatcher concept, so outcome is the equivalent split. */}
-              <Collapsible
-                defaultOpen
-                colors={colors}
-                scaleFont={scaleFont}
-                header={<GroupHeader title="Completed" count={completed.groups.completed.length} orders={completed.groups.completed} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Completed ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
-              >
-                <OrdersTable orders={completed.groups.completed} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
-              </Collapsible>
-              <Collapsible
-                colors={colors}
-                scaleFont={scaleFont}
-                header={<GroupHeader title="Out for Delivery" count={completed.groups.outForDelivery.length} orders={completed.groups.outForDelivery} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Out for Delivery ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
-              >
-                <OrdersTable orders={completed.groups.outForDelivery} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
-              </Collapsible>
-              <Collapsible
-                colors={colors}
-                scaleFont={scaleFont}
-                header={<GroupHeader title="Failed" count={completed.groups.failed.length} orders={completed.groups.failed} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Failed ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
-              >
-                <OrdersTable orders={completed.groups.failed} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
-              </Collapsible>
+          {tab === 'active' ? (
+            activeLoading ? <ActivityIndicator color={colors.primary} /> : (
+              <>
+                {(active?.dates || []).length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>No active jobs.</Text>}
+                {(active?.dates || []).map((d) => (
+                  <Collapsible
+                    key={d.jobDate}
+                    colors={colors}
+                    scaleFont={scaleFont}
+                    header={<GroupHeader title={d.jobDate === 'Unscheduled' ? 'Unscheduled' : formatDMY(d.jobDate)} count={d.orders.length} orders={d.orders} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={d.jobDate} colors={colors} scaleFont={scaleFont} />}
+                  >
+                    <OrdersTable orders={d.orders} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+                  </Collapsible>
+                ))}
+              </>
+            )
+          ) : (
+            <>
+              <View style={{ marginBottom: 14, width: 180 }}>
+                <DateField value={completedDate} onChange={(v) => { setCompletedDate(v); loadCompleted(v); }} formStyles={formStyles} />
+              </View>
+              {completedLoading ? <ActivityIndicator color={colors.primary} /> : completed && (
+                <>
+                  <View style={{ flexDirection: 'row', gap: 10, marginBottom: 14 }}>
+                    <Badge label="Total" value={completed.summary.total} bg={colors.subtleBackground} fg={colors.textPrimary} scaleFont={scaleFont} />
+                    <Badge label="Completed" value={completed.summary.completed} bg={colors.successLight} fg={colors.success} scaleFont={scaleFont} />
+                    <Badge label="Not Completed" value={completed.summary.notCompleted} bg={colors.warningLight} fg={colors.warning} scaleFont={scaleFont} />
+                  </View>
+
+                  {/* Split by outcome (Completed/Out for Delivery/Failed)
+                      instead of one flat mixed list - grfmxstatusupdate's own
+                      Completed Jobs tab splits by dispatcher; a single-
+                      product partner has no dispatcher concept, so outcome is
+                      the equivalent split. All three open by default once
+                      this section itself is expanded via Show. */}
+                  <Collapsible
+                    defaultOpen
+                    colors={colors}
+                    scaleFont={scaleFont}
+                    header={<GroupHeader title="Completed" count={completed.groups.completed.length} orders={completed.groups.completed} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Completed ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
+                  >
+                    <OrdersTable orders={completed.groups.completed} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+                  </Collapsible>
+                  <Collapsible
+                    defaultOpen
+                    colors={colors}
+                    scaleFont={scaleFont}
+                    header={<GroupHeader title="Out for Delivery" count={completed.groups.outForDelivery.length} orders={completed.groups.outForDelivery} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Out for Delivery ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
+                  >
+                    <OrdersTable orders={completed.groups.outForDelivery} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+                  </Collapsible>
+                  <Collapsible
+                    defaultOpen
+                    colors={colors}
+                    scaleFont={scaleFont}
+                    header={<GroupHeader title="Failed" count={completed.groups.failed.length} orders={completed.groups.failed} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Failed ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
+                  >
+                    <OrdersTable orders={completed.groups.failed} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+                  </Collapsible>
+                </>
+              )}
             </>
           )}
         </>
       )}
-    </Card>
+    </ColoredCard>
   );
 }
 
@@ -507,6 +563,7 @@ function NewOrdersCard({ token, onOpenTracking, colors, scaleFont }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [expanded, setExpanded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -518,7 +575,7 @@ function NewOrdersCard({ token, onOpenTracking, colors, scaleFont }) {
   }, [token]);
 
   return (
-    <Card icon="📥" title="New Orders — Incomplete Scan In Warehouse">
+    <ColoredCard icon="📥" title="New Orders — Not Yet Scanned In Warehouse" color="primary">
       {loading && <ActivityIndicator color={colors.primary} />}
       {!loading && error && <Text style={{ color: colors.error }}>{error}</Text>}
       {!loading && !error && (
@@ -526,34 +583,41 @@ function NewOrdersCard({ token, onOpenTracking, colors, scaleFont }) {
           <KpiStrip>
             <KpiTile icon="📦" value={data?.totalCount ?? 0} label={(user?.role || '').toUpperCase()} colors={colors} scaleFont={scaleFont} />
           </KpiStrip>
-          {(data?.groups || []).length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>Nothing incomplete right now.</Text>}
-          {(data?.groups || []).map((g) => {
-            const badge = incompleteScanAgeColors(g.maxAge, colors);
-            return (
-              <Collapsible
-                key={g.mawbNo}
-                colors={colors}
-                scaleFont={scaleFont}
-                header={
-                  <GroupHeader
-                    title={`MAWB: ${g.mawbNo}`}
-                    extra={<Badge label="Max Age" value={`${g.maxAge}d`} bg={badge.bg} fg={badge.fg} scaleFont={scaleFont} />}
-                    count={g.orders.length}
-                    orders={g.orders}
-                    exportColumns={SCAN_EXPORT_COLUMNS}
-                    sectionName={`MAWB ${g.mawbNo}`}
+
+          <ShowHideToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} colors={colors} scaleFont={scaleFont} />
+
+          {expanded && (
+            <>
+              {(data?.groups || []).length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>Nothing incomplete right now.</Text>}
+              {(data?.groups || []).map((g) => {
+                const badge = incompleteScanAgeColors(g.maxAge, colors);
+                return (
+                  <Collapsible
+                    key={g.mawbNo}
                     colors={colors}
                     scaleFont={scaleFont}
-                  />
-                }
-              >
-                <OrdersTable orders={g.orders} variant="scan" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
-              </Collapsible>
-            );
-          })}
+                    header={
+                      <GroupHeader
+                        title={`MAWB: ${g.mawbNo}`}
+                        extra={<Badge label="Max Age" value={`${g.maxAge}d`} bg={badge.bg} fg={badge.fg} scaleFont={scaleFont} />}
+                        count={g.orders.length}
+                        orders={g.orders}
+                        exportColumns={SCAN_EXPORT_COLUMNS}
+                        sectionName={`MAWB ${g.mawbNo}`}
+                        colors={colors}
+                        scaleFont={scaleFont}
+                      />
+                    }
+                  >
+                    <OrdersTable orders={g.orders} variant="scan" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+                  </Collapsible>
+                );
+              })}
+            </>
+          )}
         </>
       )}
-    </Card>
+    </ColoredCard>
   );
 }
 

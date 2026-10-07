@@ -13,7 +13,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
 import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
-import { formatDMY, displayLocation } from '../lib/partnerUi';
+import { formatDMY, displayLocation, DateField } from '../lib/partnerUi';
 import TrackingDetailModal from '../components/TrackingDetailModal';
 
 const WIDE_MAX_WIDTH = 1700;
@@ -73,20 +73,6 @@ function FilterField({ label, children, colors, scaleFont }) {
       <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, marginBottom: 4 }}>{label}</Text>
       {children}
     </View>
-  );
-}
-
-// Web-only native date input (matches formStyles.webDatePicker, the same
-// pattern jpmc-portal.js's own DateField uses) - gives a real calendar
-// picker instead of a free-text "type YYYY-MM-DD and hope" field.
-function DateField({ value, onChange, formStyles }) {
-  return (
-    <input
-      type="date"
-      value={value || ''}
-      style={formStyles.webDatePicker}
-      onChange={(e) => onChange(e.target.value)}
-    />
   );
 }
 
