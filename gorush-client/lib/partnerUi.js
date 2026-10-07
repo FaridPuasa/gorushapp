@@ -49,16 +49,24 @@ export function Section({ icon, title, children, colors, scaleFont }) {
   return (
     <View style={{ backgroundColor: colors.subtleBackground || colors.background, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 12 }}>
       <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>{icon} {title}</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 12 }}>{children}</View>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 24, rowGap: 14 }}>{children}</View>
     </View>
   );
 }
 
-export function DetailField({ label, value, minWidth = 140, maxWidth = '100%', colors, scaleFont }) {
+// A fixed-width slot (not flexGrow-to-fill) - grfmxstatusupdate's own
+// Shipment Info/Customer Info cards lay fields out in clean, equal-width
+// columns that wrap to a new row together; the previous flexGrow approach
+// let each field's own content width decide its column width, so differently-
+// sized neighbors (e.g. "Attempt": "1" next to "Job Created Date":
+// "07.10.2026") never lined up into a grid at all. `minWidth` here is really
+// "this field's column width" - still named minWidth for every existing call
+// site, but no longer stretches to fill leftover row space.
+export function DetailField({ label, value, minWidth = 150, maxWidth, colors, scaleFont }) {
   return (
-    <View style={{ minWidth, maxWidth, flexGrow: 1, flexShrink: 1 }}>
+    <View style={{ width: minWidth, maxWidth: maxWidth || minWidth, flexShrink: 0 }}>
       <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>{label}</Text>
-      <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary, flexShrink: 1 }}>{value ?? '—'}</Text>
+      <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary }}>{value ?? '—'}</Text>
     </View>
   );
 }

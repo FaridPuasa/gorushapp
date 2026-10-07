@@ -240,7 +240,7 @@ export default function PartnerSearchJobs() {
 
   const pageContent = (
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
-      <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>Search Jobs</Text>
+      <Text style={[formStyles.title, { fontSize: scaleFont(26), marginBottom: 28 }]}>Search Jobs</Text>
 
       <Card icon="🔍" title="Filters">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 16 }}>

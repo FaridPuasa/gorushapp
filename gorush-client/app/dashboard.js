@@ -621,7 +621,7 @@ function NewOrdersCard({ token, onOpenTracking, colors, scaleFont }) {
 }
 
 export default function PartnerDashboard() {
-  const { token, user } = useAuth();
+  const { token } = useAuth();
   const { colors } = useTheme();
   const { scaleFont } = useDenseFontScale();
   const formStyles = useFormStyles();
@@ -631,8 +631,7 @@ export default function PartnerDashboard() {
 
   const pageContent = (
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
-      <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>Dashboard</Text>
-      <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{user?.role ? user.role.toUpperCase() : ''} orders</Text>
+      <Text style={[formStyles.title, { fontSize: scaleFont(26), marginBottom: 28 }]}>Dashboard</Text>
 
       <TrackingSearchCard token={token} onOpenTracking={setOpenTracking} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
       <WarehouseCard token={token} onOpenTracking={setOpenTracking} colors={colors} scaleFont={scaleFont} />
