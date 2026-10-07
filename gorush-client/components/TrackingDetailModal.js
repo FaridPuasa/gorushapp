@@ -14,6 +14,7 @@ import { Text, View, Modal, Pressable, ScrollView, ActivityIndicator } from 'rea
 import { api } from '../lib/api';
 import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
+import { useLanguage } from '../context/LanguageContext';
 import { AnimatedPressable } from '../lib/animations';
 import { Badge, Section, DetailField, formatDMY, displayLocation } from '../lib/partnerUi';
 import {
@@ -23,19 +24,39 @@ import {
 
 const FALLBACK_STATUS_LABEL = 'Status Update';
 
+// For "Out for Delivery"/"Self Collect", grfmxstatusupdate's own backend
+// writes the DRIVER/DISPATCHER'S NAME into lastLocation (confirmed live:
+// "Out for Delivery" | lastLocation: "Leo" - the same value as
+// lastAssignedTo) rather than an actual place - there's no real location
+// signal for an internally-dispatched job the way GDEX's own GPS-based
+// tracking has one. Showing it here would leak the assigned driver's
+// identity, which partners must never see. GDEX/customer orders avoid this
+// entirely because gorush-client's own customer-facing tracking popup
+// (TrackingResultModal, lib/trackingHistory.js) never shows a location line
+// at all - matched here by just suppressing it for these two statuses
+// specifically, rather than hiding it everywhere (the other statuses'
+// lastLocation - Origin/Brunei Customs/Warehouse/Customer - are genuine
+// places, not identities, and are worth keeping).
+const LOCATION_HIDDEN_STATUSES = new Set(['out for delivery', 'self collect']);
+function safeStepLocation(entry, status) {
+  if (!entry.lastLocation) return null;
+  if (LOCATION_HIDDEN_STATUSES.has((status || '').toLowerCase())) return null;
+  return displayLocation(entry.lastLocation);
+}
+
 // Desktop stepper node, same design as TrackingResultModal.js's own desktop
 // branch (the customer-facing tracking popup) - a small dot joined to its
 // neighbors by a connecting line, current step gets a bordered bubble with a
 // big icon. Reused here rather than reinvented so both popups in this app
 // look and behave identically. Adds one line beyond that component's own
-// design: the step's warehouse location (K1/K2 collapsed to "Warehouse"),
-// which partners asked to keep even though "who updated it" / "assigned
-// driver" stay omitted.
-function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont }) {
+// design: the step's location (K1/K2 collapsed to "Warehouse", and never the
+// assigned driver's name - see safeStepLocation above).
+function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t }) {
   const status = canonicalStatus(entry, FALLBACK_STATUS_LABEL);
-  const label = displayStatusLabel(status);
+  const label = displayStatusLabel(status, t);
   const reason = historyReason(entry);
   const style = getStatusStyle(status, colors);
+  const location = safeStepLocation(entry, status);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
       <View style={{ width: 150, alignItems: 'center' }}>
@@ -52,14 +73,14 @@ function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont }) {
             <Text style={{ fontSize: scaleFont(24), marginBottom: 4 }}>{style.icon}</Text>
             <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: style.color, textAlign: 'center' }}>{label}</Text>
             <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>{formatHistoryDate(entry.dateUpdated)}</Text>
-            {entry.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>📍 {displayLocation(entry.lastLocation)}</Text> : null}
+            {location ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>📍 {location}</Text> : null}
             {reason && <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>{reason}</Text>}
           </View>
         ) : (
           <>
             <Text style={{ fontSize: scaleFont(13), fontWeight: '600', color: colors.textPrimary, textAlign: 'center', marginTop: 8 }}>{label}</Text>
             <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>{formatHistoryDate(entry.dateUpdated)}</Text>
-            {entry.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>📍 {displayLocation(entry.lastLocation)}</Text> : null}
+            {location ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>📍 {location}</Text> : null}
             {reason && <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>{reason}</Text>}
           </>
         )}
@@ -95,6 +116,7 @@ function RelatedOrdersGroup({ title, orders, onOpenTracking, colors, scaleFont }
 export default function TrackingDetailModal({ trackingNumber, token, onClose, onOpenTracking }) {
   const { colors } = useTheme();
   const { scaleFont } = useFontScale();
+  const { t } = useLanguage();
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -192,6 +214,7 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
                           isLast={i === historyEntries.length - 1}
                           colors={colors}
                           scaleFont={scaleFont}
+                          t={t}
                         />
                       ))}
                     </View>

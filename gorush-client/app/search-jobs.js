@@ -23,8 +23,8 @@ const PAGE_SIZE = 25;
 // (searchJobs.ejs), trimmed to what applies to a single-product partner view.
 const AREA_OPTIONS = ['B', 'G', 'JT', 'TUTONG', 'KB', 'LUMUT', 'SERIA', 'TEMBURONG', 'N/A'];
 const JOB_STATUS_OPTIONS = [
-  'Info Received', 'On Hold', 'Queued for Warehouse', 'At Warehouse', 'In Sorting Area',
-  'Out for Delivery', 'Self Collect', 'Completed', 'Return to Warehouse', 'Cancelled', 'Disposed', 'Return',
+  'Info Received', 'On Hold', 'At Warehouse', 'In Sorting Area',
+  'Out for Delivery', 'Self Collect', 'Completed', 'Return to Warehouse',
 ];
 const REASON_OPTIONS = [
   'Unattempted Delivery', 'Reschedule delivery requested by customer',
@@ -300,9 +300,21 @@ export default function PartnerSearchJobs() {
           </FilterField>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-          <ToolbarButton label={loading ? 'Searching…' : '🔍 Search'} variant="primary" colors={colors} scaleFont={scaleFont} onPress={runSearch} />
-          <ToolbarButton label="Reset" colors={colors} scaleFont={scaleFont} onPress={resetFilters} />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 20 }}>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <ToolbarButton label={loading ? 'Searching…' : '🔍 Search'} variant="primary" colors={colors} scaleFont={scaleFont} onPress={runSearch} />
+            <ToolbarButton label="Reset" colors={colors} scaleFont={scaleFont} onPress={resetFilters} />
+          </View>
+          {searched && sorted.length > 0 && (
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <ToolbarButton label="📋 Copy Tracking No." colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(sorted)} />
+              <ToolbarButton label={exported ? 'Done' : '📊 Download Excel'} variant="success" colors={colors} scaleFont={scaleFont} onPress={handleExport} />
+              <View>
+                <ToolbarButton label="☰ Columns" colors={colors} scaleFont={scaleFont} onPress={() => setColumnsOpen((v) => !v)} />
+                <ColumnsPanel open={columnsOpen} hidden={hiddenColumns} onToggleColumn={toggleColumn} colors={colors} scaleFont={scaleFont} />
+              </View>
+            </View>
+          )}
         </View>
       </Card>
 
@@ -311,21 +323,11 @@ export default function PartnerSearchJobs() {
 
       {!loading && !error && searched && (
         <Card icon="📋" title={`Results (${sorted.length})`}>
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginBottom: 12 }}>
-            <ToolbarButton label="📋 Copy Tracking No." colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(sorted)} />
-            <ToolbarButton label={exported ? 'Done' : '📊 Download Excel'} variant="success" colors={colors} scaleFont={scaleFont} onPress={handleExport} />
-            <View>
-              <ToolbarButton label="☰ Columns" colors={colors} scaleFont={scaleFont} onPress={() => setColumnsOpen((v) => !v)} />
-              <ColumnsPanel open={columnsOpen} hidden={hiddenColumns} onToggleColumn={toggleColumn} colors={colors} scaleFont={scaleFont} />
-            </View>
-          </View>
-
           <ScrollView horizontal>
             <View>
               <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden', minWidth: '100%' }}>
                 <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, paddingVertical: 8 }}>
                   <View style={{ width: 50, paddingHorizontal: 8 }}><Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted, textTransform: 'uppercase' }}>S/N</Text></View>
-                  <View style={{ width: 100, paddingHorizontal: 8 }}><Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted, textTransform: 'uppercase' }}>Action</Text></View>
                   {visibleColumns.map((c) => (
                     <AnimatedPressable key={c.key} scaleTo={1.0} onPress={() => toggleSort(c.key)} style={{ width: c.width, paddingHorizontal: 8 }}>
                       <Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted, textTransform: 'uppercase' }} numberOfLines={1}>
@@ -339,11 +341,6 @@ export default function PartnerSearchJobs() {
                 ) : pageOrders.map((o, i) => (
                   <View key={o.id} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, backgroundColor: i % 2 === 1 ? colors.subtleBackground : colors.card, borderTopWidth: 1, borderTopColor: colors.border }}>
                     <View style={{ width: 50, paddingHorizontal: 8 }}><Text style={{ fontSize: scaleFont(12), color: colors.textPrimary }}>{(page - 1) * PAGE_SIZE + i + 1}</Text></View>
-                    <View style={{ width: 100, paddingHorizontal: 8 }}>
-                      <AnimatedPressable scaleTo={1.04} onPress={() => setOpenTracking(o.doTrackingNumber)} style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignSelf: 'flex-start' }}>
-                        <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.textPrimary }}>View Details</Text>
-                      </AnimatedPressable>
-                    </View>
                     {visibleColumns.map((c) => (
                       <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
                         {c.key === 'doTrackingNumber' ? (
