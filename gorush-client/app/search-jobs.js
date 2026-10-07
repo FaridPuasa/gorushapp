@@ -233,16 +233,12 @@ export default function PartnerSearchJobs() {
     else { setSortKey(key); setSortDir('asc'); }
   };
 
+  if (!token) return null;
+
   const pageContent = (
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
       <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>Search Jobs</Text>
-    </View>
-  );
 
-  if (!token) return null;
-
-  return (
-    <PageScroll title="Search Jobs" beforeContent={pageContent}>
       <Card icon="🔍" title="Filters">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
           <FilterField label="Go Rush Tracking No." colors={colors} scaleFont={scaleFont}>
@@ -329,6 +325,8 @@ export default function PartnerSearchJobs() {
       )}
 
       <DetailModal order={detailOrder} onClose={() => setDetailOrder(null)} colors={colors} scaleFont={scaleFont} />
-    </PageScroll>
+    </View>
   );
+
+  return <PageScroll title="Search Jobs" beforeContent={pageContent} />;
 }

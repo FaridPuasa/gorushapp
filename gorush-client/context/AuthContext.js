@@ -68,8 +68,8 @@ export function AuthProvider({ children }) {
     canViewJpmcPortal: ['jpmc', 'admin'].includes(user?.role),
     // External partners (pdu/mglobal/ewe) - each role name is also its `product`
     // value on the shared orders table, so a single boolean + the role string
-    // itself is all the partner-dashboard/search-jobs pages need to scope their
-    // own queries (see app/partner-dashboard.js, app/partner-search-jobs.js).
+    // itself is all the dashboard/search-jobs pages need to scope their own
+    // queries (see app/dashboard.js, app/search-jobs.js).
     isPdu: user?.role === 'pdu',
     isMglobal: user?.role === 'mglobal',
     isEwe: user?.role === 'ewe',

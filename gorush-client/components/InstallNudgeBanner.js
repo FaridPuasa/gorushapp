@@ -19,7 +19,7 @@ const DISMISS_KEY = 'gorush_install_banner_dismissed';
 export default function InstallNudgeBanner() {
     const router = useRouter();
     const pathname = usePathname();
-    const { isAdmin, isJpmc } = useAuth();
+    const { isAdmin, isJpmc, isPartnerRole } = useAuth();
     const { colors } = useTheme();
     const { t } = useLanguage();
     const { scaleFont } = useFontScale();

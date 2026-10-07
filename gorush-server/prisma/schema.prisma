@@ -92,6 +92,8 @@ model Order {
   lastUpdateDateTime     DateTime? @map("last_update_date_time")
   warehouseEntry         String?   @map("warehouse_entry")
   warehouseEntryDateTime DateTime? @map("warehouse_entry_date_time")
+  archive                String?   @map("archive")
+  archiveDateTime        DateTime? @map("archive_date_time")
   queuedWarehouse        String?   @map("queued_warehouse")
   assignedTo             String?   @map("assigned_to")
   attempt                Int?

@@ -2,11 +2,15 @@
 // grfmxstatusupdate's dashboard.ejs sections (Search Tracking Number,
 // Warehouse, In Progress/Completed, New Orders), scoped server-side to the
 // logged-in partner's own product (see gorush-server/routes/partnerPortal.js).
-// Built with the same primitives/visual language jpmc-portal.js already
-// established for this app's one other staff-like portal page, not a literal
-// port of the EJS/Bootstrap markup - see the project plan's "Key
-// interpretation" note.
-import React, { useState, useCallback, useEffect } from 'react';
+// Visual language (KPI tiles with icons, MAWB/Area/date group headers with
+// Copy/Excel buttons, grouped-row tinting, age badge thresholds) follows
+// grfmxstatusupdate's own dashboard as closely as RN/web primitives allow -
+// not a literal Bootstrap/EJS port, but the same structure/behavior, per the
+// project plan. Everything is rendered via PageScroll's `beforeContent` (see
+// lib/formPrimitives.js) rather than as children - this is a wide data page,
+// not a form, so it must not be squeezed into the app's narrow 900px form
+// column (same reasoning jpmc-portal.js documents for its own page).
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { Text, TextInput, View, ActivityIndicator, ScrollView } from 'react-native';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -14,8 +18,9 @@ import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
+import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
 
-const WIDE_MAX_WIDTH = 1400;
+const WIDE_MAX_WIDTH = 1500;
 
 function formatDMY(value) {
   if (!value) return '—';
@@ -68,6 +73,15 @@ function incompleteScanAgeColors(age, colors) {
   if (age >= 7) return { bg: colors.warningLight, fg: colors.warning };
   return { bg: colors.successLight, fg: colors.success };
 }
+// Same 5-color pastel palette grfmxstatusupdate's CSS uses for
+// group-color-0..4 (same-customer order clusters, see groupSimilarOrders on
+// the server) - light/dark variants so grouped rows read as tinted in both themes.
+const GROUP_COLORS_LIGHT = ['#eaf4fb', '#f5f0e6', '#eaf7ea', '#f8eef2', '#f2eef8'];
+const GROUP_COLORS_DARK = ['#1c2b36', '#2c271c', '#1c2e1f', '#2e1f27', '#271f2e'];
+function groupRowColor(groupColorIdx, mode) {
+  if (groupColorIdx == null) return null;
+  return (mode === 'dark' ? GROUP_COLORS_DARK : GROUP_COLORS_LIGHT)[groupColorIdx % 5];
+}
 
 function Badge({ label, value, bg, fg, scaleFont }) {
   return (
@@ -75,6 +89,21 @@ function Badge({ label, value, bg, fg, scaleFont }) {
       <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: fg }}>{label ? `${label}: ` : ''}{value ?? '—'}</Text>
     </View>
   );
+}
+
+// One KPI tile (icon + value + label) - the small summary strip every
+// section (Warehouse/In Progress-Completed/New Orders) shows above its tabs.
+function KpiTile({ icon, value, label, bg, fg, colors, scaleFont }) {
+  return (
+    <View style={{ minWidth: 130, flex: 1, alignItems: 'center', paddingVertical: 14, paddingHorizontal: 10, borderRadius: 10, borderWidth: 1, borderColor: colors.border, backgroundColor: bg || colors.subtleBackground }}>
+      <Text style={{ fontSize: scaleFont(18), marginBottom: 4 }}>{icon}</Text>
+      <Text style={{ fontSize: scaleFont(20), fontWeight: '700', color: fg || colors.textPrimary }}>{value}</Text>
+      <Text style={{ fontSize: scaleFont(11), fontWeight: '600', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 2, textAlign: 'center' }}>{label}</Text>
+    </View>
+  );
+}
+function KpiStrip({ children }) {
+  return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>{children}</View>;
 }
 
 function Section({ icon, title, children, colors, scaleFont }) {
@@ -95,69 +124,157 @@ function DetailField({ label, value, minWidth = 140, maxWidth = '100%', colors, 
   );
 }
 
-// Collapsible panel - the single building block every group level (MAWB,
-// Area, date) in this page uses, so the "tap header to expand" behavior and
-// chevron are consistent everywhere.
+// Toolbar button used by every group header (Copy/Excel) - a brief inline
+// "Copied!"/"Done" replaces the label for 1.5s instead of a toast system
+// this app doesn't have (same spirit as jpmc-portal.js's Save button).
+function ToolbarButton({ label, doneLabel, onPress, colors, scaleFont, variant = 'default' }) {
+  const [done, setDone] = useState(false);
+  const bg = variant === 'success' ? colors.successLight : colors.card;
+  const fg = variant === 'success' ? colors.success : colors.textPrimary;
+  return (
+    <AnimatedPressable
+      scaleTo={1.04}
+      onPress={async () => {
+        await onPress();
+        setDone(true);
+        setTimeout(() => setDone(false), 1500);
+      }}
+      style={{ paddingVertical: 5, paddingHorizontal: 10, borderRadius: 6, backgroundColor: bg, borderWidth: 1, borderColor: colors.border }}
+    >
+      <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: fg }}>{done ? (doneLabel || 'Done') : label}</Text>
+    </AnimatedPressable>
+  );
+}
+
+// Group header - Title + order-count badge + Copy + Excel, used at every
+// level (MAWB, Area, date) exactly like grfmxstatusupdate's own card headers.
+function GroupHeader({ title, extra, count, orders, exportColumns, sectionName, colors, scaleFont }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8, flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: colors.textPrimary }}>{title}</Text>
+        {extra}
+      </View>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+        <Badge label={null} value={`${count} order${count === 1 ? '' : 's'}`} bg={colors.primaryLight} fg={colors.primary} scaleFont={scaleFont} />
+        <ToolbarButton label="📋 Copy" doneLabel="Copied!" colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(orders)} />
+        <ToolbarButton label="📊 Excel" doneLabel="Done" colors={colors} scaleFont={scaleFont} variant="success" onPress={() => exportOrdersToExcel(orders, exportColumns, sectionName)} />
+      </View>
+    </View>
+  );
+}
+
+// Collapsible panel wrapping a GroupHeader - the single building block every
+// group level (MAWB, Area, date) in this page uses.
 function Collapsible({ header, children, defaultOpen = false, colors, scaleFont }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, marginBottom: 10, overflow: 'hidden' }}>
-      <AnimatedPressable
-        scaleTo={1.0}
-        onPress={() => setOpen((v) => !v)}
-        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12, backgroundColor: colors.card }}
-      >
+      <View style={{ flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.card, gap: 10 }}>
+        <AnimatedPressable scaleTo={1.0} onPress={() => setOpen((v) => !v)}>
+          <Text style={{ fontSize: scaleFont(14), color: colors.textMuted }}>{open ? '▴' : '▾'}</Text>
+        </AnimatedPressable>
         {header}
-        <Text style={{ fontSize: scaleFont(14), color: colors.textMuted }}>{open ? '▴' : '▾'}</Text>
-      </AnimatedPressable>
+      </View>
       {open && <View style={{ padding: 12, paddingTop: 0 }}>{children}</View>}
     </View>
   );
 }
 
-// Shared order-row table - which columns render is controlled by the caller
-// per section, since Current/No Attempt/Incomplete Scan/Active/Completed
-// each show a slightly different subset (matches grfmxstatusupdate's own
-// warehouseAreaCards.ejs/warehouseMethodTables.ejs convention of varying the
-// column set per tab rather than one fixed table everywhere).
-function OrdersTable({ orders, showAge, showAttempt, showReason, showArea, colors, scaleFont }) {
+// Full column set for the Warehouse/Active/Completed tables - matches
+// grfmxstatusupdate's warehouseAreaCards.ejs/warehouseMethodTables.ejs.
+const FULL_EXPORT_COLUMNS = [
+  { key: 'ageDays', label: 'Age' },
+  { key: 'doTrackingNumber', label: 'Tracking Number' },
+  { key: 'attempt', label: 'Attempt' },
+  { key: 'latestReason', label: 'Latest Reason' },
+  { key: 'receiverAddress', label: 'Address' },
+  { key: 'area', label: 'Area' },
+  { key: 'receiverName', label: 'Name' },
+  { key: 'receiverPhoneNumber', label: 'Main Phone' },
+  { key: 'customerRemark', label: 'Customer Remark' },
+  { key: 'goRushRemark', label: 'Go Rush Remark' },
+];
+// Incomplete Scan's narrower column set (no Age/Attempt/Reason/Remark columns
+// per row - age is shown only on the MAWB group header, same as the original).
+const SCAN_EXPORT_COLUMNS = [
+  { key: 'doTrackingNumber', label: 'Tracking Number' },
+  { key: 'receiverAddress', label: 'Address' },
+  { key: 'area', label: 'Area' },
+  { key: 'receiverName', label: 'Name' },
+  { key: 'receiverPhoneNumber', label: 'Main Phone' },
+];
+
+// Real table (header row + body rows), not the card-per-row layout - matches
+// grfmxstatusupdate's actual warehouse tables rather than jpmc-portal's style.
+function OrdersTable({ orders, variant = 'full', colors, scaleFont }) {
+  const { mode } = useTheme();
+  const columns = variant === 'scan' ? SCAN_EXPORT_COLUMNS : FULL_EXPORT_COLUMNS;
   if (!orders || orders.length === 0) {
     return <Text style={{ fontSize: scaleFont(13), color: colors.textMuted, fontStyle: 'italic', padding: 8 }}>No orders.</Text>;
   }
   return (
-    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden' }}>
-      {orders.map((o, i) => {
-        const age = rowAgeColors(o.ageDays, colors);
-        return (
-          <View key={o.id} style={{ padding: 10, backgroundColor: i % 2 === 1 ? colors.subtleBackground : colors.card, borderBottomWidth: i === orders.length - 1 ? 0 : 1, borderBottomColor: colors.border, flexDirection: 'row', flexWrap: 'wrap', gap: 16, alignItems: 'center' }}>
-            {showAge && <Badge label="Age" value={o.ageDays != null ? `${o.ageDays}d` : '—'} bg={age.bg} fg={age.fg} scaleFont={scaleFont} />}
-            <DetailField label="Tracking No." value={o.doTrackingNumber} minWidth={130} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Name" value={o.receiverName} minWidth={140} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Main Phone" value={o.receiverPhoneNumber} minWidth={110} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Address" value={o.receiverAddress} minWidth={200} maxWidth={320} colors={colors} scaleFont={scaleFont} />
-            {showArea && <DetailField label="Area" value={o.area} minWidth={70} colors={colors} scaleFont={scaleFont} />}
-            {showAttempt && <DetailField label="Attempt" value={o.attempt ?? 0} minWidth={60} colors={colors} scaleFont={scaleFont} />}
-            {showReason && <DetailField label="Latest Reason" value={o.latestReason} minWidth={160} maxWidth={240} colors={colors} scaleFont={scaleFont} />}
-            <DetailField label="Remark" value={o.remarks} minWidth={160} maxWidth={240} colors={colors} scaleFont={scaleFont} />
-          </View>
-        );
-      })}
-    </View>
+    <ScrollView horizontal>
+      <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden', minWidth: '100%' }}>
+        <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, paddingVertical: 8, paddingHorizontal: 10 }}>
+          {columns.map((c) => (
+            <Text key={c.key} style={{ width: c.key === 'doTrackingNumber' ? 130 : c.key === 'receiverAddress' || c.key === 'latestReason' ? 200 : 110, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>{c.label}</Text>
+          ))}
+        </View>
+        {orders.map((o, i) => {
+          const age = rowAgeColors(o.ageDays, colors);
+          const groupBg = groupRowColor(o.groupColorIdx, mode);
+          return (
+            <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, backgroundColor: groupBg || (i % 2 === 1 ? colors.subtleBackground : colors.card), borderTopWidth: 1, borderTopColor: colors.border }}>
+              {columns.map((c) => {
+                const width = c.key === 'doTrackingNumber' ? 130 : c.key === 'receiverAddress' || c.key === 'latestReason' ? 200 : 110;
+                if (c.key === 'ageDays') {
+                  return (
+                    <View key={c.key} style={{ width }}>
+                      <Badge label={null} value={o.ageDays != null ? `${o.ageDays} days` : '—'} bg={age.bg} fg={age.fg} scaleFont={scaleFont} />
+                    </View>
+                  );
+                }
+                return (
+                  <Text key={c.key} style={{ width, fontSize: scaleFont(12), color: colors.textPrimary }} numberOfLines={3}>
+                    {o[c.key] ?? '—'}
+                  </Text>
+                );
+              })}
+            </View>
+          );
+        })}
+      </View>
+    </ScrollView>
   );
 }
 
-function MawbGroupHeader({ mawbNo, maxAge, count, colors, scaleFont }) {
+function MawbGroupHeader({ mawbNo, maxAge, count, orders, exportColumns, colors, scaleFont }) {
   const badge = mawbAgeColors(maxAge, colors);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-      <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: colors.textPrimary }}>MAWB: {mawbNo}</Text>
-      <Badge label={null} value={`${count} order${count === 1 ? '' : 's'}`} bg={colors.subtleBackground} fg={colors.textSecondary} scaleFont={scaleFont} />
-      <Badge label="Max Age" value={`${maxAge}d`} bg={badge.bg} fg={badge.fg} scaleFont={scaleFont} />
-    </View>
+    <GroupHeader
+      title={`MAWB: ${mawbNo}`}
+      extra={<Badge label="Max Age" value={`${maxAge}d`} bg={badge.bg} fg={badge.fg} scaleFont={scaleFont} />}
+      count={count}
+      orders={orders}
+      exportColumns={exportColumns}
+      sectionName={`MAWB ${mawbNo}`}
+      colors={colors}
+      scaleFont={scaleFont}
+    />
   );
 }
 
 // ---- Search Tracking Number ----
+const HISTORY_ICONS = {
+  'info received': 'ℹ️', 'at warehouse': '🏢', 'in sorting area': '🗂️',
+  'out for delivery': '🚚', 'self collect': '🙋', 'completed': '✅',
+  'cancelled': '✖️', 'return to warehouse': '↩️', 'on hold': '⏸️',
+};
+function historyIcon(status) {
+  return HISTORY_ICONS[(status || '').toLowerCase()] || '📍';
+}
+
 function TrackingSearchCard({ token, colors, scaleFont, formStyles }) {
   const [value, setValue] = useState('');
   const [result, setResult] = useState(null);
@@ -199,9 +316,13 @@ function TrackingSearchCard({ token, colors, scaleFont, formStyles }) {
 
       {result && (
         <View>
-          <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary, marginBottom: 10 }}>{result.doTrackingNumber}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{result.doTrackingNumber}</Text>
+            <Badge label={null} value={result.currentStatus} bg={colors.primaryLight} fg={colors.primary} scaleFont={scaleFont} />
+          </View>
           <Section icon="📦" title="Shipment Info" colors={colors} scaleFont={scaleFont}>
             <DetailField label="Job Status" value={result.currentStatus} colors={colors} scaleFont={scaleFont} />
+            <DetailField label="Job Method" value={result.jobMethod} colors={colors} scaleFont={scaleFont} />
             <DetailField label="Latest Location" value={result.latestLocation} colors={colors} scaleFont={scaleFont} />
             <DetailField label="Attempt" value={result.attempt ?? 0} colors={colors} scaleFont={scaleFont} />
             <DetailField label="Job Date" value={formatDMY(result.jobDate)} colors={colors} scaleFont={scaleFont} />
@@ -218,8 +339,11 @@ function TrackingSearchCard({ token, colors, scaleFont, formStyles }) {
           </Section>
           <Section icon="💬" title="Remarks" colors={colors} scaleFont={scaleFont}>
             <DetailField label="Customer Remark" value={result.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
+            <DetailField label="Go Rush Remark" value={result.goRushRemark} minWidth={260} colors={colors} scaleFont={scaleFont} />
           </Section>
 
+          {/* No copy/print-label buttons, and each history step below omits
+              "updated by" and "assigned driver" - per the agreed scope. */}
           {result.history?.length > 0 && (
             <Section icon="🕒" title="Status History" colors={colors} scaleFont={scaleFont}>
               <ScrollView horizontal showsHorizontalScrollIndicator style={{ width: '100%' }}>
@@ -227,10 +351,19 @@ function TrackingSearchCard({ token, colors, scaleFont, formStyles }) {
                   {result.history.map((h, i) => {
                     const isCurrent = i === result.history.length - 1;
                     return (
-                      <View key={i} style={{ width: 170, paddingRight: 12 }}>
-                        <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color: isCurrent ? colors.primary : colors.textPrimary }}>{h.status || '—'}</Text>
-                        <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 2 }}>{formatDMYTime(h.dateUpdated)}</Text>
+                      <View key={i} style={{ width: 170, paddingRight: 12, alignItems: 'flex-start' }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Text style={{ fontSize: scaleFont(16) }}>{historyIcon(h.status)}</Text>
+                          <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color: isCurrent ? colors.primary : colors.textPrimary }}>{h.status || '—'}</Text>
+                        </View>
+                        {isCurrent && (
+                          <View style={{ marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.primaryLight }}>
+                            <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.primary }}>Current</Text>
+                          </View>
+                        )}
+                        <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 4 }}>{formatDMYTime(h.dateUpdated)}</Text>
                         {h.reason ? <Text style={{ fontSize: scaleFont(11), color: colors.textSecondary, marginTop: 2 }}>{h.reason}</Text> : null}
+                        {h.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2 }}>📍 {h.lastLocation}</Text> : null}
                       </View>
                     );
                   })}
@@ -265,6 +398,11 @@ function WarehouseCard({ token, colors, scaleFont }) {
 
   return (
     <Card icon="🏭" title="Warehouse">
+      <KpiStrip>
+        <KpiTile icon="📦" value={data?.summary?.current ?? '—'} label="Current" colors={colors} scaleFont={scaleFont} />
+        <KpiTile icon="⛔" value={data?.summary?.noAttempt ?? '—'} label="No Attempt" colors={colors} scaleFont={scaleFont} />
+      </KpiStrip>
+
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
         {[{ key: 'current', label: 'Current' }, { key: 'noAttempt', label: 'No Attempt' }].map((t) => (
           <AnimatedPressable
@@ -283,17 +421,27 @@ function WarehouseCard({ token, colors, scaleFont }) {
       {!loading && !error && groups.length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>No orders in this tab.</Text>}
 
       {!loading && !error && groups.map((g) => {
-        const count = tab === 'current' ? g.areas.reduce((sum, a) => sum + a.orders.length, 0) : g.orders.length;
+        const allOrders = tab === 'current' ? g.areas.flatMap((a) => a.orders) : g.orders;
         return (
-          <Collapsible key={g.mawbNo} colors={colors} scaleFont={scaleFont} header={<MawbGroupHeader mawbNo={g.mawbNo} maxAge={g.maxAge} count={count} colors={colors} scaleFont={scaleFont} />}>
+          <Collapsible
+            key={g.mawbNo}
+            colors={colors}
+            scaleFont={scaleFont}
+            header={<MawbGroupHeader mawbNo={g.mawbNo} maxAge={g.maxAge} count={allOrders.length} orders={allOrders} exportColumns={FULL_EXPORT_COLUMNS} colors={colors} scaleFont={scaleFont} />}
+          >
             {tab === 'current' ? (
               g.areas.map((a) => (
-                <Collapsible key={a.area} colors={colors} scaleFont={scaleFont} header={<Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: colors.textPrimary }}>Area: {a.area} ({a.orders.length})</Text>}>
-                  <OrdersTable orders={a.orders} showAge showAttempt showReason colors={colors} scaleFont={scaleFont} />
+                <Collapsible
+                  key={a.area}
+                  colors={colors}
+                  scaleFont={scaleFont}
+                  header={<GroupHeader title={`Area: ${a.area}`} count={a.orders.length} orders={a.orders} exportColumns={FULL_EXPORT_COLUMNS} sectionName={`${g.mawbNo} ${a.area}`} colors={colors} scaleFont={scaleFont} />}
+                >
+                  <OrdersTable orders={a.orders} colors={colors} scaleFont={scaleFont} />
                 </Collapsible>
               ))
             ) : (
-              <OrdersTable orders={g.orders} showAge showAttempt showReason colors={colors} scaleFont={scaleFont} />
+              <OrdersTable orders={g.orders} colors={colors} scaleFont={scaleFont} />
             )}
           </Collapsible>
         );
@@ -331,6 +479,14 @@ function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
 
   return (
     <Card icon="🚚" title="In Progress / Completed">
+      <KpiStrip>
+        <KpiTile icon="🗂️" value={active?.summary?.total ?? '—'} label="Total" colors={colors} scaleFont={scaleFont} />
+        <KpiTile icon="⚡" value={active?.summary?.active ?? '—'} label="Active" bg={colors.primaryLight} fg={colors.primary} colors={colors} scaleFont={scaleFont} />
+        <KpiTile icon="✅" value={active?.summary?.completed ?? '—'} label="Completed" bg={colors.successLight} fg={colors.success} colors={colors} scaleFont={scaleFont} />
+        <KpiTile icon="❌" value={active?.summary?.failed ?? '—'} label="Failed" bg={colors.errorLight} fg={colors.error} colors={colors} scaleFont={scaleFont} />
+        <KpiTile icon="⚠️" value={active?.summary?.outdated ?? '—'} label="Outdated Jobs" bg={colors.warningLight} fg={colors.warning} colors={colors} scaleFont={scaleFont} />
+      </KpiStrip>
+
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
         {[{ key: 'active', label: 'Active Jobs' }, { key: 'completed', label: 'Completed Jobs' }].map((t) => (
           <AnimatedPressable
@@ -347,12 +503,14 @@ function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
       {tab === 'active' ? (
         activeLoading ? <ActivityIndicator color={colors.primary} /> : (
           <>
-            {active?.outdatedCount > 0 && (
-              <View style={{ marginBottom: 12 }}><Badge label="Outdated Jobs" value={active.outdatedCount} bg={colors.errorLight} fg={colors.error} scaleFont={scaleFont} /></View>
-            )}
             {(active?.dates || []).length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>No active jobs.</Text>}
             {(active?.dates || []).map((d) => (
-              <Collapsible key={d.jobDate} colors={colors} scaleFont={scaleFont} header={<Text style={{ fontWeight: '700', fontSize: scaleFont(13), color: colors.textPrimary }}>{d.jobDate === 'Unscheduled' ? 'Unscheduled' : formatDMY(d.jobDate)} ({d.orders.length})</Text>}>
+              <Collapsible
+                key={d.jobDate}
+                colors={colors}
+                scaleFont={scaleFont}
+                header={<GroupHeader title={d.jobDate === 'Unscheduled' ? 'Unscheduled' : formatDMY(d.jobDate)} count={d.orders.length} orders={d.orders} exportColumns={FULL_EXPORT_COLUMNS} sectionName={d.jobDate} colors={colors} scaleFont={scaleFont} />}
+              >
                 <OrdersTable orders={d.orders} colors={colors} scaleFont={scaleFont} />
               </Collapsible>
             ))}
@@ -361,7 +519,6 @@ function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
       ) : (
         <>
           <View style={{ marginBottom: 14 }}>
-            {/* Simple web-friendly date input, consistent with jpmc-portal.js's DateField pattern. */}
             <TextInput
               style={[formStyles.input, { width: 180 }]}
               value={completedDate}
@@ -373,14 +530,20 @@ function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
           </View>
           {completedLoading ? <ActivityIndicator color={colors.primary} /> : completed && (
             <Collapsible
-              defaultOpen={false}
+              defaultOpen
               colors={colors}
               scaleFont={scaleFont}
               header={
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <Badge label="Total" value={completed.summary.total} bg={colors.subtleBackground} fg={colors.textPrimary} scaleFont={scaleFont} />
-                  <Badge label="Completed" value={completed.summary.completed} bg={colors.successLight} fg={colors.success} scaleFont={scaleFont} />
-                  <Badge label="Not Completed" value={completed.summary.notCompleted} bg={colors.warningLight} fg={colors.warning} scaleFont={scaleFont} />
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1, flexWrap: 'wrap', gap: 8 }}>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    <Badge label="Total" value={completed.summary.total} bg={colors.subtleBackground} fg={colors.textPrimary} scaleFont={scaleFont} />
+                    <Badge label="Completed" value={completed.summary.completed} bg={colors.successLight} fg={colors.success} scaleFont={scaleFont} />
+                    <Badge label="Not Completed" value={completed.summary.notCompleted} bg={colors.warningLight} fg={colors.warning} scaleFont={scaleFont} />
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <ToolbarButton label="📋 Copy" doneLabel="Copied!" colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(completed.orders)} />
+                    <ToolbarButton label="📊 Excel" doneLabel="Done" variant="success" colors={colors} scaleFont={scaleFont} onPress={() => exportOrdersToExcel(completed.orders, FULL_EXPORT_COLUMNS, `Completed Jobs ${completed.date}`)} />
+                  </View>
                 </View>
               }
             >
@@ -395,6 +558,7 @@ function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
 
 // ---- New Orders / Incomplete Scan ----
 function NewOrdersCard({ token, colors, scaleFont }) {
+  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -414,9 +578,9 @@ function NewOrdersCard({ token, colors, scaleFont }) {
       {!loading && error && <Text style={{ color: colors.error }}>{error}</Text>}
       {!loading && !error && (
         <>
-          <View style={{ marginBottom: 12 }}>
-            <Badge label="Total" value={data?.totalCount ?? 0} bg={colors.subtleBackground} fg={colors.textPrimary} scaleFont={scaleFont} />
-          </View>
+          <KpiStrip>
+            <KpiTile icon="📦" value={data?.totalCount ?? 0} label={(user?.role || '').toUpperCase()} colors={colors} scaleFont={scaleFont} />
+          </KpiStrip>
           {(data?.groups || []).length === 0 && <Text style={{ color: colors.textMuted, fontStyle: 'italic' }}>Nothing incomplete right now.</Text>}
           {(data?.groups || []).map((g) => {
             const badge = incompleteScanAgeColors(g.maxAge, colors);
@@ -426,14 +590,19 @@ function NewOrdersCard({ token, colors, scaleFont }) {
                 colors={colors}
                 scaleFont={scaleFont}
                 header={
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: colors.textPrimary }}>MAWB: {g.mawbNo}</Text>
-                    <Badge label={null} value={`${g.orders.length} order${g.orders.length === 1 ? '' : 's'}`} bg={colors.subtleBackground} fg={colors.textSecondary} scaleFont={scaleFont} />
-                    <Badge label="Max Age" value={`${g.maxAge}d`} bg={badge.bg} fg={badge.fg} scaleFont={scaleFont} />
-                  </View>
+                  <GroupHeader
+                    title={`MAWB: ${g.mawbNo}`}
+                    extra={<Badge label="Max Age" value={`${g.maxAge}d`} bg={badge.bg} fg={badge.fg} scaleFont={scaleFont} />}
+                    count={g.orders.length}
+                    orders={g.orders}
+                    exportColumns={SCAN_EXPORT_COLUMNS}
+                    sectionName={`MAWB ${g.mawbNo}`}
+                    colors={colors}
+                    scaleFont={scaleFont}
+                  />
                 }
               >
-                <OrdersTable orders={g.orders} colors={colors} scaleFont={scaleFont} />
+                <OrdersTable orders={g.orders} variant="scan" colors={colors} scaleFont={scaleFont} />
               </Collapsible>
             );
           })}
@@ -449,21 +618,19 @@ export default function PartnerDashboard() {
   const { scaleFont } = useFontScale();
   const formStyles = useFormStyles();
 
+  if (!token) return null;
+
   const pageContent = (
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
       <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>Dashboard</Text>
       <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{user?.role ? user.role.toUpperCase() : ''} orders</Text>
-    </View>
-  );
 
-  if (!token) return null;
-
-  return (
-    <PageScroll title="Dashboard" beforeContent={pageContent}>
       <TrackingSearchCard token={token} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
       <WarehouseCard token={token} colors={colors} scaleFont={scaleFont} />
       <ActiveCompletedCard token={token} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
       <NewOrdersCard token={token} colors={colors} scaleFont={scaleFont} />
-    </PageScroll>
+    </View>
   );
+
+  return <PageScroll title="Dashboard" beforeContent={pageContent} />;
 }

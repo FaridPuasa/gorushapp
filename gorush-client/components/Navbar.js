@@ -16,12 +16,13 @@ import SettingsDropdown from './SettingsDropdown';
 import ThemeToggle from './ThemeToggle';
 import LanguagePicker from './LanguagePicker';
 import FontScalePicker from './FontScalePicker';
+import ChangePasswordModal from './ChangePasswordModal';
 import { AnimatedPressable } from '../lib/animations';
 
 const BAR_HEIGHT = NAVBAR_HEIGHT;
 
 export default function Navbar() {
-  const { user, isGuest, isAdmin, isJpmc, isPartnerRole, loading, logout } = useAuth();
+  const { user, isGuest, isAdmin, isJpmc, isPartnerRole, token, loading, logout } = useAuth();
   const isJpmcPortalRole = isJpmc;
   // Partners (pdu/mglobal/ewe) get the same "staff-like, no marketing/customer
   // chrome" treatment as jpmc (hidden bottom nav, hidden language picker) but
@@ -68,6 +69,7 @@ export default function Navbar() {
   const [infoOpen, setInfoOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [accountExpanded, setAccountExpanded] = useState(null); // 'settings' | 'user' | null
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
 
   const closeAll = () => setOpenMenu(null);
 
@@ -95,11 +97,10 @@ export default function Navbar() {
     { label: t('nav.logOut'), onPress: handleLogout },
   ];
 
-  // Partners only ever need Change Password + Log Out - same minimal set as
-  // jpmc, just labeled for what /edit-profile actually shows them (a
-  // password-only page, see edit-profile.js's isPartnerRole short-circuit).
+  // Partners only ever need Change Password + Log Out. Change Password is a
+  // popup (ChangePasswordModal below), not a page navigation - no href here.
   const partnerUserItems = [
-    { label: t('nav.changePassword'), href: '/edit-profile' },
+    { label: t('nav.changePassword'), onPress: () => setChangePasswordOpen(true) },
     { label: t('nav.logOut'), onPress: handleLogout },
   ];
 
@@ -112,7 +113,7 @@ export default function Navbar() {
           {isMobile ? (
             <>
               <View style={styles.mobileLogoCenter} pointerEvents="box-none">
-                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/partner-dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/partner-dashboard' : '/')}>
+                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
                   <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
                 </AnimatedPressable>
               </View>
@@ -121,7 +122,7 @@ export default function Navbar() {
               </AnimatedPressable>
             </>
           ) : (
-          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/partner-dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/partner-dashboard' : '/')}>
+          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
             <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
           </AnimatedPressable>
           )}
@@ -152,10 +153,10 @@ export default function Navbar() {
             ) : isPartnerRole ? (
               !loading && (
                 <>
-                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/partner-dashboard" onPress={() => goTo('/partner-dashboard')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/dashboard" onPress={() => goTo('/dashboard')}>
                     <Text style={styles.navText}>{t('nav.dashboard')}</Text>
                   </AnimatedPressable>
-                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/partner-search-jobs" onPress={() => goTo('/partner-search-jobs')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/search-jobs" onPress={() => goTo('/search-jobs')}>
                     <Text style={styles.navText}>{t('nav.searchJobs')}</Text>
                   </AnimatedPressable>
                   <SettingsDropdown
@@ -383,16 +384,16 @@ export default function Navbar() {
                   <AnimatedPressable
                     scaleTo={1.02}
                     style={styles.mobileItem}
-                    href="/partner-dashboard"
-                    onPress={() => { goTo('/partner-dashboard'); closeAccountMenu(); }}
+                    href="/dashboard"
+                    onPress={() => { goTo('/dashboard'); closeAccountMenu(); }}
                   >
                     <Text style={styles.mobileItemText}>{t('nav.dashboard')}</Text>
                   </AnimatedPressable>
                   <AnimatedPressable
                     scaleTo={1.02}
                     style={styles.mobileItem}
-                    href="/partner-search-jobs"
-                    onPress={() => { goTo('/partner-search-jobs'); closeAccountMenu(); }}
+                    href="/search-jobs"
+                    onPress={() => { goTo('/search-jobs'); closeAccountMenu(); }}
                   >
                     <Text style={styles.mobileItemText}>{t('nav.searchJobs')}</Text>
                   </AnimatedPressable>
@@ -496,6 +497,10 @@ export default function Navbar() {
             </ScrollView>
           </SafeAreaView>
         </Modal>
+      )}
+
+      {isPartnerRole && (
+        <ChangePasswordModal visible={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} token={token} />
       )}
     </>
   );

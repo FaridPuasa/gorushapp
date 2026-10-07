@@ -1,9 +1,10 @@
 // External-partner portal (pdu/mglobal/ewe) - each role name IS the `product`
 // value on the shared orders table, so every query here scopes to
 // `product: req.userRole` and nothing else needs to carry a product param.
-// Modeled directly on routes/jpmc.js (requireRole/toApiShape/pagination
-// pattern) but view-only - no PATCH routes, these partners never edit an
-// order, only look up their own.
+// Modeled directly on routes/jpmc.js (requireRole/toApiShape pattern) and on
+// grfmxstatusupdate's dashboard.ejs/index.js (computeWarehouseDashboardData,
+// groupSimilarOrders) for the actual warehouse business rules, but view-only -
+// no PATCH routes, these partners never edit an order, only look up their own.
 //
 // Field omissions are enforced here, server-side, not just hidden in the
 // client - a partner must never receive assignedTo/lastAssignedTo (driver
@@ -17,10 +18,6 @@ const { getBruneiNow } = require('../lib/bruneiTime');
 const router = express.Router();
 router.use(requireRole('pdu', 'mglobal', 'ewe'));
 
-// Products that use MAWB-grouping at all (see grfmxstatusupdate's
-// MAWB_PRODUCTS) - all 3 partner products qualify, kept here only as a
-// documentation anchor since every route below already always groups by
-// mawbNo for these roles.
 const WAREHOUSE_STATUSES = ['At Warehouse', 'Return to Warehouse', 'In Sorting Area'];
 const WAREHOUSE_LOCATIONS = ['Warehouse K1', 'Warehouse K2'];
 const ACTIVE_STATUSES = ['Out for Delivery', 'Self Collect', 'Drop Off'];
@@ -41,17 +38,18 @@ function ageDaysFrom(date) {
     return Math.max(Math.floor((getBruneiNow().getTime() - d.getTime()) / 86400000), 0);
 }
 
-// "How long has this sat in the warehouse" - warehouseEntryDateTime is the
-// authoritative signal when present, falling back to lastUpdateDateTime then
-// creationDate for older rows that predate that column being populated.
+// "How long has this sat in the warehouse" - same reference grfmxstatusupdate's
+// own computeWarehouseDashboardData() uses (index.js: `order.warehouseEntryDateTime
+// || order.creationDate`), deliberately NOT lastUpdateDateTime - that field
+// gets touched by unrelated edits and drifted this age a day off from the
+// original dashboard's own numbers for the same order.
 function warehouseAgeDays(order) {
-    return ageDaysFrom(order.warehouseEntryDateTime || order.lastUpdateDateTime || order.creationDate);
+    return ageDaysFrom(order.warehouseEntryDateTime || order.creationDate);
 }
 
-// "How long has this sat unscanned" - same convention as grfmxstatusupdate's
-// Incomplete Scan tab (lastUpdateDateTime over creationDate, since a
-// manifest's Detrack job can be created weeks before the physical item is
-// actually uploaded).
+// "How long has this sat unscanned" - Incomplete Scan's own convention
+// (lastUpdateDateTime over creationDate, since a manifest's Detrack job can
+// be created weeks before the physical item is actually uploaded).
 function updateAgeDays(order) {
     return ageDaysFrom(order.lastUpdateDateTime || order.creationDate);
 }
@@ -73,7 +71,7 @@ function isInternalHistoryNote(h) {
 // updatedBy (which staff member made the change) - a partner never needs
 // to know who on GO RUSH's side handled their order, only what happened
 // to it and when.
-function toPartnerOrderShape(order, { includeHistory = false } = {}) {
+function toPartnerOrderShape(order, { includeHistory = false, ageDays = null } = {}) {
     const shaped = {
         id: order.id.toString(),
         doTrackingNumber: order.doTrackingNumber,
@@ -84,20 +82,21 @@ function toPartnerOrderShape(order, { includeHistory = false } = {}) {
         receiverPhoneNumber: order.receiverPhoneNumber,
         remarks: order.remarks,
         customerRemark: order.remarks,
+        goRushRemark: order.grRemark,
         currentStatus: order.currentStatus,
         latestLocation: order.latestLocation,
         latestReason: order.latestReason,
         attempt: order.attempt,
+        jobMethod: order.jobMethod,
         jobDate: order.jobDate,
         creationDate: order.creationDate,
         mawbNo: order.mawbNo,
         warehouseEntry: order.warehouseEntry,
-        itemContains: order.itemContains,
         cubicMeters: order.cubicMeters != null ? order.cubicMeters.toString() : null,
         parcelWeight: order.parcelWeight != null ? order.parcelWeight.toString() : null,
         items: order.items,
         detrackCompletedTime: order.detrackCompletedTime,
-        ageDays: warehouseAgeDays(order),
+        ageDays: ageDays != null ? ageDays : warehouseAgeDays(order),
     };
     if (includeHistory) {
         shaped.history = (order.history || [])
@@ -114,21 +113,93 @@ function toPartnerOrderShape(order, { includeHistory = false } = {}) {
     return shaped;
 }
 
+// Ported from grfmxstatusupdate's index.js groupSimilarOrders() - clusters
+// same-customer orders (same name+address, or same name+phone) so the client
+// can tint them as one visual group (a `groupColorIdx` 0-4), and sorts
+// age-descending with grouped orders pulled above singletons at the same age.
+// Operates on already-shaped partner order objects (expects `.ageDays`,
+// `.receiverName`, `.receiverAddress`, `.receiverPhoneNumber`).
+function groupSimilarOrders(orders) {
+    if (!Array.isArray(orders) || orders.length < 2) return orders;
+    const normalizeStr = (s) => (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalizePhone = (s) => (s || '').toString().replace(/\D/g, '');
+
+    const n = orders.length;
+    const parent = Array.from({ length: n }, (_, i) => i);
+    const find = (x) => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    const union = (a, b) => { const ra = find(a), rb = find(b); if (ra !== rb) parent[ra] = rb; };
+
+    const nameAddrMap = new Map();
+    const namePhoneMap = new Map();
+    orders.forEach((o, i) => {
+        const name = normalizeStr(o.receiverName);
+        const addr = normalizeStr(o.receiverAddress);
+        const phone = normalizePhone(o.receiverPhoneNumber);
+        if (name && name !== '-' && addr && addr !== '-') {
+            const key = `${name}||${addr}`;
+            if (nameAddrMap.has(key)) union(i, nameAddrMap.get(key));
+            else nameAddrMap.set(key, i);
+        }
+        if (name && name !== '-' && phone) {
+            const key = `${name}||${phone}`;
+            if (namePhoneMap.has(key)) union(i, namePhoneMap.get(key));
+            else namePhoneMap.set(key, i);
+        }
+    });
+
+    const rootIndices = {};
+    for (let i = 0; i < n; i++) {
+        const r = find(i);
+        if (!rootIndices[r]) rootIndices[r] = [];
+        rootIndices[r].push(i);
+    }
+
+    const PALETTE_SIZE = 5;
+    let colorCounter = 0;
+    const colorIdxByRoot = {};
+    const groupFirstIndex = {};
+    Object.keys(rootIndices).forEach((rootKey) => {
+        const idxs = rootIndices[rootKey];
+        groupFirstIndex[rootKey] = Math.min(...idxs);
+        if (idxs.length > 1) {
+            colorIdxByRoot[rootKey] = colorCounter % PALETTE_SIZE;
+            colorCounter++;
+        }
+    });
+
+    return orders
+        .map((o, i) => ({ o, i, root: find(i) }))
+        .sort((a, b) => {
+            if ((b.o.ageDays || 0) !== (a.o.ageDays || 0)) return (b.o.ageDays || 0) - (a.o.ageDays || 0);
+            const aGrouped = rootIndices[a.root].length > 1;
+            const bGrouped = rootIndices[b.root].length > 1;
+            if (aGrouped !== bGrouped) return aGrouped ? -1 : 1;
+            if (a.root !== b.root) return groupFirstIndex[a.root] - groupFirstIndex[b.root];
+            return a.i - b.i;
+        })
+        .map(({ o, root }) => {
+            if (rootIndices[root].length > 1) o.groupColorIdx = colorIdxByRoot[root];
+            return o;
+        });
+}
+
 // MAWB keys sorted by that group's own max order-age, descending (oldest/
 // most-urgent group surfaces first) - same convention as grfmxstatusupdate's
-// Warehouse and Incomplete Scan tabs.
-function groupByMawb(orders, ageFn) {
+// Warehouse and Incomplete Scan tabs. `orders` must already be the
+// partner-shaped objects (so `.ageDays` is present).
+function groupByMawb(shapedOrders) {
     const groups = new Map();
-    for (const order of orders) {
-        const key = order.mawbNo || 'Unassigned';
+    for (const order of shapedOrders) {
+        const key = order.mawbNo;
+        if (!key) continue; // no-MAWB orders are never shown grouped (see incomplete-scan route)
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(order);
     }
     return [...groups.entries()]
         .map(([mawbNo, groupOrders]) => ({
             mawbNo,
-            maxAge: Math.max(0, ...groupOrders.map((o) => ageFn(o) ?? 0)),
-            orders: groupOrders,
+            maxAge: Math.max(0, ...groupOrders.map((o) => o.ageDays ?? 0)),
+            orders: groupSimilarOrders(groupOrders),
         }))
         .sort((a, b) => b.maxAge - a.maxAge);
 }
@@ -154,23 +225,30 @@ router.get('/tracking/:trackingNumber', async (req, res) => {
 });
 
 // GET /api/partner/warehouse - Current (mawbNo -> area -> orders) and
-// No Attempt (mawbNo -> orders) tabs. Both scoped to the same "at warehouse"
-// base filter grfmxstatusupdate's own Warehouse section uses.
+// No Attempt (mawbNo -> orders) tabs. Both drawn from the same "at warehouse,
+// not archived, under 30 days" base set grfmxstatusupdate's own Warehouse
+// section uses (activeOrders = archive !== 'Yes'; groupByCurrentLocation's own
+// age >= 30 skip).
 router.get('/warehouse', async (req, res) => {
     try {
-        const baseWhere = {
-            product: req.userRole,
-            currentStatus: { in: WAREHOUSE_STATUSES },
-            latestLocation: { in: WAREHOUSE_LOCATIONS },
-        };
-        const orders = await prisma.order.findMany({ where: baseWhere, orderBy: { lastUpdateDateTime: 'desc' } });
+        const rawOrders = await prisma.order.findMany({
+            where: {
+                product: req.userRole,
+                currentStatus: { in: WAREHOUSE_STATUSES },
+                latestLocation: { in: WAREHOUSE_LOCATIONS },
+                archive: { not: 'Yes' },
+            },
+        });
+        const orders = rawOrders
+            .map((o) => toPartnerOrderShape(o, { ageDays: warehouseAgeDays(o) }))
+            .filter((o) => o.ageDays == null || o.ageDays < 30);
 
-        const currentGroups = groupByMawb(orders, warehouseAgeDays).map((g) => {
+        const currentGroups = groupByMawb(orders).map((g) => {
             const byArea = new Map();
             for (const o of g.orders) {
                 const key = o.area || 'N/A';
                 if (!byArea.has(key)) byArea.set(key, []);
-                byArea.get(key).push(toPartnerOrderShape(o));
+                byArea.get(key).push(o);
             }
             return { mawbNo: g.mawbNo, maxAge: g.maxAge, areas: [...byArea.entries()].map(([area, areaOrders]) => ({ area, orders: areaOrders })) };
         });
@@ -180,18 +258,16 @@ router.get('/warehouse', async (req, res) => {
         // delivery" reason means a real attempt was made and failed before
         // the driver could even try, which doesn't count as "no attempt").
         const noAttemptOrders = orders.filter((o) => {
-            const attempt = o.attempt || 0;
-            const age = warehouseAgeDays(o);
-            if (attempt > 1 || (age != null && age >= 30)) return false;
+            if ((o.attempt || 0) > 1) return false;
             return (o.latestReason || '').toLowerCase() !== 'unattempted delivery';
         });
-        const noAttemptGroups = groupByMawb(noAttemptOrders, warehouseAgeDays).map((g) => ({
-            mawbNo: g.mawbNo,
-            maxAge: g.maxAge,
-            orders: g.orders.map((o) => toPartnerOrderShape(o)),
-        }));
+        const noAttemptGroups = groupByMawb(noAttemptOrders);
 
-        res.json({ current: currentGroups, noAttempt: noAttemptGroups });
+        res.json({
+            current: currentGroups,
+            noAttempt: noAttemptGroups,
+            summary: { current: orders.length, noAttempt: noAttemptOrders.length },
+        });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Failed to load warehouse data.' });
@@ -201,26 +277,41 @@ router.get('/warehouse', async (req, res) => {
 // GET /api/partner/active-jobs - date-grouped, flat (no dispatcher/freelancer
 // split). One list covers both "current" and "outdated" (jobDate < today) -
 // outdated jobs just keep showing under their own past date, same as the
-// original Active Jobs tab.
+// original Active Jobs tab. Also returns the KPI strip the top of the
+// In Progress/Completed section shows (Total/Active/Completed/Failed, all
+// scoped to today's jobDate - "Failed" here is this role's best-effort
+// equivalent of grfmxstatusupdate's own dispatcher-summary "Failed" count:
+// a job due today that came back to the warehouse instead of completing).
 router.get('/active-jobs', async (req, res) => {
     try {
-        const orders = await prisma.order.findMany({
+        const activeOrdersRaw = await prisma.order.findMany({
             where: { product: req.userRole, currentStatus: { in: ACTIVE_STATUSES } },
             orderBy: { jobDate: 'asc' },
         });
+        const activeOrders = activeOrdersRaw.map((o) => toPartnerOrderShape(o));
 
         const today = toDateOnlyString(getBruneiNow());
         const groups = new Map();
         let outdatedCount = 0;
-        for (const order of orders) {
+        for (const order of activeOrders) {
             const dateKey = toDateOnlyString(order.jobDate) || 'Unscheduled';
             if (dateKey !== 'Unscheduled' && dateKey < today) outdatedCount += 1;
             if (!groups.has(dateKey)) groups.set(dateKey, []);
-            groups.get(dateKey).push(toPartnerOrderShape(order));
+            groups.get(dateKey).push(order);
         }
+        for (const [key, dateOrders] of groups) groups.set(key, groupSimilarOrders(dateOrders));
+
+        const todayStart = new Date(`${today}T00:00:00+08:00`);
+        const todayEnd = new Date(`${today}T23:59:59.999+08:00`);
+        const [todayTotal, todayCompleted, todayFailed] = await Promise.all([
+            prisma.order.count({ where: { product: req.userRole, jobDate: { gte: todayStart, lte: todayEnd } } }),
+            prisma.order.count({ where: { product: req.userRole, jobDate: { gte: todayStart, lte: todayEnd }, currentStatus: 'Completed' } }),
+            prisma.order.count({ where: { product: req.userRole, jobDate: { gte: todayStart, lte: todayEnd }, currentStatus: 'Return to Warehouse' } }),
+        ]);
+        const todayActive = activeOrders.filter((o) => toDateOnlyString(o.jobDate) === today).length;
 
         res.json({
-            outdatedCount,
+            summary: { total: todayTotal, active: todayActive, completed: todayCompleted, failed: todayFailed, outdated: outdatedCount },
             dates: [...groups.entries()]
                 .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
                 .map(([jobDate, dateOrders]) => ({ jobDate, orders: dateOrders })),
@@ -240,16 +331,17 @@ router.get('/completed-jobs', async (req, res) => {
 
         const start = new Date(`${date}T00:00:00+08:00`);
         const end = new Date(`${date}T23:59:59.999+08:00`);
-        const orders = await prisma.order.findMany({
+        const rawOrders = await prisma.order.findMany({
             where: { product: req.userRole, jobDate: { gte: start, lte: end } },
             orderBy: { lastUpdateDateTime: 'desc' },
         });
+        const orders = groupSimilarOrders(rawOrders.map((o) => toPartnerOrderShape(o)));
 
         const completed = orders.filter((o) => o.currentStatus === 'Completed');
         res.json({
             date,
             summary: { total: orders.length, completed: completed.length, notCompleted: orders.length - completed.length },
-            orders: orders.map((o) => toPartnerOrderShape(o)),
+            orders,
         });
     } catch (err) {
         console.error(err.message);
@@ -260,23 +352,23 @@ router.get('/completed-jobs', async (req, res) => {
 // GET /api/partner/incomplete-scan - manifested but not yet physically
 // scanned into a warehouse (currentStatus = 'Info Received'), grouped by
 // MAWB, respecting hidden MAWB groups exactly like the original dashboard -
-// hidden groups are absent entirely, never toggleable from here.
+// hidden groups are absent entirely, never toggleable from here. Orders with
+// no MAWB number yet are left out entirely (nothing to group them under, and
+// nothing a partner can act on until one exists).
 router.get('/incomplete-scan', async (req, res) => {
     try {
         const hidden = await getHiddenMawbSet(req.userRole);
-        const orders = await prisma.order.findMany({
+        const rawOrders = await prisma.order.findMany({
             where: { product: req.userRole, currentStatus: 'Info Received' },
         });
-        const visible = orders.filter((o) => {
-            const age = updateAgeDays(o);
-            if (age != null && age >= 30) return false;
-            return !hidden.has(o.mawbNo || 'Unassigned');
-        });
-        const groups = groupByMawb(visible, updateAgeDays).map((g) => ({
-            mawbNo: g.mawbNo,
-            maxAge: g.maxAge,
-            orders: g.orders.map((o) => toPartnerOrderShape(o)),
-        }));
+        const visible = rawOrders
+            .map((o) => toPartnerOrderShape(o, { ageDays: updateAgeDays(o) }))
+            .filter((o) => {
+                if (!o.mawbNo) return false;
+                if (o.ageDays != null && o.ageDays >= 30) return false;
+                return !hidden.has(o.mawbNo);
+            });
+        const groups = groupByMawb(visible);
         res.json({ groups, totalCount: visible.length });
     } catch (err) {
         console.error(err.message);
