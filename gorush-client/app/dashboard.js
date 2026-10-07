@@ -137,31 +137,34 @@ function Collapsible({ header, children, defaultOpen = false, colors, scaleFont 
 // Full column set for the Warehouse/Active/Completed tables - matches
 // grfmxstatusupdate's warehouseAreaCards.ejs/warehouseMethodTables.ejs.
 const FULL_EXPORT_COLUMNS = [
-  { key: 'ageDays', label: 'Age' },
-  { key: 'doTrackingNumber', label: 'Tracking Number' },
-  { key: 'attempt', label: 'Attempt' },
-  { key: 'latestReason', label: 'Latest Reason' },
-  { key: 'receiverAddress', label: 'Address' },
-  { key: 'area', label: 'Area' },
-  { key: 'receiverName', label: 'Name' },
-  { key: 'receiverPhoneNumber', label: 'Main Phone' },
-  { key: 'customerRemark', label: 'Customer Remark' },
-  { key: 'goRushRemark', label: 'Go Rush Remark' },
+  { key: 'ageDays', label: 'Age', width: 90 },
+  { key: 'doTrackingNumber', label: 'Tracking Number', width: 130 },
+  { key: 'attempt', label: 'Attempt', width: 80 },
+  { key: 'latestReason', label: 'Latest Reason', width: 170 },
+  { key: 'receiverAddress', label: 'Address', width: 220 },
+  { key: 'area', label: 'Area', width: 80 },
+  { key: 'receiverName', label: 'Name', width: 140 },
+  { key: 'receiverPhoneNumber', label: 'Main Phone', width: 120 },
+  { key: 'customerRemark', label: 'Customer Remark', width: 160 },
+  { key: 'goRushRemark', label: 'Go Rush Remark', width: 160 },
 ];
 // Incomplete Scan's narrower column set (no Age/Attempt/Reason/Remark columns
 // per row - age is shown only on the MAWB group header, same as the original).
 const SCAN_EXPORT_COLUMNS = [
-  { key: 'doTrackingNumber', label: 'Tracking Number' },
-  { key: 'receiverAddress', label: 'Address' },
-  { key: 'area', label: 'Area' },
-  { key: 'receiverName', label: 'Name' },
-  { key: 'receiverPhoneNumber', label: 'Main Phone' },
+  { key: 'doTrackingNumber', label: 'Tracking Number', width: 130 },
+  { key: 'receiverAddress', label: 'Address', width: 220 },
+  { key: 'area', label: 'Area', width: 80 },
+  { key: 'receiverName', label: 'Name', width: 140 },
+  { key: 'receiverPhoneNumber', label: 'Main Phone', width: 120 },
 ];
 
 // Real table (header row + body rows), not the card-per-row layout - matches
 // grfmxstatusupdate's actual warehouse tables rather than jpmc-portal's
 // style. Tracking numbers are clickable, opening the same tracking-detail
-// popup the Search Tracking Number card uses.
+// popup the Search Tracking Number card uses. Column widths live once on
+// each column definition above (FULL_EXPORT_COLUMNS/SCAN_EXPORT_COLUMNS) so
+// the header row and body rows can never drift out of alignment with each
+// other.
 function OrdersTable({ orders, variant = 'full', onOpenTracking, colors, scaleFont }) {
   const { mode } = useTheme();
   const columns = variant === 'scan' ? SCAN_EXPORT_COLUMNS : FULL_EXPORT_COLUMNS;
@@ -171,36 +174,35 @@ function OrdersTable({ orders, variant = 'full', onOpenTracking, colors, scaleFo
   return (
     <ScrollView horizontal>
       <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden', minWidth: '100%' }}>
-        <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, paddingVertical: 8, paddingHorizontal: 10 }}>
+        <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, paddingVertical: 8 }}>
           {columns.map((c) => (
-            <Text key={c.key} style={{ width: c.key === 'doTrackingNumber' ? 130 : c.key === 'receiverAddress' || c.key === 'latestReason' ? 200 : 110, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }}>{c.label}</Text>
+            <Text key={c.key} style={{ width: c.width, paddingHorizontal: 8, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }} numberOfLines={1}>{c.label}</Text>
           ))}
         </View>
         {orders.map((o, i) => {
           const age = rowAgeColors(o.ageDays, colors);
           const groupBg = groupRowColor(o.groupColorIdx, mode);
           return (
-            <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10, backgroundColor: groupBg || (i % 2 === 1 ? colors.subtleBackground : colors.card), borderTopWidth: 1, borderTopColor: colors.border }}>
+            <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, backgroundColor: groupBg || (i % 2 === 1 ? colors.subtleBackground : colors.card), borderTopWidth: 1, borderTopColor: colors.border }}>
               {columns.map((c) => {
-                const width = c.key === 'doTrackingNumber' ? 130 : c.key === 'receiverAddress' || c.key === 'latestReason' ? 200 : 110;
                 if (c.key === 'ageDays') {
                   return (
-                    <View key={c.key} style={{ width }}>
+                    <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
                       <Badge label={null} value={o.ageDays != null ? `${o.ageDays} days` : '—'} bg={age.bg} fg={age.fg} scaleFont={scaleFont} />
                     </View>
                   );
                 }
                 if (c.key === 'doTrackingNumber') {
                   return (
-                    <View key={c.key} style={{ width }}>
+                    <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
                       <AnimatedPressable scaleTo={1.0} onPress={() => onOpenTracking(o.doTrackingNumber)}>
-                        <Text style={{ fontSize: scaleFont(12), color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}>{o.doTrackingNumber}</Text>
+                        <Text style={{ fontSize: scaleFont(12), color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' }} numberOfLines={1}>{o.doTrackingNumber}</Text>
                       </AnimatedPressable>
                     </View>
                   );
                 }
                 return (
-                  <Text key={c.key} style={{ width, fontSize: scaleFont(12), color: colors.textPrimary }} numberOfLines={3}>
+                  <Text key={c.key} style={{ width: c.width, paddingHorizontal: 8, fontSize: scaleFont(12), color: colors.textPrimary }} numberOfLines={3}>
                     {o[c.key] ?? '—'}
                   </Text>
                 );
