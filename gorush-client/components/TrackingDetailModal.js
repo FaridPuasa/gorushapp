@@ -15,46 +15,56 @@ import { api } from '../lib/api';
 import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
-import { Badge, Section, DetailField, formatDMY, formatDMYTime, historyIcon, historyStepColor, displayLocation } from '../lib/partnerUi';
+import { Badge, Section, DetailField, formatDMY, displayLocation } from '../lib/partnerUi';
+import {
+  buildHistoryTimeline, canonicalStatus, displayStatusLabel, formatHistoryDate,
+  getStatusStyle, historyReason,
+} from '../lib/trackingHistory';
 
-const STEP_CIRCLE = 36;
-const STEP_RING = 44;
-const STEP_WIDTH = 150;
+const FALLBACK_STATUS_LABEL = 'Status Update';
 
-// One stepper node: a colored circle (icon inside) joined to its neighbors
-// by a horizontal line, title/date/location below - matches
-// grfmxstatusupdate's own Status History timeline design. The current step
-// gets a ring around its circle plus a "Current" badge, same as there.
-function HistoryStep({ step, isFirst, isLast, isCurrent, colors, scaleFont }) {
-  const color = historyStepColor(step.status);
+// Desktop stepper node, same design as TrackingResultModal.js's own desktop
+// branch (the customer-facing tracking popup) - a small dot joined to its
+// neighbors by a connecting line, current step gets a bordered bubble with a
+// big icon. Reused here rather than reinvented so both popups in this app
+// look and behave identically. Adds one line beyond that component's own
+// design: the step's warehouse location (K1/K2 collapsed to "Warehouse"),
+// which partners asked to keep even though "who updated it" / "assigned
+// driver" stay omitted.
+function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont }) {
+  const status = canonicalStatus(entry, FALLBACK_STATUS_LABEL);
+  const label = displayStatusLabel(status);
+  const reason = historyReason(entry);
+  const style = getStatusStyle(status, colors);
   return (
-    <View style={{ width: STEP_WIDTH, alignItems: 'center' }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
-        <View style={{ flex: isFirst ? 0 : 1, height: 2, backgroundColor: colors.border }} />
+    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+      <View style={{ width: 150, alignItems: 'center' }}>
         <View style={{
-          width: isCurrent ? STEP_RING : STEP_CIRCLE,
-          height: isCurrent ? STEP_RING : STEP_CIRCLE,
-          borderRadius: STEP_RING,
-          borderWidth: isCurrent ? 3 : 0,
-          borderColor: color,
-          alignItems: 'center',
-          justifyContent: 'center',
-        }}>
-          <View style={{ width: STEP_CIRCLE, height: STEP_CIRCLE, borderRadius: STEP_CIRCLE / 2, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
-            <Text style={{ fontSize: scaleFont(16) }}>{historyIcon(step.status)}</Text>
+          width: isCurrent ? 16 : 12, height: isCurrent ? 16 : 12, borderRadius: 8,
+          backgroundColor: style.color, borderWidth: isCurrent ? 2 : 0, borderColor: colors.card,
+        }} />
+        {isCurrent ? (
+          <View style={{
+            marginTop: 8, alignItems: 'center', width: 140,
+            backgroundColor: colors.background, borderRadius: 16, borderWidth: 1, borderColor: style.color,
+            paddingVertical: 12, paddingHorizontal: 10,
+          }}>
+            <Text style={{ fontSize: scaleFont(24), marginBottom: 4 }}>{style.icon}</Text>
+            <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: style.color, textAlign: 'center' }}>{label}</Text>
+            <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>{formatHistoryDate(entry.dateUpdated)}</Text>
+            {entry.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>📍 {displayLocation(entry.lastLocation)}</Text> : null}
+            {reason && <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>{reason}</Text>}
           </View>
-        </View>
-        <View style={{ flex: isLast ? 0 : 1, height: 2, backgroundColor: colors.border }} />
+        ) : (
+          <>
+            <Text style={{ fontSize: scaleFont(13), fontWeight: '600', color: colors.textPrimary, textAlign: 'center', marginTop: 8 }}>{label}</Text>
+            <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>{formatHistoryDate(entry.dateUpdated)}</Text>
+            {entry.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>📍 {displayLocation(entry.lastLocation)}</Text> : null}
+            {reason && <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>{reason}</Text>}
+          </>
+        )}
       </View>
-      <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color, marginTop: 8, textAlign: 'center' }}>{step.status || '—'}</Text>
-      {isCurrent && (
-        <View style={{ marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.primaryLight }}>
-          <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.primary }}>Current</Text>
-        </View>
-      )}
-      <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 4, textAlign: 'center' }}>{formatDMYTime(step.dateUpdated)}</Text>
-      {step.reason ? <Text style={{ fontSize: scaleFont(11), color: colors.textSecondary, marginTop: 2, textAlign: 'center' }}>{step.reason}</Text> : null}
-      {step.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2, textAlign: 'center' }}>📍 {displayLocation(step.lastLocation)}</Text> : null}
+      {!isLast && <View style={{ width: 30, height: 2, backgroundColor: colors.border, marginTop: 7 }} />}
     </View>
   );
 }
@@ -102,6 +112,9 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
   }, [trackingNumber, token]);
 
   const visible = !!trackingNumber;
+  const { historyEntries } = result
+    ? buildHistoryTimeline(result.history, FALLBACK_STATUS_LABEL, result.currentStatus)
+    : { historyEntries: [] };
   const related = result?.relatedOrders;
   // The viewed order itself is already included in each relatedOrders group
   // (server-side, matching grfmxstatusupdate's own "all" list) - drop it here
@@ -162,18 +175,21 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
               </Section>
 
               {/* No copy/print-label buttons, and each history step below omits
-                  "updated by" and "assigned driver" - per the agreed scope. */}
-              {result.history?.length > 0 && (
+                  "updated by" and "assigned driver" - per the agreed scope.
+                  historyEntries already has internal audit notes (e.g.
+                  "Warehouse location updated to Warehouse K1.") filtered out
+                  and back-to-back repeats collapsed, via the same pipeline
+                  the customer-facing tracking popup uses. */}
+              {historyEntries.length > 0 && (
                 <Section icon="🕒" title="Status History" colors={colors} scaleFont={scaleFont}>
                   <ScrollView horizontal showsHorizontalScrollIndicator style={{ width: '100%' }}>
                     <View style={{ flexDirection: 'row', paddingVertical: 4 }}>
-                      {result.history.map((h, i) => (
+                      {historyEntries.map((entry, i) => (
                         <HistoryStep
                           key={i}
-                          step={h}
-                          isFirst={i === 0}
-                          isLast={i === result.history.length - 1}
-                          isCurrent={i === result.history.length - 1}
+                          entry={entry}
+                          isCurrent={i === historyEntries.length - 1}
+                          isLast={i === historyEntries.length - 1}
                           colors={colors}
                           scaleFont={scaleFont}
                         />

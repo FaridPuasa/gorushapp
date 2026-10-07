@@ -54,19 +54,6 @@ function updateAgeDays(order) {
     return ageDaysFrom(order.lastUpdateDateTime || order.creationDate);
 }
 
-const INTERNAL_NOTE_RE = /\bupdated\b/i;
-const ALLOWED_DELIVERY_STATUSES = new Set([
-    'info received', 'at warehouse', 'out for delivery',
-    'failed delivery', 'failed', 'return to warehouse', 'completed',
-    'custom clearance', 'custom clearing',
-    'on hold', 'in sorting area', 'self collect', 'cancelled',
-    'disposed', 'return',
-]);
-function isInternalHistoryNote(h) {
-    if (h.statusHistory) return !ALLOWED_DELIVERY_STATUSES.has(h.statusHistory.toLowerCase());
-    return Boolean(h.reason) && h.reason.toUpperCase() !== 'N/A' && INTERNAL_NOTE_RE.test(h.reason);
-}
-
 // Omits assignedTo/lastAssignedTo (driver identity) and, per history entry,
 // updatedBy (which staff member made the change) - a partner never needs
 // to know who on GO RUSH's side handled their order, only what happened
@@ -100,16 +87,18 @@ function toPartnerOrderShape(order, { includeHistory = false, ageDays = null } =
         ageDays: ageDays != null ? ageDays : warehouseAgeDays(order),
     };
     if (includeHistory) {
-        shaped.history = (order.history || [])
-            .filter((h) => !isInternalHistoryNote(h))
-            .slice()
-            .sort((a, b) => new Date(a.dateUpdated || 0) - new Date(b.dateUpdated || 0))
-            .map((h) => ({
-                status: h.statusHistory,
-                dateUpdated: h.dateUpdated,
-                reason: h.reason,
-                lastLocation: h.lastLocation,
-            }));
+        // Raw fields, unfiltered/unsorted - the client runs the exact same
+        // proven pipeline (lib/trackingHistory.js's buildHistoryTimeline)
+        // the customer-facing tracking popup already uses, which handles
+        // internal-note filtering, dedup, and ordering correctly. A
+        // hand-rolled server-side equivalent previously let internal notes
+        // like "Warehouse location updated to Warehouse K1." leak through.
+        shaped.history = (order.history || []).map((h) => ({
+            statusHistory: h.statusHistory,
+            dateUpdated: h.dateUpdated,
+            reason: h.reason,
+            lastLocation: h.lastLocation,
+        }));
     }
     return shaped;
 }

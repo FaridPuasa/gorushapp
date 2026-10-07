@@ -12,7 +12,7 @@
 // not be squeezed into the app's narrow 900px form column (same reasoning
 // jpmc-portal.js documents for its own page).
 import React, { useState, useCallback, useEffect } from 'react';
-import { Text, TextInput, View, ActivityIndicator, ScrollView } from 'react-native';
+import { Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
@@ -148,24 +148,24 @@ function Collapsible({ header, children, defaultOpen = false, colors, scaleFont 
 // Full column set for the Warehouse/Active/Completed tables - matches
 // grfmxstatusupdate's warehouseAreaCards.ejs/warehouseMethodTables.ejs.
 const FULL_EXPORT_COLUMNS = [
-  { key: 'ageDays', label: 'Age', width: 90 },
-  { key: 'doTrackingNumber', label: 'Tracking Number', width: 130 },
-  { key: 'attempt', label: 'Attempt', width: 80 },
-  { key: 'latestReason', label: 'Latest Reason', width: 170 },
-  { key: 'receiverAddress', label: 'Address', width: 220 },
-  { key: 'area', label: 'Area', width: 80 },
-  { key: 'receiverName', label: 'Name', width: 140 },
-  { key: 'receiverPhoneNumber', label: 'Main Phone', width: 120 },
-  { key: 'customerRemark', label: 'Customer Remark', width: 160 },
+  { key: 'ageDays', label: 'Age', flex: 1 },
+  { key: 'doTrackingNumber', label: 'Tracking Number', flex: 1.3 },
+  { key: 'attempt', label: 'Attempt', flex: 0.7 },
+  { key: 'latestReason', label: 'Latest Reason', flex: 1.6 },
+  { key: 'receiverAddress', label: 'Address', flex: 2 },
+  { key: 'area', label: 'Area', flex: 0.7 },
+  { key: 'receiverName', label: 'Name', flex: 1.3 },
+  { key: 'receiverPhoneNumber', label: 'Main Phone', flex: 1.1 },
+  { key: 'customerRemark', label: 'Customer Remark', flex: 1.5 },
 ];
 // Incomplete Scan's narrower column set (no Age/Attempt/Reason/Remark columns
 // per row - age is shown only on the MAWB group header, same as the original).
 const SCAN_EXPORT_COLUMNS = [
-  { key: 'doTrackingNumber', label: 'Tracking Number', width: 130 },
-  { key: 'receiverAddress', label: 'Address', width: 220 },
-  { key: 'area', label: 'Area', width: 80 },
-  { key: 'receiverName', label: 'Name', width: 140 },
-  { key: 'receiverPhoneNumber', label: 'Main Phone', width: 120 },
+  { key: 'doTrackingNumber', label: 'Tracking Number', flex: 1.3 },
+  { key: 'receiverAddress', label: 'Address', flex: 2 },
+  { key: 'area', label: 'Area', flex: 0.7 },
+  { key: 'receiverName', label: 'Name', flex: 1.3 },
+  { key: 'receiverPhoneNumber', label: 'Main Phone', flex: 1.1 },
 ];
 // Active/Completed job tables - a Status column (Completed/In Progress/
 // Failed) instead of Age, since these jobs have already left the warehouse
@@ -174,24 +174,25 @@ const SCAN_EXPORT_COLUMNS = [
 // one that failed, which the KPI strip above summarizes but the table itself
 // wasn't showing per row at all.
 const JOBS_EXPORT_COLUMNS = [
-  { key: 'currentStatus', label: 'Status', width: 150 },
-  { key: 'doTrackingNumber', label: 'Tracking Number', width: 130 },
-  { key: 'attempt', label: 'Attempt', width: 80 },
-  { key: 'latestReason', label: 'Latest Reason', width: 170 },
-  { key: 'receiverAddress', label: 'Address', width: 220 },
-  { key: 'area', label: 'Area', width: 80 },
-  { key: 'receiverName', label: 'Name', width: 140 },
-  { key: 'receiverPhoneNumber', label: 'Main Phone', width: 120 },
-  { key: 'customerRemark', label: 'Customer Remark', width: 160 },
+  { key: 'currentStatus', label: 'Status', flex: 1.4 },
+  { key: 'doTrackingNumber', label: 'Tracking Number', flex: 1.3 },
+  { key: 'attempt', label: 'Attempt', flex: 0.7 },
+  { key: 'latestReason', label: 'Latest Reason', flex: 1.6 },
+  { key: 'receiverAddress', label: 'Address', flex: 2 },
+  { key: 'area', label: 'Area', flex: 0.7 },
+  { key: 'receiverName', label: 'Name', flex: 1.3 },
+  { key: 'receiverPhoneNumber', label: 'Main Phone', flex: 1.1 },
+  { key: 'customerRemark', label: 'Customer Remark', flex: 1.5 },
 ];
 
 // Real table (header row + body rows), not the card-per-row layout - matches
 // grfmxstatusupdate's actual warehouse tables rather than jpmc-portal's
 // style. Tracking numbers are clickable, opening the same tracking-detail
-// popup the Search Tracking Number card uses. Column widths live once on
-// each column definition above (FULL_EXPORT_COLUMNS/SCAN_EXPORT_COLUMNS/
-// JOBS_EXPORT_COLUMNS) so the header row and body rows can never drift out
-// of alignment with each other.
+// popup the Search Tracking Number card uses. Columns use flex weights (not
+// fixed pixel widths inside a horizontal ScrollView) so the table always
+// fills the full card width like a real HTML table, rather than stopping
+// partway across and leaving blank card background to the right of it -
+// these variants (9/9/5 columns) comfortably fit without needing to scroll.
 function OrdersTable({ orders, variant = 'full', onOpenTracking, colors, scaleFont }) {
   const { mode } = useTheme();
   const columns = variant === 'scan' ? SCAN_EXPORT_COLUMNS : variant === 'jobs' ? JOBS_EXPORT_COLUMNS : FULL_EXPORT_COLUMNS;
@@ -199,45 +200,44 @@ function OrdersTable({ orders, variant = 'full', onOpenTracking, colors, scaleFo
     return <Text style={{ fontSize: scaleFont(13), color: colors.textMuted, fontStyle: 'italic', padding: 8 }}>No orders.</Text>;
   }
   return (
-    <ScrollView horizontal>
-      <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden', minWidth: '100%' }}>
-        <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, paddingVertical: 8 }}>
-          {columns.map((c) => (
-            <Text key={c.key} style={{ width: c.width, paddingHorizontal: 8, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }} numberOfLines={1}>{c.label}</Text>
-          ))}
-        </View>
-        {orders.map((o, i) => {
-          const age = rowAgeColors(o.ageDays, colors);
-          const status = jobStatusColors(o.currentStatus, colors);
-          const groupBg = groupRowColor(o.groupColorIdx, mode);
-          return (
-            <View key={o.id} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, backgroundColor: groupBg || (i % 2 === 1 ? colors.subtleBackground : colors.card), borderTopWidth: 1, borderTopColor: colors.border }}>
-              {columns.map((c) => {
-                if (c.key === 'ageDays') {
-                  return (
-                    <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
-                      <Badge label={null} value={o.ageDays != null ? `${o.ageDays} days` : '—'} bg={age.bg} fg={age.fg} scaleFont={scaleFont} />
-                    </View>
-                  );
-                }
-                if (c.key === 'currentStatus') {
-                  return (
-                    <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
-                      <Badge label={null} value={o.currentStatus || '—'} bg={status.bg} fg={status.fg} scaleFont={scaleFont} />
-                    </View>
-                  );
-                }
-                if (c.key === 'doTrackingNumber') {
-                  return (
-                    <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
-                      <AnimatedPressable scaleTo={1.0} onPress={() => onOpenTracking(o.doTrackingNumber)}>
-                        <Text style={{ fontSize: scaleFont(12), color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' }} numberOfLines={1}>{o.doTrackingNumber}</Text>
-                      </AnimatedPressable>
-                    </View>
-                  );
+    <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden', width: '100%' }}>
+      <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, paddingVertical: 8 }}>
+        {columns.map((c) => (
+          <Text key={c.key} style={{ flex: c.flex, paddingHorizontal: 8, fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase' }} numberOfLines={1}>{c.label}</Text>
+        ))}
+      </View>
+      {orders.map((o, i) => {
+        const age = rowAgeColors(o.ageDays, colors);
+        const status = jobStatusColors(o.currentStatus, colors);
+        const groupBg = groupRowColor(o.groupColorIdx, mode);
+        return (
+          <View key={o.id} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, backgroundColor: groupBg || (i % 2 === 1 ? colors.subtleBackground : colors.card), borderTopWidth: 1, borderTopColor: colors.border }}>
+            {columns.map((c) => {
+              if (c.key === 'ageDays') {
+                return (
+                  <View key={c.key} style={{ flex: c.flex, paddingHorizontal: 8 }}>
+                    <Badge label={null} value={o.ageDays != null ? `${o.ageDays} days` : '—'} bg={age.bg} fg={age.fg} scaleFont={scaleFont} />
+                  </View>
+                );
+              }
+              if (c.key === 'currentStatus') {
+                return (
+                  <View key={c.key} style={{ flex: c.flex, paddingHorizontal: 8 }}>
+                    <Badge label={null} value={o.currentStatus || '—'} bg={status.bg} fg={status.fg} scaleFont={scaleFont} />
+                  </View>
+                );
+              }
+              if (c.key === 'doTrackingNumber') {
+                return (
+                  <View key={c.key} style={{ flex: c.flex, paddingHorizontal: 8 }}>
+                    <AnimatedPressable scaleTo={1.0} onPress={() => onOpenTracking(o.doTrackingNumber)}>
+                      <Text style={{ fontSize: scaleFont(12), color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' }} numberOfLines={1}>{o.doTrackingNumber}</Text>
+                    </AnimatedPressable>
+                  </View>
+                );
                 }
                 return (
-                  <Text key={c.key} style={{ width: c.width, paddingHorizontal: 8, fontSize: scaleFont(12), color: colors.textPrimary }} numberOfLines={3}>
+                  <Text key={c.key} style={{ flex: c.flex, paddingHorizontal: 8, fontSize: scaleFont(12), color: colors.textPrimary }} numberOfLines={3}>
                     {o[c.key] ?? '—'}
                   </Text>
                 );
@@ -245,8 +245,7 @@ function OrdersTable({ orders, variant = 'full', onOpenTracking, colors, scaleFo
             </View>
           );
         })}
-      </View>
-    </ScrollView>
+    </View>
   );
 }
 
