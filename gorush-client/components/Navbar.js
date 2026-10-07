@@ -21,8 +21,12 @@ import { AnimatedPressable } from '../lib/animations';
 const BAR_HEIGHT = NAVBAR_HEIGHT;
 
 export default function Navbar() {
-  const { user, isGuest, isAdmin, isJpmc, loading, logout } = useAuth();
+  const { user, isGuest, isAdmin, isJpmc, isPartnerRole, loading, logout } = useAuth();
   const isJpmcPortalRole = isJpmc;
+  // Partners (pdu/mglobal/ewe) get the same "staff-like, no marketing/customer
+  // chrome" treatment as jpmc (hidden bottom nav, hidden language picker) but
+  // their own two links (Dashboard/Search Jobs) instead of JPMC's one.
+  const isStaffPortalRole = isJpmcPortalRole || isPartnerRole;
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
@@ -91,6 +95,14 @@ export default function Navbar() {
     { label: t('nav.logOut'), onPress: handleLogout },
   ];
 
+  // Partners only ever need Change Password + Log Out - same minimal set as
+  // jpmc, just labeled for what /edit-profile actually shows them (a
+  // password-only page, see edit-profile.js's isPartnerRole short-circuit).
+  const partnerUserItems = [
+    { label: t('nav.changePassword'), href: '/edit-profile' },
+    { label: t('nav.logOut'), onPress: handleLogout },
+  ];
+
   const goTo = (href) => router.push(href);
 
   return (
@@ -100,7 +112,7 @@ export default function Navbar() {
           {isMobile ? (
             <>
               <View style={styles.mobileLogoCenter} pointerEvents="box-none">
-                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : '/')}>
+                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/partner-dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/partner-dashboard' : '/')}>
                   <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
                 </AnimatedPressable>
               </View>
@@ -109,7 +121,7 @@ export default function Navbar() {
               </AnimatedPressable>
             </>
           ) : (
-          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : '/')}>
+          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/partner-dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/partner-dashboard' : '/')}>
             <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
           </AnimatedPressable>
           )}
@@ -130,6 +142,31 @@ export default function Navbar() {
                   <NavDropdown
                     label={user?.email ? maskEmail(user.email) : t('nav.account')}
                     items={jpmcUserItems}
+                    isOpen={openMenu === 'user'}
+                    onToggle={() => setOpenMenu(openMenu === 'user' ? null : 'user')}
+                    onClose={closeAll}
+                    align="right"
+                  />
+                </>
+              )
+            ) : isPartnerRole ? (
+              !loading && (
+                <>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/partner-dashboard" onPress={() => goTo('/partner-dashboard')}>
+                    <Text style={styles.navText}>{t('nav.dashboard')}</Text>
+                  </AnimatedPressable>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/partner-search-jobs" onPress={() => goTo('/partner-search-jobs')}>
+                    <Text style={styles.navText}>{t('nav.searchJobs')}</Text>
+                  </AnimatedPressable>
+                  <SettingsDropdown
+                    align="right"
+                    showLanguage={false}
+                    isOpen={openMenu === 'settings'}
+                    onToggle={() => setOpenMenu(openMenu === 'settings' ? null : 'settings')}
+                  />
+                  <NavDropdown
+                    label={user?.email ? maskEmail(user.email) : t('nav.account')}
+                    items={partnerUserItems}
                     isOpen={openMenu === 'user'}
                     onToggle={() => setOpenMenu(openMenu === 'user' ? null : 'user')}
                     onClose={closeAll}
@@ -237,7 +274,7 @@ export default function Navbar() {
         )}
       </View>
 
-      {isMobile && !isAdmin && !isJpmcPortalRole && (
+      {isMobile && !isAdmin && !isStaffPortalRole && (
         <View style={[styles.bottomNav, { height: BOTTOM_NAV_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
           <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} href="/" onPress={() => goTo('/')}>
             <Ionicons name="home" size={scaleFont(24)} color={colors.textPrimary} />
@@ -341,6 +378,26 @@ export default function Navbar() {
                   <Text style={styles.mobileItemText}>JPMC</Text>
                 </AnimatedPressable>
               )}
+              {isPartnerRole && (
+                <>
+                  <AnimatedPressable
+                    scaleTo={1.02}
+                    style={styles.mobileItem}
+                    href="/partner-dashboard"
+                    onPress={() => { goTo('/partner-dashboard'); closeAccountMenu(); }}
+                  >
+                    <Text style={styles.mobileItemText}>{t('nav.dashboard')}</Text>
+                  </AnimatedPressable>
+                  <AnimatedPressable
+                    scaleTo={1.02}
+                    style={styles.mobileItem}
+                    href="/partner-search-jobs"
+                    onPress={() => { goTo('/partner-search-jobs'); closeAccountMenu(); }}
+                  >
+                    <Text style={styles.mobileItemText}>{t('nav.searchJobs')}</Text>
+                  </AnimatedPressable>
+                </>
+              )}
 
               <AnimatedPressable
                 scaleTo={1.02}
@@ -352,7 +409,7 @@ export default function Navbar() {
               {accountExpanded === 'settings' && (
                 <View style={styles.mobileSettingsPanel}>
                   <ThemeToggle />
-                  {!isJpmcPortalRole && (
+                  {!isStaffPortalRole && (
                     <>
                       <View style={{ height: 10 }} />
                       <LanguagePicker />
@@ -368,6 +425,33 @@ export default function Navbar() {
                   <AnimatedPressable scaleTo={1.02} style={styles.mobileItem} onPress={() => { handleLogout(); closeAccountMenu(); }}>
                     <Text style={styles.mobileItemText}>{t('nav.logOut')}</Text>
                   </AnimatedPressable>
+                ) : isPartnerRole ? (
+                  <>
+                    <AnimatedPressable
+                      scaleTo={1.02}
+                      style={styles.mobileItem}
+                      onPress={() => setAccountExpanded(accountExpanded === 'user' ? null : 'user')}
+                    >
+                      <Text style={styles.mobileItemText}>
+                        {user?.email ? maskEmail(user.email) : t('nav.account')} {accountExpanded === 'user' ? '▴' : '▾'}
+                      </Text>
+                    </AnimatedPressable>
+                    {accountExpanded === 'user' && partnerUserItems.map((item) => (
+                      <AnimatedPressable
+                        key={item.label}
+                        scaleTo={1.02}
+                        style={styles.mobileSubItem}
+                        href={item.href}
+                        onPress={() => {
+                          if (item.href) goTo(item.href);
+                          item.onPress?.();
+                          closeAccountMenu();
+                        }}
+                      >
+                        <Text style={styles.mobileSubItemText}>{item.label}</Text>
+                      </AnimatedPressable>
+                    ))}
+                  </>
                 ) : isGuest ? (
                   GUEST_MENU_ITEMS.map((item) => (
                     <AnimatedPressable

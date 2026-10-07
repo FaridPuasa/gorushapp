@@ -46,8 +46,10 @@ export default function RootLayout() {
 // server-side requireAdmin/requireRole checks only protect the write endpoints, not the page
 // itself). A single check here instead of guarding every page individually. Login/register stay
 // reachable so logging out and back in as a different account still works.
+const PARTNER_ROUTES = ['/partner-dashboard', '/partner-search-jobs'];
+
 function AdminGuard() {
-  const { isAdmin, isJpmc, loading } = useAuth();
+  const { isAdmin, isJpmc, isPartnerRole, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -59,10 +61,16 @@ function AdminGuard() {
     } else if (isJpmc) {
       const allowed = pathname === '/jpmc-portal' || pathname === '/login';
       if (!allowed) router.replace('/jpmc-portal');
-    } else if (pathname === '/admin' || pathname === '/jpmc-portal') {
+    } else if (isPartnerRole) {
+      // '/edit-profile' included - it's how the navbar's "Change Password"
+      // link reaches PasswordSection (see edit-profile.js's isPartnerRole
+      // short-circuit).
+      const allowed = PARTNER_ROUTES.includes(pathname) || pathname === '/edit-profile' || pathname === '/login';
+      if (!allowed) router.replace('/partner-dashboard');
+    } else if (pathname === '/admin' || pathname === '/jpmc-portal' || PARTNER_ROUTES.includes(pathname)) {
       router.replace('/');
     }
-  }, [loading, isAdmin, isJpmc, pathname]);
+  }, [loading, isAdmin, isJpmc, isPartnerRole, pathname]);
 
   return null;
 }

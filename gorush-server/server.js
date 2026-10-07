@@ -51,6 +51,7 @@ app.use('/api/warga-emas-orders', require('./routes/wargaEmasOrders'));
 app.use('/api/careers', require('./routes/careers'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/jpmc', require('./routes/jpmc'));
+app.use('/api/partner', require('./routes/partnerPortal'));
 app.use('/api', require('./routes/content'));
 
 // Serves the Expo Router web export's index.html for every non-API route,

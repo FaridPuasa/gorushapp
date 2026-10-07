@@ -191,6 +191,25 @@ model OrderHistory {
   @@schema("gr_dms")
 }
 
+// Owned by grfmxstatusupdate's own prisma/schema.prisma (see its header
+// comment on Order above) - mirrored here READ-ONLY for the partner portal's
+// Incomplete Scan tab (routes/partnerPortal.js), which must hide any
+// {product, mawbNo} pair staff have hidden there, with no toggle power of
+// its own. Never written from this app.
+model HiddenMawbGroup {
+  id      BigInt  @id @default(autoincrement())
+  mongoId String? @unique @map("mongo_id")
+
+  product  String
+  mawbNo   String   @map("mawb_no")
+  hiddenBy String   @map("hidden_by")
+  hiddenAt DateTime @default(now()) @map("hidden_at")
+
+  @@unique([product, mawbNo])
+  @@map("hidden_mawb_groups")
+  @@schema("gr_dms")
+}
+
 // Owned by grfmxstatusupdate's own prisma/schema.prisma - mirrored here only
 // for this app's direct write path (routes/wargaEmasOrders.js). Keep in sync
 // with that file's WaOrder model if it ever changes shape - see this

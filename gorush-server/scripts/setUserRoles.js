@@ -10,7 +10,7 @@ require('dotenv').config();
 const users = require('../lib/postgresUsers');
 const prisma = require('../lib/prismaClient');
 
-const VALID_ROLES = ['customer', 'admin', 'jpmc'];
+const VALID_ROLES = ['customer', 'admin', 'jpmc', 'pdu', 'mglobal', 'ewe'];
 
 async function run() {
     const [role, ...emails] = process.argv.slice(2);

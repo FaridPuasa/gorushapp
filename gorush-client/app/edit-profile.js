@@ -214,8 +214,8 @@ function PasswordSection({ headers, scrollRef }) {
 }
 
 export default function EditProfile() {
-  const { isGuest, isJpmc, loading: authLoading, token, refreshProfile } = useAuth();
-  const isJpmcPortalStaff = isJpmc;
+  const { isGuest, isJpmc, isPartnerRole, loading: authLoading, token, refreshProfile } = useAuth();
+  const isJpmcPortalStaff = isJpmc || isPartnerRole;
   const router = useRouter();
   const { colors } = useTheme();
   const { t } = useLanguage();
@@ -271,9 +271,10 @@ export default function EditProfile() {
 
   const headers = { headers: { Authorization: `Bearer ${token}` } };
 
-  // jpmc is a staff account with no delivery-address/personal-detail data of
-  // their own kind (see setUserRoles.js/the direct-insert script) - only a password
-  // to manage.
+  // jpmc and the partner roles (pdu/mglobal/ewe) are staff-like accounts with
+  // no delivery-address/personal-detail data of their own kind (see
+  // setUserRoles.js / scripts/createPartnerAccounts.js) - only a password to
+  // manage.
   if (isJpmcPortalStaff) {
     return (
       <PageScroll ref={scrollRef} title={t('editProfile.title')}>
