@@ -221,7 +221,7 @@ export default function PartnerSearchJobs() {
                 ))}
               </View>
               {pageOrders.map((o, i) => (
-                <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, backgroundColor: i % 2 === 1 ? colors.subtleBackground : colors.card, borderTopWidth: 1, borderTopColor: colors.border }}>
+                <View key={o.id} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, backgroundColor: i % 2 === 1 ? colors.subtleBackground : colors.card, borderTopWidth: 1, borderTopColor: colors.border }}>
                   <View style={{ width: 50, paddingHorizontal: 8 }}><Text style={{ fontSize: scaleFont(12), color: colors.textPrimary }}>{(page - 1) * PAGE_SIZE + i + 1}</Text></View>
                   <View style={{ width: 100, paddingHorizontal: 8 }}>
                     <AnimatedPressable scaleTo={1.04} onPress={() => setOpenTracking(o.doTrackingNumber)} style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignSelf: 'flex-start' }}>

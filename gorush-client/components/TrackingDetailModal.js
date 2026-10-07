@@ -117,7 +117,6 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
 
               <Section icon="💬" title="Remarks" colors={colors} scaleFont={scaleFont}>
                 <DetailField label="Customer Remark" value={result.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Go Rush Remark" value={result.goRushRemark} minWidth={260} colors={colors} scaleFont={scaleFont} />
               </Section>
 
               {/* No copy/print-label buttons, and each history step below omits

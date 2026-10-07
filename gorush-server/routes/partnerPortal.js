@@ -82,7 +82,8 @@ function toPartnerOrderShape(order, { includeHistory = false, ageDays = null } =
         receiverPhoneNumber: order.receiverPhoneNumber,
         remarks: order.remarks,
         customerRemark: order.remarks,
-        goRushRemark: order.grRemark,
+        // Never grRemark (Go Rush's own internal remark) - partners are
+        // scoped to their own product/customer-facing data only.
         currentStatus: order.currentStatus,
         latestLocation: order.latestLocation,
         latestReason: order.latestReason,

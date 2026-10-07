@@ -52,6 +52,17 @@ function incompleteScanAgeColors(age, colors) {
   if (age >= 7) return { bg: colors.warningLight, fg: colors.warning };
   return { bg: colors.successLight, fg: colors.success };
 }
+// Active/Completed job status - this is what actually answers "is this one
+// completed, still in progress, or did it fail", which Age (a warehouse-
+// residency concept) doesn't convey at all for a job that's already out for
+// delivery or done.
+const JOB_IN_PROGRESS_STATUSES = new Set(['out for delivery', 'self collect', 'drop off']);
+function jobStatusColors(status, colors) {
+  const s = (status || '').toLowerCase();
+  if (s === 'completed') return { bg: colors.successLight, fg: colors.success };
+  if (JOB_IN_PROGRESS_STATUSES.has(s)) return { bg: colors.primaryLight, fg: colors.primary };
+  return { bg: colors.errorLight, fg: colors.error };
+}
 // Same 5-color pastel palette grfmxstatusupdate's CSS uses for
 // group-color-0..4 (same-customer order clusters, see groupSimilarOrders on
 // the server) - light/dark variants so grouped rows read as tinted in both themes.
@@ -110,8 +121,8 @@ function GroupHeader({ title, extra, count, orders, exportColumns, sectionName, 
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
         <Badge label={null} value={`${count} order${count === 1 ? '' : 's'}`} bg={colors.primaryLight} fg={colors.primary} scaleFont={scaleFont} />
-        <ToolbarButton label="📋 Copy" doneLabel="Copied!" colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(orders)} />
-        <ToolbarButton label="📊 Excel" doneLabel="Done" colors={colors} scaleFont={scaleFont} variant="success" onPress={() => exportOrdersToExcel(orders, exportColumns, sectionName)} />
+        <ToolbarButton label="📋 Copy Tracking No." doneLabel="Copied!" colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(orders)} />
+        <ToolbarButton label="📊 Download Excel" doneLabel="Done" colors={colors} scaleFont={scaleFont} variant="success" onPress={() => exportOrdersToExcel(orders, exportColumns, sectionName)} />
       </View>
     </View>
   );
@@ -146,7 +157,6 @@ const FULL_EXPORT_COLUMNS = [
   { key: 'receiverName', label: 'Name', width: 140 },
   { key: 'receiverPhoneNumber', label: 'Main Phone', width: 120 },
   { key: 'customerRemark', label: 'Customer Remark', width: 160 },
-  { key: 'goRushRemark', label: 'Go Rush Remark', width: 160 },
 ];
 // Incomplete Scan's narrower column set (no Age/Attempt/Reason/Remark columns
 // per row - age is shown only on the MAWB group header, same as the original).
@@ -157,17 +167,34 @@ const SCAN_EXPORT_COLUMNS = [
   { key: 'receiverName', label: 'Name', width: 140 },
   { key: 'receiverPhoneNumber', label: 'Main Phone', width: 120 },
 ];
+// Active/Completed job tables - a Status column (Completed/In Progress/
+// Failed) instead of Age, since these jobs have already left the warehouse
+// and "how many days in the warehouse" no longer applies to them; Status is
+// what actually distinguishes a completed job from one still in progress or
+// one that failed, which the KPI strip above summarizes but the table itself
+// wasn't showing per row at all.
+const JOBS_EXPORT_COLUMNS = [
+  { key: 'currentStatus', label: 'Status', width: 150 },
+  { key: 'doTrackingNumber', label: 'Tracking Number', width: 130 },
+  { key: 'attempt', label: 'Attempt', width: 80 },
+  { key: 'latestReason', label: 'Latest Reason', width: 170 },
+  { key: 'receiverAddress', label: 'Address', width: 220 },
+  { key: 'area', label: 'Area', width: 80 },
+  { key: 'receiverName', label: 'Name', width: 140 },
+  { key: 'receiverPhoneNumber', label: 'Main Phone', width: 120 },
+  { key: 'customerRemark', label: 'Customer Remark', width: 160 },
+];
 
 // Real table (header row + body rows), not the card-per-row layout - matches
 // grfmxstatusupdate's actual warehouse tables rather than jpmc-portal's
 // style. Tracking numbers are clickable, opening the same tracking-detail
 // popup the Search Tracking Number card uses. Column widths live once on
-// each column definition above (FULL_EXPORT_COLUMNS/SCAN_EXPORT_COLUMNS) so
-// the header row and body rows can never drift out of alignment with each
-// other.
+// each column definition above (FULL_EXPORT_COLUMNS/SCAN_EXPORT_COLUMNS/
+// JOBS_EXPORT_COLUMNS) so the header row and body rows can never drift out
+// of alignment with each other.
 function OrdersTable({ orders, variant = 'full', onOpenTracking, colors, scaleFont }) {
   const { mode } = useTheme();
-  const columns = variant === 'scan' ? SCAN_EXPORT_COLUMNS : FULL_EXPORT_COLUMNS;
+  const columns = variant === 'scan' ? SCAN_EXPORT_COLUMNS : variant === 'jobs' ? JOBS_EXPORT_COLUMNS : FULL_EXPORT_COLUMNS;
   if (!orders || orders.length === 0) {
     return <Text style={{ fontSize: scaleFont(13), color: colors.textMuted, fontStyle: 'italic', padding: 8 }}>No orders.</Text>;
   }
@@ -181,14 +208,22 @@ function OrdersTable({ orders, variant = 'full', onOpenTracking, colors, scaleFo
         </View>
         {orders.map((o, i) => {
           const age = rowAgeColors(o.ageDays, colors);
+          const status = jobStatusColors(o.currentStatus, colors);
           const groupBg = groupRowColor(o.groupColorIdx, mode);
           return (
-            <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, backgroundColor: groupBg || (i % 2 === 1 ? colors.subtleBackground : colors.card), borderTopWidth: 1, borderTopColor: colors.border }}>
+            <View key={o.id} style={{ flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 10, backgroundColor: groupBg || (i % 2 === 1 ? colors.subtleBackground : colors.card), borderTopWidth: 1, borderTopColor: colors.border }}>
               {columns.map((c) => {
                 if (c.key === 'ageDays') {
                   return (
                     <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
                       <Badge label={null} value={o.ageDays != null ? `${o.ageDays} days` : '—'} bg={age.bg} fg={age.fg} scaleFont={scaleFont} />
+                    </View>
+                  );
+                }
+                if (c.key === 'currentStatus') {
+                  return (
+                    <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
+                      <Badge label={null} value={o.currentStatus || '—'} bg={status.bg} fg={status.fg} scaleFont={scaleFont} />
                     </View>
                   );
                 }
@@ -297,11 +332,11 @@ function WarehouseCard({ token, onOpenTracking, colors, scaleFont }) {
     <Card icon="🏭" title="Go Rush Warehouse">
       <KpiStrip>
         <KpiTile icon="📦" value={data?.summary?.current ?? '—'} label="Current" colors={colors} scaleFont={scaleFont} />
-        <KpiTile icon="⛔" value={data?.summary?.noAttempt ?? '—'} label="No Attempt" colors={colors} scaleFont={scaleFont} />
+        <KpiTile icon="⛔" value={data?.summary?.noAttempt ?? '—'} label="No Attempt Yet" colors={colors} scaleFont={scaleFont} />
       </KpiStrip>
 
       <View style={{ flexDirection: 'row', gap: 8, marginBottom: 14 }}>
-        {[{ key: 'current', label: 'Current' }, { key: 'noAttempt', label: 'No Attempt' }].map((t) => (
+        {[{ key: 'current', label: 'Current' }, { key: 'noAttempt', label: 'No Attempt Yet' }].map((t) => (
           <AnimatedPressable
             key={t.key}
             scaleTo={1.03}
@@ -406,9 +441,9 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
                 key={d.jobDate}
                 colors={colors}
                 scaleFont={scaleFont}
-                header={<GroupHeader title={d.jobDate === 'Unscheduled' ? 'Unscheduled' : formatDMY(d.jobDate)} count={d.orders.length} orders={d.orders} exportColumns={FULL_EXPORT_COLUMNS} sectionName={d.jobDate} colors={colors} scaleFont={scaleFont} />}
+                header={<GroupHeader title={d.jobDate === 'Unscheduled' ? 'Unscheduled' : formatDMY(d.jobDate)} count={d.orders.length} orders={d.orders} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={d.jobDate} colors={colors} scaleFont={scaleFont} />}
               >
-                <OrdersTable orders={d.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+                <OrdersTable orders={d.orders} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
               </Collapsible>
             ))}
           </>
@@ -438,13 +473,13 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
                     <Badge label="Not Completed" value={completed.summary.notCompleted} bg={colors.warningLight} fg={colors.warning} scaleFont={scaleFont} />
                   </View>
                   <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <ToolbarButton label="📋 Copy" doneLabel="Copied!" colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(completed.orders)} />
-                    <ToolbarButton label="📊 Excel" doneLabel="Done" variant="success" colors={colors} scaleFont={scaleFont} onPress={() => exportOrdersToExcel(completed.orders, FULL_EXPORT_COLUMNS, `Completed Jobs ${completed.date}`)} />
+                    <ToolbarButton label="📋 Copy Tracking No." doneLabel="Copied!" colors={colors} scaleFont={scaleFont} onPress={() => copyTrackingNumbers(completed.orders)} />
+                    <ToolbarButton label="📊 Download Excel" doneLabel="Done" variant="success" colors={colors} scaleFont={scaleFont} onPress={() => exportOrdersToExcel(completed.orders, JOBS_EXPORT_COLUMNS, `Completed Jobs ${completed.date}`)} />
                   </View>
                 </View>
               }
             >
-              <OrdersTable orders={completed.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
+              <OrdersTable orders={completed.orders} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
             </Collapsible>
           )}
         </>

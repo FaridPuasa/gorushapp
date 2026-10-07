@@ -44,8 +44,8 @@ export function historyIcon(status) {
 
 export function Badge({ label, value, bg, fg, scaleFont }) {
   return (
-    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: bg }}>
-      <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: fg }}>{label ? `${label}: ` : ''}{value ?? '—'}</Text>
+    <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: bg }}>
+      <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: fg }} numberOfLines={1}>{label ? `${label}: ` : ''}{value ?? '—'}</Text>
     </View>
   );
 }
