@@ -17,6 +17,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
+import { CONTROL_HEIGHT } from '../lib/theme';
 import { AnimatedPressable } from '../lib/animations';
 import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
 import { Badge, formatDMY, DateField, useDenseFontScale } from '../lib/partnerUi';
@@ -333,7 +334,7 @@ function TrackingSearchCard({ token, onOpenTracking, colors, scaleFont, formStyl
 
   return (
     <Card icon="🔍" title="Search Tracking Number">
-      <View style={{ flexDirection: 'row', gap: 10 }}>
+      <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
         <TextInput
           style={[formStyles.input, { flex: 1 }]}
           value={value}
@@ -342,7 +343,16 @@ function TrackingSearchCard({ token, onOpenTracking, colors, scaleFont, formStyl
           placeholder="Enter tracking number"
           placeholderTextColor={colors.textMuted}
         />
-        <AnimatedPressable scaleTo={1.03} style={[formStyles.button, { paddingHorizontal: 20 }, loading && formStyles.buttonDisabled]} onPress={search} disabled={loading}>
+        {/* formStyles.button carries its own marginTop (for its usual spot
+            below a stacked form field) and no fixed height - both need
+            overriding here so it lines up flush with the input beside it
+            instead of sitting a few pixels lower. */}
+        <AnimatedPressable
+          scaleTo={1.03}
+          style={[formStyles.button, { height: CONTROL_HEIGHT, paddingHorizontal: 20, marginTop: 0, justifyContent: 'center' }, loading && formStyles.buttonDisabled]}
+          onPress={search}
+          disabled={loading}
+        >
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>Search</Text>}
         </AnimatedPressable>
       </View>
