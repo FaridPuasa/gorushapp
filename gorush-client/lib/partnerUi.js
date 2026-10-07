@@ -37,6 +37,40 @@ export function displayLocation(value) {
   return value;
 }
 
+// grfmxstatusupdate's own GDEX API integration never reports a person's name
+// as a tracking location - its locationdescription field (what Go Rush
+// actually pushes to GDEX's tracking system, index.js's
+// sendGDEXTrackingWebhook call sites + FGA_TRACKED_MILESTONE_MAP) uses fixed,
+// generic labels per status instead: "Brunei Customs" for On Hold/Custom
+// Clearing, "Go Rush Driver" for Out for Delivery, "Go Rush Kiulap Office"
+// for Self Collect, "Go Rush Warehouse" for a Failed Delivery push, and the
+// real delivery address (or "Go Rush Kiulap Office" again if the job method
+// was self-collect) for Completed. For internally-dispatched (non-GDEX)
+// products the SAME statuses instead store the dispatcher/driver's literal
+// name in lastLocation - this applies GDEX's own convention across every
+// product instead, so partners always see a real place, never a person.
+const GDEX_STYLE_LOCATION_BY_STATUS = {
+  'on hold': 'Brunei Customs',
+  'custom clearing': 'Brunei Customs',
+  'custom clearance': 'Brunei Customs',
+  'out for delivery': 'Go Rush Driver',
+  'self collect': 'Go Rush Kiulap Office',
+  'failed delivery': 'Go Rush Warehouse',
+};
+// `order` (optional) - the order/result object, needed only for the
+// Completed case (real address, or self-collect office) since that's the one
+// status GDEX's own integration doesn't use a fixed label for.
+export function gdexStyleLocation(rawLocation, status, order) {
+  const s = (status || '').toLowerCase();
+  if (s === 'completed') {
+    const isSelfCollect = (order?.jobMethod || '').toLowerCase().includes('self collect');
+    return isSelfCollect ? 'Go Rush Kiulap Office' : (order?.receiverAddress || 'Customer Address');
+  }
+  const override = GDEX_STYLE_LOCATION_BY_STATUS[s];
+  if (override) return override;
+  return displayLocation(rawLocation);
+}
+
 export function Badge({ label, value, bg, fg, scaleFont }) {
   return (
     <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: bg }}>

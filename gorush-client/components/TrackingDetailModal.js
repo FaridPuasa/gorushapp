@@ -15,7 +15,7 @@ import { api } from '../lib/api';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { AnimatedPressable } from '../lib/animations';
-import { Badge, Section, DetailField, formatDMY, displayLocation, useDenseFontScale } from '../lib/partnerUi';
+import { Badge, Section, DetailField, formatDMY, gdexStyleLocation, useDenseFontScale } from '../lib/partnerUi';
 import {
   buildHistoryTimeline, canonicalStatus, displayStatusLabel, formatHistoryDate,
   getStatusStyle, historyReason,
@@ -23,24 +23,17 @@ import {
 
 const FALLBACK_STATUS_LABEL = 'Status Update';
 
-// For "Out for Delivery"/"Self Collect", grfmxstatusupdate's own backend
-// writes the DRIVER/DISPATCHER'S NAME into lastLocation (confirmed live:
-// "Out for Delivery" | lastLocation: "Leo" - the same value as
-// lastAssignedTo) rather than an actual place - there's no real location
-// signal for an internally-dispatched job the way GDEX's own GPS-based
-// tracking has one. Showing it here would leak the assigned driver's
-// identity, which partners must never see. GDEX/customer orders avoid this
-// entirely because gorush-client's own customer-facing tracking popup
-// (TrackingResultModal, lib/trackingHistory.js) never shows a location line
-// at all - matched here by just suppressing it for these two statuses
-// specifically, rather than hiding it everywhere (the other statuses'
-// lastLocation - Origin/Brunei Customs/Warehouse/Customer - are genuine
-// places, not identities, and are worth keeping).
-const LOCATION_HIDDEN_STATUSES = new Set(['out for delivery', 'self collect']);
-function safeStepLocation(entry, status) {
-  if (!entry.lastLocation) return null;
-  if (LOCATION_HIDDEN_STATUSES.has((status || '').toLowerCase())) return null;
-  return displayLocation(entry.lastLocation);
+// For "Out for Delivery"/"Self Collect"/"Failed Delivery", grfmxstatusupdate's
+// own backend writes the DRIVER/DISPATCHER'S NAME into lastLocation
+// (confirmed live: "Out for Delivery" | lastLocation: "Leo" - the same value
+// as lastAssignedTo) rather than an actual place. gdexStyleLocation()
+// replaces those specific statuses with the exact generic wording
+// grfmxstatusupdate's own GDEX API integration already uses for them ("Go
+// Rush Driver" / "Go Rush Kiulap Office" / "Go Rush Warehouse" - see its
+// own definition for the confirmed source), so a step still shows something
+// rather than going blank, just never the person's identity.
+function safeStepLocation(entry, status, order) {
+  return gdexStyleLocation(entry.lastLocation, status, order);
 }
 
 // A real GPS coordinate captured by the driver app at the moment of this
@@ -158,12 +151,12 @@ function PodPhotosButton({ historyId, token, colors, scaleFont }) {
 // look and behave identically. Adds one line beyond that component's own
 // design: the step's location (K1/K2 collapsed to "Warehouse", and never the
 // assigned driver's name - see safeStepLocation above).
-function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t, token }) {
+function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t, token, order }) {
   const status = canonicalStatus(entry, FALLBACK_STATUS_LABEL);
   const label = displayStatusLabel(status, t);
   const reason = historyReason(entry);
   const style = getStatusStyle(status, colors);
-  const location = safeStepLocation(entry, status);
+  const location = safeStepLocation(entry, status, order);
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
       <View style={{ width: 150, alignItems: 'center' }}>
@@ -288,7 +281,7 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
               <Section icon="📦" title="Shipment Info" colors={colors} scaleFont={scaleFont}>
                 <DetailField label="Job Status" value={result.currentStatus} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Job Method" value={result.jobMethod} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Latest Location" value={displayLocation(result.latestLocation)} colors={colors} scaleFont={scaleFont} />
+                <DetailField label="Latest Location" value={gdexStyleLocation(result.latestLocation, result.currentStatus, result)} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Attempt" value={result.attempt ?? 0} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Job Date" value={formatDMY(result.jobDate)} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Job Created Date" value={formatDMY(result.creationDate)} colors={colors} scaleFont={scaleFont} />
@@ -337,6 +330,7 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
                           scaleFont={scaleFont}
                           t={t}
                           token={token}
+                          order={result}
                         />
                       ))}
                     </View>

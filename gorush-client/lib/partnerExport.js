@@ -24,7 +24,7 @@ export function exportOrdersToExcel(orders, columns, sectionName) {
   if (Platform.OS !== 'web') return false;
   const rows = (orders || []).map((o) => {
     const row = {};
-    columns.forEach((c) => { row[c.label] = c.format ? c.format(o[c.key]) : (o[c.key] ?? ''); });
+    columns.forEach((c) => { row[c.label] = c.format ? c.format(o[c.key], o) : (o[c.key] ?? ''); });
     return row;
   });
   const worksheet = XLSX.utils.json_to_sheet(rows);
