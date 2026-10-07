@@ -10,7 +10,7 @@
 // currently open (or null), and pass the same setter as `onOpenTracking` so
 // a click on a related-order chip swaps which tracking number is shown.
 import React, { useEffect, useState } from 'react';
-import { Text, View, Modal, Pressable, ScrollView, ActivityIndicator } from 'react-native';
+import { Text, View, Modal, Pressable, ScrollView, ActivityIndicator, Image, Linking } from 'react-native';
 import { api } from '../lib/api';
 import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
@@ -44,6 +44,83 @@ function safeStepLocation(entry, status) {
   return displayLocation(entry.lastLocation);
 }
 
+// A real GPS coordinate captured by the driver app at the moment of this
+// event - unlike lastLocation (a free-text label that doubles as a driver
+// name for some statuses, see above), this is never an identity, just a
+// place, so it's always safe to show. Matches grfmxstatusupdate's own rule:
+// shown only for Completed or a failed-delivery step, via a Google Maps link.
+function GpsLink({ entry, status, colors, scaleFont }) {
+  if (entry.latitude == null || entry.longitude == null) return null;
+  const isRelevant = status.toLowerCase() === 'completed' || status.toLowerCase().includes('failed');
+  if (!isRelevant) return null;
+  const url = `https://www.google.com/maps?q=${entry.latitude},${entry.longitude}`;
+  return (
+    <AnimatedPressable scaleTo={1.04} onPress={() => Linking.openURL(url)}>
+      <Text style={{ fontSize: scaleFont(11), color: colors.primary, textAlign: 'center', marginTop: 2, textDecorationLine: 'underline' }}>
+        📍 {Number(entry.latitude).toFixed(5)}, {Number(entry.longitude).toFixed(5)}
+      </Text>
+    </AnimatedPressable>
+  );
+}
+
+// POD (proof-of-delivery) photos for this Complete/Fail event - fetched
+// lazily (signed URLs from a private Supabase bucket, see
+// gorush-server/lib/podImageStorage.js) only once the button is pressed, same
+// lazy-load-on-demand pattern jpmc-portal.js's PaymentProofControl uses.
+function PodPhotosButton({ historyId, token, colors, scaleFont }) {
+  const [urls, setUrls] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [viewerUrl, setViewerUrl] = useState(null);
+
+  const open = async () => {
+    if (urls) { setViewerUrl(urls[0]); return; }
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.get(`/api/partner/history/${historyId}/pod-photos`, { headers: { Authorization: `Bearer ${token}` } });
+      setUrls(res.data.urls);
+      if (res.data.urls[0]) setViewerUrl(res.data.urls[0]);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Failed to load photos.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <AnimatedPressable scaleTo={1.04} onPress={open} disabled={loading} style={{ marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+        {loading ? <ActivityIndicator size="small" color={colors.primary} /> : (
+          <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.primary }}>🖼️ View Photo{urls && urls.length > 1 ? 's' : ''}</Text>
+        )}
+      </AnimatedPressable>
+      {error ? <Text style={{ fontSize: scaleFont(10), color: colors.error, marginTop: 2 }}>{error}</Text> : null}
+
+      <Modal visible={!!viewerUrl} transparent animationType="fade" onRequestClose={() => setViewerUrl(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', justifyContent: 'center', alignItems: 'center', padding: 16 }} onPress={() => setViewerUrl(null)}>
+          <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 16, padding: 16, width: '100%', maxWidth: 560 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 }}>
+              <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: colors.textPrimary }}>POD Photo</Text>
+              <AnimatedPressable scaleTo={1.1} onPress={() => setViewerUrl(null)}><Text style={{ fontSize: scaleFont(16), color: colors.textMuted }}>✕</Text></AnimatedPressable>
+            </View>
+            {viewerUrl && <Image source={{ uri: viewerUrl }} style={{ width: '100%', height: 360, borderRadius: 8, backgroundColor: colors.subtleBackground }} resizeMode="contain" />}
+            {urls && urls.length > 1 && (
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                {urls.map((u, i) => (
+                  <AnimatedPressable key={i} scaleTo={1.05} onPress={() => setViewerUrl(u)} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 6, backgroundColor: u === viewerUrl ? colors.primary : colors.subtleBackground }}>
+                    <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: u === viewerUrl ? '#fff' : colors.textPrimary }}>{i + 1}</Text>
+                  </AnimatedPressable>
+                ))}
+              </View>
+            )}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
 // Desktop stepper node, same design as TrackingResultModal.js's own desktop
 // branch (the customer-facing tracking popup) - a small dot joined to its
 // neighbors by a connecting line, current step gets a bordered bubble with a
@@ -51,7 +128,7 @@ function safeStepLocation(entry, status) {
 // look and behave identically. Adds one line beyond that component's own
 // design: the step's location (K1/K2 collapsed to "Warehouse", and never the
 // assigned driver's name - see safeStepLocation above).
-function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t }) {
+function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t, token }) {
   const status = canonicalStatus(entry, FALLBACK_STATUS_LABEL);
   const label = displayStatusLabel(status, t);
   const reason = historyReason(entry);
@@ -74,14 +151,18 @@ function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t }) {
             <Text style={{ fontSize: scaleFont(14), fontWeight: '700', color: style.color, textAlign: 'center' }}>{label}</Text>
             <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>{formatHistoryDate(entry.dateUpdated)}</Text>
             {location ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>📍 {location}</Text> : null}
+            <GpsLink entry={entry} status={status} colors={colors} scaleFont={scaleFont} />
             {reason && <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>{reason}</Text>}
+            {entry.hasPodPhotos && <PodPhotosButton historyId={entry.id} token={token} colors={colors} scaleFont={scaleFont} />}
           </View>
         ) : (
           <>
             <Text style={{ fontSize: scaleFont(13), fontWeight: '600', color: colors.textPrimary, textAlign: 'center', marginTop: 8 }}>{label}</Text>
             <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>{formatHistoryDate(entry.dateUpdated)}</Text>
             {location ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, textAlign: 'center', marginTop: 2 }}>📍 {location}</Text> : null}
+            <GpsLink entry={entry} status={status} colors={colors} scaleFont={scaleFont} />
             {reason && <Text style={{ fontSize: scaleFont(11), color: colors.error, textAlign: 'center', marginTop: 4, fontStyle: 'italic' }}>{reason}</Text>}
+            {entry.hasPodPhotos && <PodPhotosButton historyId={entry.id} token={token} colors={colors} scaleFont={scaleFont} />}
           </>
         )}
       </View>
@@ -215,6 +296,7 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
                           colors={colors}
                           scaleFont={scaleFont}
                           t={t}
+                          token={token}
                         />
                       ))}
                     </View>

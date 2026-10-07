@@ -14,6 +14,7 @@ const express = require('express');
 const prisma = require('../lib/prismaClient');
 const { requireRole } = require('../middleware/auth');
 const { getBruneiNow } = require('../lib/bruneiTime');
+const { getPodImageSignedUrl } = require('../lib/podImageStorage');
 
 const router = express.Router();
 router.use(requireRole('pdu', 'mglobal', 'ewe'));
@@ -94,10 +95,19 @@ function toPartnerOrderShape(order, { includeHistory = false, ageDays = null } =
         // hand-rolled server-side equivalent previously let internal notes
         // like "Warehouse location updated to Warehouse K1." leak through.
         shaped.history = (order.history || []).map((h) => ({
+            id: h.id.toString(),
             statusHistory: h.statusHistory,
             dateUpdated: h.dateUpdated,
             reason: h.reason,
             lastLocation: h.lastLocation,
+            // Real GPS coordinate captured by the driver app at the moment of
+            // this event - a physical place, not a staff identity, so (unlike
+            // lastLocation for Out for Delivery/Self Collect) it's always
+            // safe to show. Same convention grfmxstatusupdate's own dashboard
+            // uses: a Google Maps link, shown only for Completed/failed steps.
+            latitude: h.latitude != null ? h.latitude.toString() : null,
+            longitude: h.longitude != null ? h.longitude.toString() : null,
+            hasPodPhotos: (h.podImagePaths || []).length > 0,
         }));
     }
     return shaped;
@@ -252,6 +262,28 @@ router.get('/tracking/:trackingNumber', async (req, res) => {
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Failed to search tracking number.' });
+    }
+});
+
+// GET /api/partner/history/:historyId/pod-photos - signed URLs for one
+// status-history entry's POD photos (driver-app Complete/Fail capture).
+// Scoped to this partner's own product via the parent order, same as every
+// other route here - a history id alone doesn't imply ownership.
+router.get('/history/:historyId/pod-photos', async (req, res) => {
+    try {
+        const id = BigInt(req.params.historyId);
+        const entry = await prisma.orderHistory.findUnique({
+            where: { id },
+            select: { podImagePaths: true, order: { select: { product: true } } },
+        });
+        if (!entry || entry.order.product !== req.userRole) return res.status(404).json({ error: 'Not found.' });
+
+        const paths = entry.podImagePaths || [];
+        const urls = await Promise.all(paths.map((p) => getPodImageSignedUrl(p)));
+        res.json({ urls });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Failed to load POD photos.' });
     }
 });
 

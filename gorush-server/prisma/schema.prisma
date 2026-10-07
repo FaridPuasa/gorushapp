@@ -188,6 +188,15 @@ model OrderHistory {
   reason         String?
   lastLocation   String?   @map("last_location")
 
+  // Driver app (2026-09-19/24): real GPS coordinate + per-attempt POD photo
+  // paths captured at the moment of this status event (complete/fail) -
+  // owned by grfmxstatusupdate's own schema.prisma, mirrored here read-only
+  // for the partner portal's tracking popup. podImagePaths points into the
+  // private "pod-images" Supabase Storage bucket (see lib/podImageStorage.js).
+  latitude      Decimal?  @db.Decimal(10, 7)
+  longitude     Decimal?  @db.Decimal(10, 7)
+  podImagePaths String[]  @default([]) @map("pod_image_paths")
+
   @@index([statusHistory, dateUpdated])
   @@map("order_history")
   @@schema("gr_dms")
