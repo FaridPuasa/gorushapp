@@ -15,7 +15,49 @@ import { api } from '../lib/api';
 import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
-import { Badge, Section, DetailField, formatDMY, formatDMYTime, historyIcon } from '../lib/partnerUi';
+import { Badge, Section, DetailField, formatDMY, formatDMYTime, historyIcon, historyStepColor, displayLocation } from '../lib/partnerUi';
+
+const STEP_CIRCLE = 36;
+const STEP_RING = 44;
+const STEP_WIDTH = 150;
+
+// One stepper node: a colored circle (icon inside) joined to its neighbors
+// by a horizontal line, title/date/location below - matches
+// grfmxstatusupdate's own Status History timeline design. The current step
+// gets a ring around its circle plus a "Current" badge, same as there.
+function HistoryStep({ step, isFirst, isLast, isCurrent, colors, scaleFont }) {
+  const color = historyStepColor(step.status);
+  return (
+    <View style={{ width: STEP_WIDTH, alignItems: 'center' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', width: '100%' }}>
+        <View style={{ flex: isFirst ? 0 : 1, height: 2, backgroundColor: colors.border }} />
+        <View style={{
+          width: isCurrent ? STEP_RING : STEP_CIRCLE,
+          height: isCurrent ? STEP_RING : STEP_CIRCLE,
+          borderRadius: STEP_RING,
+          borderWidth: isCurrent ? 3 : 0,
+          borderColor: color,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}>
+          <View style={{ width: STEP_CIRCLE, height: STEP_CIRCLE, borderRadius: STEP_CIRCLE / 2, backgroundColor: color, alignItems: 'center', justifyContent: 'center' }}>
+            <Text style={{ fontSize: scaleFont(16) }}>{historyIcon(step.status)}</Text>
+          </View>
+        </View>
+        <View style={{ flex: isLast ? 0 : 1, height: 2, backgroundColor: colors.border }} />
+      </View>
+      <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color, marginTop: 8, textAlign: 'center' }}>{step.status || '—'}</Text>
+      {isCurrent && (
+        <View style={{ marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.primaryLight }}>
+          <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.primary }}>Current</Text>
+        </View>
+      )}
+      <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 4, textAlign: 'center' }}>{formatDMYTime(step.dateUpdated)}</Text>
+      {step.reason ? <Text style={{ fontSize: scaleFont(11), color: colors.textSecondary, marginTop: 2, textAlign: 'center' }}>{step.reason}</Text> : null}
+      {step.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2, textAlign: 'center' }}>📍 {displayLocation(step.lastLocation)}</Text> : null}
+    </View>
+  );
+}
 
 function RelatedOrdersGroup({ title, orders, onOpenTracking, colors, scaleFont }) {
   if (!orders || orders.length === 0) return null;
@@ -71,7 +113,7 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 }} onPress={onClose}>
-        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 760, maxHeight: '90%' }}>
+        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 1160, maxHeight: '90%' }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
             <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>Tracking Number Search</Text>
             <AnimatedPressable scaleTo={1.1} onPress={onClose}><Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text></AnimatedPressable>
@@ -99,7 +141,7 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
               <Section icon="📦" title="Shipment Info" colors={colors} scaleFont={scaleFont}>
                 <DetailField label="Job Status" value={result.currentStatus} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Job Method" value={result.jobMethod} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Latest Location" value={result.latestLocation} colors={colors} scaleFont={scaleFont} />
+                <DetailField label="Latest Location" value={displayLocation(result.latestLocation)} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Attempt" value={result.attempt ?? 0} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Job Date" value={formatDMY(result.jobDate)} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Job Created Date" value={formatDMY(result.creationDate)} colors={colors} scaleFont={scaleFont} />
@@ -124,26 +166,18 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
               {result.history?.length > 0 && (
                 <Section icon="🕒" title="Status History" colors={colors} scaleFont={scaleFont}>
                   <ScrollView horizontal showsHorizontalScrollIndicator style={{ width: '100%' }}>
-                    <View style={{ flexDirection: 'row' }}>
-                      {result.history.map((h, i) => {
-                        const isCurrent = i === result.history.length - 1;
-                        return (
-                          <View key={i} style={{ width: 170, paddingRight: 12, alignItems: 'flex-start' }}>
-                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                              <Text style={{ fontSize: scaleFont(16) }}>{historyIcon(h.status)}</Text>
-                              <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color: isCurrent ? colors.primary : colors.textPrimary }}>{h.status || '—'}</Text>
-                            </View>
-                            {isCurrent && (
-                              <View style={{ marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.primaryLight }}>
-                                <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.primary }}>Current</Text>
-                              </View>
-                            )}
-                            <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 4 }}>{formatDMYTime(h.dateUpdated)}</Text>
-                            {h.reason ? <Text style={{ fontSize: scaleFont(11), color: colors.textSecondary, marginTop: 2 }}>{h.reason}</Text> : null}
-                            {h.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2 }}>📍 {h.lastLocation}</Text> : null}
-                          </View>
-                        );
-                      })}
+                    <View style={{ flexDirection: 'row', paddingVertical: 4 }}>
+                      {result.history.map((h, i) => (
+                        <HistoryStep
+                          key={i}
+                          step={h}
+                          isFirst={i === 0}
+                          isLast={i === result.history.length - 1}
+                          isCurrent={i === result.history.length - 1}
+                          colors={colors}
+                          scaleFont={scaleFont}
+                        />
+                      ))}
                     </View>
                   </ScrollView>
                 </Section>

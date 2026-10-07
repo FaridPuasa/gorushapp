@@ -11,7 +11,7 @@ import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
-import { formatDMY } from '../lib/partnerUi';
+import { formatDMY, displayLocation } from '../lib/partnerUi';
 import TrackingDetailModal from '../components/TrackingDetailModal';
 
 const WIDE_MAX_WIDTH = 1700;
@@ -31,7 +31,7 @@ const COLUMNS = [
   { key: 'customerRemark', label: 'Customer Remark', width: 180 },
   { key: 'doTrackingNumber', label: 'Go Rush Tracking No.', width: 150 },
   { key: 'currentStatus', label: 'Job Status', width: 130 },
-  { key: 'latestLocation', label: 'Latest Location', width: 120 },
+  { key: 'latestLocation', label: 'Latest Location', width: 120, format: displayLocation },
   { key: 'ageDays', label: 'Age (Days)', width: 80 },
   { key: 'jobDate', label: 'Job Date', width: 100, format: formatDMY },
   { key: 'attempt', label: 'Attempt', width: 70 },

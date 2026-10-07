@@ -42,6 +42,38 @@ export function historyIcon(status) {
   return HISTORY_ICONS[(status || '').toLowerCase()] || '📍';
 }
 
+// Fixed categorical palette for the Status History stepper, matching
+// grfmxstatusupdate's own color-per-status-type convention (not theme-
+// adaptive - this is a multi-hue categorical scheme, the same reasoning
+// the dashboard's status-history timeline there uses fixed Bootstrap
+// colors rather than the app's light/dark primary/success/error tokens).
+const HISTORY_STEP_COLORS = {
+  'info received': '#0d6efd',
+  'on hold': '#f0ad4e',
+  'custom clearing': '#6f42c1',
+  'custom clearance': '#6f42c1',
+  'at warehouse': '#6610f2',
+  'in sorting area': '#6610f2',
+  'out for delivery': '#0dcaf0',
+  'self collect': '#0dcaf0',
+  'completed': '#198754',
+  'cancelled': '#dc3545',
+  'disposed': '#dc3545',
+  'return to warehouse': '#dc3545',
+};
+export function historyStepColor(status) {
+  return HISTORY_STEP_COLORS[(status || '').toLowerCase()] || '#6c757d';
+}
+
+// Partners get one combined "Warehouse" rather than the K1 (Kiulap) / K2
+// (Jangsak) split - same simplification already applied to the Warehouse
+// section's own summary/tabs, applied here too everywhere a location string
+// is shown (Shipment Info, Status History).
+export function displayLocation(value) {
+  if (value === 'Warehouse K1' || value === 'Warehouse K2') return 'Warehouse';
+  return value;
+}
+
 export function Badge({ label, value, bg, fg, scaleFont }) {
   return (
     <View style={{ alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: bg }}>
