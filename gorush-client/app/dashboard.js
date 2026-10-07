@@ -3,14 +3,15 @@
 // Warehouse, In Progress/Completed, New Orders), scoped server-side to the
 // logged-in partner's own product (see gorush-server/routes/partnerPortal.js).
 // Visual language (KPI tiles with icons, MAWB/Area/date group headers with
-// Copy/Excel buttons, grouped-row tinting, age badge thresholds) follows
-// grfmxstatusupdate's own dashboard as closely as RN/web primitives allow -
-// not a literal Bootstrap/EJS port, but the same structure/behavior, per the
-// project plan. Everything is rendered via PageScroll's `beforeContent` (see
-// lib/formPrimitives.js) rather than as children - this is a wide data page,
-// not a form, so it must not be squeezed into the app's narrow 900px form
-// column (same reasoning jpmc-portal.js documents for its own page).
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+// Copy/Excel buttons, grouped-row tinting, age badge thresholds, clickable
+// tracking numbers opening a popup) follows grfmxstatusupdate's own dashboard
+// as closely as RN/web primitives allow - not a literal Bootstrap/EJS port,
+// but the same structure/behavior, per the project plan. Everything is
+// rendered via PageScroll's `beforeContent` (see lib/formPrimitives.js)
+// rather than as children - this is a wide data page, not a form, so it must
+// not be squeezed into the app's narrow 900px form column (same reasoning
+// jpmc-portal.js documents for its own page).
+import React, { useState, useCallback, useEffect } from 'react';
 import { Text, TextInput, View, ActivityIndicator, ScrollView } from 'react-native';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -19,33 +20,11 @@ import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
 import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
+import { Badge, formatDMY } from '../lib/partnerUi';
+import TrackingDetailModal from '../components/TrackingDetailModal';
 
 const WIDE_MAX_WIDTH = 1500;
 
-function formatDMY(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}.${d.getFullYear()}`;
-}
-function formatTime12(value) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  let h = d.getHours();
-  const ampm = h >= 12 ? 'pm' : 'am';
-  h = h % 12;
-  if (h === 0) h = 12;
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `${h}:${min}${ampm}`;
-}
-function formatDMYTime(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  return `${formatDMY(value)} ${formatTime12(value)}`;
-}
 function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -83,14 +62,6 @@ function groupRowColor(groupColorIdx, mode) {
   return (mode === 'dark' ? GROUP_COLORS_DARK : GROUP_COLORS_LIGHT)[groupColorIdx % 5];
 }
 
-function Badge({ label, value, bg, fg, scaleFont }) {
-  return (
-    <View style={{ paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, backgroundColor: bg }}>
-      <Text style={{ fontSize: scaleFont(12), fontWeight: '700', color: fg }}>{label ? `${label}: ` : ''}{value ?? '—'}</Text>
-    </View>
-  );
-}
-
 // One KPI tile (icon + value + label) - the small summary strip every
 // section (Warehouse/In Progress-Completed/New Orders) shows above its tabs.
 function KpiTile({ icon, value, label, bg, fg, colors, scaleFont }) {
@@ -104,24 +75,6 @@ function KpiTile({ icon, value, label, bg, fg, colors, scaleFont }) {
 }
 function KpiStrip({ children }) {
   return <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 14 }}>{children}</View>;
-}
-
-function Section({ icon, title, children, colors, scaleFont }) {
-  return (
-    <View style={{ backgroundColor: colors.subtleBackground || colors.background, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 12 }}>
-      <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>{icon} {title}</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 12 }}>{children}</View>
-    </View>
-  );
-}
-
-function DetailField({ label, value, minWidth = 140, maxWidth = '100%', colors, scaleFont }) {
-  return (
-    <View style={{ minWidth, maxWidth, flexGrow: 1, flexShrink: 1 }}>
-      <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>{label}</Text>
-      <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary, flexShrink: 1 }}>{value ?? '—'}</Text>
-    </View>
-  );
 }
 
 // Toolbar button used by every group header (Copy/Excel) - a brief inline
@@ -206,8 +159,10 @@ const SCAN_EXPORT_COLUMNS = [
 ];
 
 // Real table (header row + body rows), not the card-per-row layout - matches
-// grfmxstatusupdate's actual warehouse tables rather than jpmc-portal's style.
-function OrdersTable({ orders, variant = 'full', colors, scaleFont }) {
+// grfmxstatusupdate's actual warehouse tables rather than jpmc-portal's
+// style. Tracking numbers are clickable, opening the same tracking-detail
+// popup the Search Tracking Number card uses.
+function OrdersTable({ orders, variant = 'full', onOpenTracking, colors, scaleFont }) {
   const { mode } = useTheme();
   const columns = variant === 'scan' ? SCAN_EXPORT_COLUMNS : FULL_EXPORT_COLUMNS;
   if (!orders || orders.length === 0) {
@@ -232,6 +187,15 @@ function OrdersTable({ orders, variant = 'full', colors, scaleFont }) {
                   return (
                     <View key={c.key} style={{ width }}>
                       <Badge label={null} value={o.ageDays != null ? `${o.ageDays} days` : '—'} bg={age.bg} fg={age.fg} scaleFont={scaleFont} />
+                    </View>
+                  );
+                }
+                if (c.key === 'doTrackingNumber') {
+                  return (
+                    <View key={c.key} style={{ width }}>
+                      <AnimatedPressable scaleTo={1.0} onPress={() => onOpenTracking(o.doTrackingNumber)}>
+                        <Text style={{ fontSize: scaleFont(12), color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}>{o.doTrackingNumber}</Text>
+                      </AnimatedPressable>
                     </View>
                   );
                 }
@@ -266,18 +230,11 @@ function MawbGroupHeader({ mawbNo, maxAge, count, orders, exportColumns, colors,
 }
 
 // ---- Search Tracking Number ----
-const HISTORY_ICONS = {
-  'info received': 'ℹ️', 'at warehouse': '🏢', 'in sorting area': '🗂️',
-  'out for delivery': '🚚', 'self collect': '🙋', 'completed': '✅',
-  'cancelled': '✖️', 'return to warehouse': '↩️', 'on hold': '⏸️',
-};
-function historyIcon(status) {
-  return HISTORY_ICONS[(status || '').toLowerCase()] || '📍';
-}
-
-function TrackingSearchCard({ token, colors, scaleFont, formStyles }) {
+// Just the search box - a match opens TrackingDetailModal (shared with every
+// clickable tracking number elsewhere on this page) instead of rendering
+// inline, matching grfmxstatusupdate's own popup-style tracking search.
+function TrackingSearchCard({ token, onOpenTracking, colors, scaleFont, formStyles }) {
   const [value, setValue] = useState('');
-  const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -285,10 +242,9 @@ function TrackingSearchCard({ token, colors, scaleFont, formStyles }) {
     if (!value.trim()) return;
     setLoading(true);
     setError('');
-    setResult(null);
     try {
-      const res = await api.get(`/api/partner/tracking/${encodeURIComponent(value.trim())}`, { headers: { Authorization: `Bearer ${token}` } });
-      setResult(res.data);
+      await api.get(`/api/partner/tracking/${encodeURIComponent(value.trim())}`, { headers: { Authorization: `Bearer ${token}` } });
+      onOpenTracking(value.trim());
     } catch (e) {
       setError(e.response?.data?.error || 'Failed to search.');
     } finally {
@@ -298,7 +254,7 @@ function TrackingSearchCard({ token, colors, scaleFont, formStyles }) {
 
   return (
     <Card icon="🔍" title="Search Tracking Number">
-      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+      <View style={{ flexDirection: 'row', gap: 10 }}>
         <TextInput
           style={[formStyles.input, { flex: 1 }]}
           value={value}
@@ -311,74 +267,13 @@ function TrackingSearchCard({ token, colors, scaleFont, formStyles }) {
           {loading ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>Search</Text>}
         </AnimatedPressable>
       </View>
-
-      {error ? <Text style={formStyles.fieldError}>{error}</Text> : null}
-
-      {result && (
-        <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-            <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{result.doTrackingNumber}</Text>
-            <Badge label={null} value={result.currentStatus} bg={colors.primaryLight} fg={colors.primary} scaleFont={scaleFont} />
-          </View>
-          <Section icon="📦" title="Shipment Info" colors={colors} scaleFont={scaleFont}>
-            <DetailField label="Job Status" value={result.currentStatus} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Job Method" value={result.jobMethod} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Latest Location" value={result.latestLocation} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Attempt" value={result.attempt ?? 0} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Job Date" value={formatDMY(result.jobDate)} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Job Created Date" value={formatDMY(result.creationDate)} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="MAWB No." value={result.mawbNo} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Latest Reason" value={result.latestReason} colors={colors} scaleFont={scaleFont} />
-          </Section>
-          <Section icon="👤" title="Customer Info" colors={colors} scaleFont={scaleFont}>
-            <DetailField label="Name" value={result.receiverName} minWidth={180} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Main Phone No." value={result.receiverPhoneNumber} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Address" value={result.receiverAddress} minWidth={260} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Postal Code" value={result.receiverPostalCode} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Area" value={result.area} colors={colors} scaleFont={scaleFont} />
-          </Section>
-          <Section icon="💬" title="Remarks" colors={colors} scaleFont={scaleFont}>
-            <DetailField label="Customer Remark" value={result.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
-            <DetailField label="Go Rush Remark" value={result.goRushRemark} minWidth={260} colors={colors} scaleFont={scaleFont} />
-          </Section>
-
-          {/* No copy/print-label buttons, and each history step below omits
-              "updated by" and "assigned driver" - per the agreed scope. */}
-          {result.history?.length > 0 && (
-            <Section icon="🕒" title="Status History" colors={colors} scaleFont={scaleFont}>
-              <ScrollView horizontal showsHorizontalScrollIndicator style={{ width: '100%' }}>
-                <View style={{ flexDirection: 'row' }}>
-                  {result.history.map((h, i) => {
-                    const isCurrent = i === result.history.length - 1;
-                    return (
-                      <View key={i} style={{ width: 170, paddingRight: 12, alignItems: 'flex-start' }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Text style={{ fontSize: scaleFont(16) }}>{historyIcon(h.status)}</Text>
-                          <Text style={{ fontSize: scaleFont(13), fontWeight: '700', color: isCurrent ? colors.primary : colors.textPrimary }}>{h.status || '—'}</Text>
-                        </View>
-                        {isCurrent && (
-                          <View style={{ marginTop: 4, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10, backgroundColor: colors.primaryLight }}>
-                            <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.primary }}>Current</Text>
-                          </View>
-                        )}
-                        <Text style={{ fontSize: scaleFont(12), color: colors.textMuted, marginTop: 4 }}>{formatDMYTime(h.dateUpdated)}</Text>
-                        {h.reason ? <Text style={{ fontSize: scaleFont(11), color: colors.textSecondary, marginTop: 2 }}>{h.reason}</Text> : null}
-                        {h.lastLocation ? <Text style={{ fontSize: scaleFont(11), color: colors.textMuted, marginTop: 2 }}>📍 {h.lastLocation}</Text> : null}
-                      </View>
-                    );
-                  })}
-                </View>
-              </ScrollView>
-            </Section>
-          )}
-        </View>
-      )}
+      {error ? <Text style={[formStyles.fieldError, { marginTop: 8 }]}>{error}</Text> : null}
     </Card>
   );
 }
 
 // ---- Warehouse ----
-function WarehouseCard({ token, colors, scaleFont }) {
+function WarehouseCard({ token, onOpenTracking, colors, scaleFont }) {
   const [tab, setTab] = useState('current');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -437,11 +332,11 @@ function WarehouseCard({ token, colors, scaleFont }) {
                   scaleFont={scaleFont}
                   header={<GroupHeader title={`Area: ${a.area}`} count={a.orders.length} orders={a.orders} exportColumns={FULL_EXPORT_COLUMNS} sectionName={`${g.mawbNo} ${a.area}`} colors={colors} scaleFont={scaleFont} />}
                 >
-                  <OrdersTable orders={a.orders} colors={colors} scaleFont={scaleFont} />
+                  <OrdersTable orders={a.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
                 </Collapsible>
               ))
             ) : (
-              <OrdersTable orders={g.orders} colors={colors} scaleFont={scaleFont} />
+              <OrdersTable orders={g.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
             )}
           </Collapsible>
         );
@@ -451,7 +346,7 @@ function WarehouseCard({ token, colors, scaleFont }) {
 }
 
 // ---- In Progress / Completed ----
-function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
+function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formStyles }) {
   const [tab, setTab] = useState('active');
   const [active, setActive] = useState(null);
   const [activeLoading, setActiveLoading] = useState(true);
@@ -511,7 +406,7 @@ function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
                 scaleFont={scaleFont}
                 header={<GroupHeader title={d.jobDate === 'Unscheduled' ? 'Unscheduled' : formatDMY(d.jobDate)} count={d.orders.length} orders={d.orders} exportColumns={FULL_EXPORT_COLUMNS} sectionName={d.jobDate} colors={colors} scaleFont={scaleFont} />}
               >
-                <OrdersTable orders={d.orders} colors={colors} scaleFont={scaleFont} />
+                <OrdersTable orders={d.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
               </Collapsible>
             ))}
           </>
@@ -547,7 +442,7 @@ function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
                 </View>
               }
             >
-              <OrdersTable orders={completed.orders} colors={colors} scaleFont={scaleFont} />
+              <OrdersTable orders={completed.orders} onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
             </Collapsible>
           )}
         </>
@@ -557,7 +452,7 @@ function ActiveCompletedCard({ token, colors, scaleFont, formStyles }) {
 }
 
 // ---- New Orders / Incomplete Scan ----
-function NewOrdersCard({ token, colors, scaleFont }) {
+function NewOrdersCard({ token, onOpenTracking, colors, scaleFont }) {
   const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -602,7 +497,7 @@ function NewOrdersCard({ token, colors, scaleFont }) {
                   />
                 }
               >
-                <OrdersTable orders={g.orders} variant="scan" colors={colors} scaleFont={scaleFont} />
+                <OrdersTable orders={g.orders} variant="scan" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
               </Collapsible>
             );
           })}
@@ -617,6 +512,7 @@ export default function PartnerDashboard() {
   const { colors } = useTheme();
   const { scaleFont } = useFontScale();
   const formStyles = useFormStyles();
+  const [openTracking, setOpenTracking] = useState(null);
 
   if (!token) return null;
 
@@ -625,12 +521,17 @@ export default function PartnerDashboard() {
       <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>Dashboard</Text>
       <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{user?.role ? user.role.toUpperCase() : ''} orders</Text>
 
-      <TrackingSearchCard token={token} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
-      <WarehouseCard token={token} colors={colors} scaleFont={scaleFont} />
-      <ActiveCompletedCard token={token} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
-      <NewOrdersCard token={token} colors={colors} scaleFont={scaleFont} />
+      <TrackingSearchCard token={token} onOpenTracking={setOpenTracking} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
+      <WarehouseCard token={token} onOpenTracking={setOpenTracking} colors={colors} scaleFont={scaleFont} />
+      <ActiveCompletedCard token={token} onOpenTracking={setOpenTracking} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
+      <NewOrdersCard token={token} onOpenTracking={setOpenTracking} colors={colors} scaleFont={scaleFont} />
     </View>
   );
 
-  return <PageScroll title="Dashboard" beforeContent={pageContent} />;
+  return (
+    <>
+      <PageScroll title="Dashboard" beforeContent={pageContent} />
+      <TrackingDetailModal trackingNumber={openTracking} token={token} onClose={() => setOpenTracking(null)} onOpenTracking={setOpenTracking} />
+    </>
+  );
 }

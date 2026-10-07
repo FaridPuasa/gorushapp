@@ -4,43 +4,19 @@
 // client-side sort/paginate - see gorush-server/routes/partnerPortal.js and
 // the project plan's field keep/exclude lists).
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Text, TextInput, View, ActivityIndicator, Modal, Pressable, ScrollView } from 'react-native';
+import { Text, TextInput, View, ActivityIndicator, ScrollView } from 'react-native';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
+import { formatDMY } from '../lib/partnerUi';
+import TrackingDetailModal from '../components/TrackingDetailModal';
 
 const WIDE_MAX_WIDTH = 1700;
 const PAGE_SIZE = 25;
 const SEARCH_DEBOUNCE_MS = 400;
-
-function formatDMY(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}.${d.getFullYear()}`;
-}
-
-function DetailField({ label, value, minWidth = 140, maxWidth = '100%', colors, scaleFont }) {
-  return (
-    <View style={{ minWidth, maxWidth, flexGrow: 1, flexShrink: 1 }}>
-      <Text style={{ fontSize: scaleFont(10), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 3 }}>{label}</Text>
-      <Text style={{ fontSize: scaleFont(14), fontWeight: '600', color: colors.textPrimary, flexShrink: 1 }}>{value ?? '—'}</Text>
-    </View>
-  );
-}
-function Section({ icon, title, children, colors, scaleFont }) {
-  return (
-    <View style={{ backgroundColor: colors.subtleBackground || colors.background, borderRadius: 10, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 12 }}>
-      <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4, marginBottom: 10 }}>{icon} {title}</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 12 }}>{children}</View>
-    </View>
-  );
-}
 
 // Columns kept from the original Search Jobs table, per the project plan's
 // exclusion list (drops Go Rush Remark, Job Method, Assigned To, Payment
@@ -113,51 +89,6 @@ function Pagination({ page, totalPages, onChange, colors, scaleFont }) {
   );
 }
 
-function DetailModal({ order, onClose, colors, scaleFont }) {
-  return (
-    <Modal visible={!!order} transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 16 }} onPress={onClose}>
-        <Pressable onPress={(e) => e.stopPropagation()} style={{ backgroundColor: colors.card, borderRadius: 16, padding: 24, width: '100%', maxWidth: 720, maxHeight: '90%' }}>
-          {order && (
-            <ScrollView>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
-                <Text style={{ fontSize: scaleFont(18), fontWeight: '700', color: colors.textPrimary }}>{order.doTrackingNumber}</Text>
-                <AnimatedPressable scaleTo={1.1} onPress={onClose}><Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text></AnimatedPressable>
-              </View>
-              <Section icon="📦" title="Shipment Info" colors={colors} scaleFont={scaleFont}>
-                <DetailField label="Job Status" value={order.currentStatus} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Latest Location" value={order.latestLocation} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Attempt" value={order.attempt ?? 0} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Job Date" value={formatDMY(order.jobDate)} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Job Created Date" value={formatDMY(order.creationDate)} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="MAWB No." value={order.mawbNo} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Latest Reason" value={order.latestReason} colors={colors} scaleFont={scaleFont} />
-              </Section>
-              <Section icon="👤" title="Customer Info" colors={colors} scaleFont={scaleFont}>
-                <DetailField label="Name" value={order.receiverName} minWidth={180} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Main Phone No." value={order.receiverPhoneNumber} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Address" value={order.receiverAddress} minWidth={260} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Postal Code" value={order.receiverPostalCode} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="Area" value={order.area} colors={colors} scaleFont={scaleFont} />
-              </Section>
-              <Section icon="💬" title="Remarks" colors={colors} scaleFont={scaleFont}>
-                <DetailField label="Customer Remark" value={order.remarks} minWidth={260} colors={colors} scaleFont={scaleFont} />
-              </Section>
-              {order.history?.length > 0 && (
-                <Section icon="🕒" title="Status History" colors={colors} scaleFont={scaleFont}>
-                  {order.history.map((h, i) => (
-                    <DetailField key={i} label={h.status || '—'} value={h.dateUpdated ? new Date(h.dateUpdated).toLocaleString('en-GB') : '—'} minWidth={160} colors={colors} scaleFont={scaleFont} />
-                  ))}
-                </Section>
-              )}
-            </ScrollView>
-          )}
-        </Pressable>
-      </Pressable>
-    </Modal>
-  );
-}
-
 export default function PartnerSearchJobs() {
   const { token } = useAuth();
   const { colors } = useTheme();
@@ -176,19 +107,7 @@ export default function PartnerSearchJobs() {
   const [page, setPage] = useState(1);
   const [sortKey, setSortKey] = useState('creationDate');
   const [sortDir, setSortDir] = useState('desc');
-  const [detailOrder, setDetailOrder] = useState(null);
-
-  // The list view omits status history (a 2000-row response is heavy enough
-  // without it) - opening "View Details" shows the row's already-known
-  // fields instantly, then fills in history once the single-order lookup
-  // (the same endpoint the dashboard's tracking search uses) resolves.
-  const openDetails = (order) => {
-    setDetailOrder(order);
-    if (!token || !order.doTrackingNumber) return;
-    api.get(`/api/partner/tracking/${encodeURIComponent(order.doTrackingNumber)}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then((res) => setDetailOrder((prev) => (prev && prev.id === order.id ? res.data : prev)))
-      .catch(() => {});
-  };
+  const [openTracking, setOpenTracking] = useState(null);
 
   const setField = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
 
@@ -240,7 +159,7 @@ export default function PartnerSearchJobs() {
       <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>Search Jobs</Text>
 
       <Card icon="🔍" title="Filters">
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 16 }}>
           <FilterField label="Go Rush Tracking No." colors={colors} scaleFont={scaleFont}>
             <TextInput style={formStyles.input} value={filters.doTrackingNumber} onChangeText={(v) => setField('doTrackingNumber', v)} />
           </FilterField>
@@ -289,31 +208,37 @@ export default function PartnerSearchJobs() {
       {!loading && !error && (
         <Card icon="📋" title={`Results (${sorted.length})`}>
           <ScrollView horizontal>
-            <View>
-              <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: 8, marginBottom: 4 }}>
-                <View style={{ width: 50 }}><Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted }}>S/N</Text></View>
-                <View style={{ width: 90 }}><Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted }}>Action</Text></View>
+            <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 8, overflow: 'hidden', minWidth: '100%' }}>
+              <View style={{ flexDirection: 'row', backgroundColor: colors.subtleBackground, paddingVertical: 8 }}>
+                <View style={{ width: 50, paddingHorizontal: 8 }}><Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted, textTransform: 'uppercase' }}>S/N</Text></View>
+                <View style={{ width: 100, paddingHorizontal: 8 }}><Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted, textTransform: 'uppercase' }}>Action</Text></View>
                 {COLUMNS.map((c) => (
-                  <AnimatedPressable key={c.key} scaleTo={1.0} onPress={() => toggleSort(c.key)} style={{ width: c.width }}>
-                    <Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted }}>
+                  <AnimatedPressable key={c.key} scaleTo={1.0} onPress={() => toggleSort(c.key)} style={{ width: c.width, paddingHorizontal: 8 }}>
+                    <Text style={{ fontWeight: '700', fontSize: scaleFont(11), color: colors.textMuted, textTransform: 'uppercase' }} numberOfLines={1}>
                       {c.label} {sortKey === c.key ? (sortDir === 'asc' ? '▲' : '▼') : ''}
                     </Text>
                   </AnimatedPressable>
                 ))}
               </View>
               {pageOrders.map((o, i) => (
-                <View key={o.id} style={{ flexDirection: 'row', paddingVertical: 8, backgroundColor: i % 2 === 1 ? colors.subtleBackground : 'transparent' }}>
-                  <View style={{ width: 50 }}><Text style={{ fontSize: scaleFont(12), color: colors.textPrimary }}>{(page - 1) * PAGE_SIZE + i + 1}</Text></View>
-                  <View style={{ width: 90 }}>
-                    <AnimatedPressable scaleTo={1.04} onPress={() => openDetails(o)} style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignSelf: 'flex-start' }}>
+                <View key={o.id} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8, backgroundColor: i % 2 === 1 ? colors.subtleBackground : colors.card, borderTopWidth: 1, borderTopColor: colors.border }}>
+                  <View style={{ width: 50, paddingHorizontal: 8 }}><Text style={{ fontSize: scaleFont(12), color: colors.textPrimary }}>{(page - 1) * PAGE_SIZE + i + 1}</Text></View>
+                  <View style={{ width: 100, paddingHorizontal: 8 }}>
+                    <AnimatedPressable scaleTo={1.04} onPress={() => setOpenTracking(o.doTrackingNumber)} style={{ paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignSelf: 'flex-start' }}>
                       <Text style={{ fontSize: scaleFont(11), fontWeight: '700', color: colors.textPrimary }}>View Details</Text>
                     </AnimatedPressable>
                   </View>
                   {COLUMNS.map((c) => (
-                    <View key={c.key} style={{ width: c.width }}>
-                      <Text style={{ fontSize: scaleFont(12), color: colors.textPrimary }} numberOfLines={2}>
-                        {c.format ? c.format(o[c.key]) : (o[c.key] ?? '—')}
-                      </Text>
+                    <View key={c.key} style={{ width: c.width, paddingHorizontal: 8 }}>
+                      {c.key === 'doTrackingNumber' ? (
+                        <AnimatedPressable scaleTo={1.0} onPress={() => setOpenTracking(o.doTrackingNumber)}>
+                          <Text style={{ fontSize: scaleFont(12), color: colors.primary, fontWeight: '700', textDecorationLine: 'underline' }} numberOfLines={1}>{o.doTrackingNumber}</Text>
+                        </AnimatedPressable>
+                      ) : (
+                        <Text style={{ fontSize: scaleFont(12), color: colors.textPrimary }} numberOfLines={2}>
+                          {c.format ? c.format(o[c.key]) : (o[c.key] ?? '—')}
+                        </Text>
+                      )}
                     </View>
                   ))}
                 </View>
@@ -323,10 +248,13 @@ export default function PartnerSearchJobs() {
           <Pagination page={page} totalPages={totalPages} onChange={setPage} colors={colors} scaleFont={scaleFont} />
         </Card>
       )}
-
-      <DetailModal order={detailOrder} onClose={() => setDetailOrder(null)} colors={colors} scaleFont={scaleFont} />
     </View>
   );
 
-  return <PageScroll title="Search Jobs" beforeContent={pageContent} />;
+  return (
+    <>
+      <PageScroll title="Search Jobs" beforeContent={pageContent} />
+      <TrackingDetailModal trackingNumber={openTracking} token={token} onClose={() => setOpenTracking(null)} onOpenTracking={setOpenTracking} />
+    </>
+  );
 }

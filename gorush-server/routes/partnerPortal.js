@@ -209,6 +209,46 @@ async function getHiddenMawbSet(product) {
     return new Set(rows.map((r) => r.mawbNo));
 }
 
+// Ported from grfmxstatusupdate's data/orders.js findRelatedCustomerOrders() -
+// other still-open parcels for the same customer (same name+address, or same
+// name+phone), scoped to this partner's own product only (the admin version
+// searches every product; a partner must never learn that the same customer
+// also has an order with a different partner). Only populated when the
+// viewed order itself is still in RELATED_ORDERS_STATUSES - once a job has
+// gone Out for Delivery or further, this panel isn't relevant to it.
+const RELATED_ORDERS_NOT_AT_WAREHOUSE = ['Info Received'];
+const RELATED_ORDERS_AT_WAREHOUSE = ['At Warehouse', 'In Sorting Area', 'Return to Warehouse'];
+const RELATED_ORDERS_STATUSES = [...RELATED_ORDERS_NOT_AT_WAREHOUSE, ...RELATED_ORDERS_AT_WAREHOUSE];
+
+async function findRelatedOrders(order) {
+    if (!RELATED_ORDERS_STATUSES.includes(order.currentStatus)) return null;
+
+    const normalizeStr = (s) => (s || '').toString().trim().toLowerCase().replace(/\s+/g, ' ');
+    const normalizePhone = (s) => (s || '').toString().replace(/\D/g, '');
+    const targetName = normalizeStr(order.receiverName);
+    const targetAddr = normalizeStr(order.receiverAddress);
+    const targetPhone = normalizePhone(order.receiverPhoneNumber);
+    if (!targetName || (!targetAddr && !targetPhone)) return { notAtWarehouse: [], atWarehouse: [] };
+
+    const candidates = await prisma.order.findMany({
+        where: { product: order.product, currentStatus: { in: RELATED_ORDERS_STATUSES } },
+        select: { doTrackingNumber: true, currentStatus: true, receiverName: true, receiverAddress: true, receiverPhoneNumber: true },
+    });
+    const related = candidates.filter((o) => {
+        if (o.doTrackingNumber === order.doTrackingNumber) return false;
+        if (normalizeStr(o.receiverName) !== targetName) return false;
+        const addrMatch = targetAddr && normalizeStr(o.receiverAddress) === targetAddr;
+        const phoneMatch = targetPhone && normalizePhone(o.receiverPhoneNumber) === targetPhone;
+        return addrMatch || phoneMatch;
+    });
+
+    const all = [{ doTrackingNumber: order.doTrackingNumber, currentStatus: order.currentStatus }, ...related];
+    return {
+        notAtWarehouse: all.filter((o) => RELATED_ORDERS_NOT_AT_WAREHOUSE.includes(o.currentStatus)),
+        atWarehouse: all.filter((o) => RELATED_ORDERS_AT_WAREHOUSE.includes(o.currentStatus)),
+    };
+}
+
 // GET /api/partner/tracking/:trackingNumber
 router.get('/tracking/:trackingNumber', async (req, res) => {
     try {
@@ -217,7 +257,8 @@ router.get('/tracking/:trackingNumber', async (req, res) => {
             include: { history: true },
         });
         if (!order) return res.status(404).json({ error: 'Tracking number not found.' });
-        res.json(toPartnerOrderShape(order, { includeHistory: true }));
+        const relatedOrders = await findRelatedOrders(order);
+        res.json({ ...toPartnerOrderShape(order, { includeHistory: true }), relatedOrders });
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: 'Failed to search tracking number.' });
