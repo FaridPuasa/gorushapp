@@ -5,6 +5,20 @@
 // otherwise produce.
 import React from 'react';
 import { Text, View } from 'react-native';
+import { useFontScale } from '../context/FontScaleContext';
+
+// A gentler S/M/L growth curve for this dense, table-heavy page than the
+// app-wide one (FontScaleContext's web multipliers are 1.0/1.3/1.6 - tuned
+// for spaced-out marketing/form pages, not a page built around packed data
+// tables). Still reads and follows the user's real S/M/L choice (same
+// context, same stored preference) - just scales text up more gently so M/L
+// don't blow out these tables, while S (already 1.0x app-wide) is unchanged.
+const DENSE_MULTIPLIERS = { small: 1.0, regular: 1.1, large: 1.2 };
+export function useDenseFontScale() {
+  const { scale } = useFontScale();
+  const scaleFont = (base) => Math.round(base * (DENSE_MULTIPLIERS[scale] ?? 1));
+  return { scaleFont };
+}
 
 export function formatDMY(value) {
   if (!value) return '—';

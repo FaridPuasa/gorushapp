@@ -10,10 +10,9 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
-import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
 import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
-import { formatDMY, displayLocation, DateField } from '../lib/partnerUi';
+import { formatDMY, displayLocation, DateField, useDenseFontScale } from '../lib/partnerUi';
 import TrackingDetailModal from '../components/TrackingDetailModal';
 
 const WIDE_MAX_WIDTH = 1700;
@@ -163,7 +162,7 @@ function ColumnsPanel({ open, hidden, onToggleColumn, colors, scaleFont }) {
 export default function PartnerSearchJobs() {
   const { token } = useAuth();
   const { colors } = useTheme();
-  const { scaleFont } = useFontScale();
+  const { scaleFont } = useDenseFontScale();
   const formStyles = useFormStyles();
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);

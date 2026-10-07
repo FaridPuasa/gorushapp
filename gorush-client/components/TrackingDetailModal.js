@@ -9,14 +9,13 @@
 // Usage: render once per page with `trackingNumber` set to whatever's
 // currently open (or null), and pass the same setter as `onOpenTracking` so
 // a click on a related-order chip swaps which tracking number is shown.
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Text, View, Modal, Pressable, ScrollView, ActivityIndicator, Image, Linking } from 'react-native';
 import { api } from '../lib/api';
 import { useTheme } from '../context/ThemeContext';
-import { useFontScale } from '../context/FontScaleContext';
 import { useLanguage } from '../context/LanguageContext';
 import { AnimatedPressable } from '../lib/animations';
-import { Badge, Section, DetailField, formatDMY, displayLocation } from '../lib/partnerUi';
+import { Badge, Section, DetailField, formatDMY, displayLocation, useDenseFontScale } from '../lib/partnerUi';
 import {
   buildHistoryTimeline, canonicalStatus, displayStatusLabel, formatHistoryDate,
   getStatusStyle, historyReason,
@@ -227,11 +226,12 @@ function RelatedOrdersGroup({ title, orders, onOpenTracking, colors, scaleFont }
 
 export default function TrackingDetailModal({ trackingNumber, token, onClose, onOpenTracking }) {
   const { colors } = useTheme();
-  const { scaleFont } = useFontScale();
+  const { scaleFont } = useDenseFontScale();
   const { t } = useLanguage();
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const historyScrollRef = useRef(null);
 
   useEffect(() => {
     if (!trackingNumber) { setResult(null); return; }
@@ -316,7 +316,16 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
                   the customer-facing tracking popup uses. */}
               {historyEntries.length > 0 && (
                 <Section icon="🕒" title="Status History" colors={colors} scaleFont={scaleFont}>
-                  <ScrollView horizontal showsHorizontalScrollIndicator style={{ width: '100%' }}>
+                  <ScrollView
+                    ref={historyScrollRef}
+                    horizontal
+                    showsHorizontalScrollIndicator
+                    style={{ width: '100%' }}
+                    // The latest status (rightmost step) is what actually
+                    // matters at a glance - auto-scroll there instead of
+                    // leaving a long history sitting on its oldest step.
+                    onContentSizeChange={(width) => historyScrollRef.current?.scrollTo({ x: width, animated: false })}
+                  >
                     <View style={{ flexDirection: 'row', paddingVertical: 4 }}>
                       {historyEntries.map((entry, i) => (
                         <HistoryStep

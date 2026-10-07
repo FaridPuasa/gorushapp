@@ -17,10 +17,9 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
-import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
 import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
-import { Badge, formatDMY, DateField } from '../lib/partnerUi';
+import { Badge, formatDMY, DateField, useDenseFontScale } from '../lib/partnerUi';
 import TrackingDetailModal from '../components/TrackingDetailModal';
 
 const WIDE_MAX_WIDTH = 1500;
@@ -99,7 +98,7 @@ const SECTION_COLORS = { dark: '#212529', success: '#198754', primary: '#0d6efd'
 // headers, which the generic Card look doesn't replicate.
 function ColoredCard({ icon, title, color, children }) {
   const { colors } = useTheme();
-  const { scaleFont } = useFontScale();
+  const { scaleFont } = useDenseFontScale();
   return (
     <View style={{ backgroundColor: colors.card, borderRadius: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 20, overflow: 'hidden' }}>
       <View style={{ backgroundColor: SECTION_COLORS[color], paddingVertical: 14, paddingHorizontal: 20 }}>
@@ -624,7 +623,7 @@ function NewOrdersCard({ token, onOpenTracking, colors, scaleFont }) {
 export default function PartnerDashboard() {
   const { token, user } = useAuth();
   const { colors } = useTheme();
-  const { scaleFont } = useFontScale();
+  const { scaleFont } = useDenseFontScale();
   const formStyles = useFormStyles();
   const [openTracking, setOpenTracking] = useState(null);
 
