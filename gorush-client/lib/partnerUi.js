@@ -22,11 +22,15 @@ export function useDenseFontScale() {
 
 export function formatDMY(value) {
   if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}.${d.getFullYear()}`;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  // Shift to Brunei wall clock + UTC getters, same technique as
+  // lib/trackingHistory.js's formatHistoryDate - renders the Brunei calendar
+  // day regardless of the viewer's own device/browser timezone.
+  const d = new Date(parsed.getTime() + 8 * 60 * 60 * 1000);
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${d.getUTCFullYear()}`;
 }
 // Partners get one combined "Go Rush Warehouse" rather than the K1 (Kiulap) /
 // K2 (Jangsak) split - same simplification already applied to the Warehouse

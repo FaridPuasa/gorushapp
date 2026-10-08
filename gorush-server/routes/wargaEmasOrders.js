@@ -6,6 +6,7 @@ const { sendOrderAlert } = require('../lib/mailer');
 const { notifyTeams } = require('../lib/teamsNotify');
 const prisma = require('../lib/prismaClient');
 const { normalizePhoneNumber } = require('../lib/phoneNumber');
+const { formatBruneiDisplay } = require('../lib/bruneiTime');
 
 // Generates a Mongo-ObjectId-shaped hex string (24 hex chars) with zero I/O -
 // no real Mongo document is created anymore (fully cut over 2026-09-17), but
@@ -16,15 +17,11 @@ function generateMongoIdShape() {
     return crypto.randomBytes(12).toString('hex');
 }
 
-function formatBruneiDateTime(date) {
-    return date ? new Date(date).toLocaleString('en-GB', { timeZone: 'Asia/Brunei' }) : '';
-}
-
 function buildWargaEmasAlertEmail(orderData) {
     return {
         subject: 'Warga Emas Request',
         html: `
-            <p>Date Time Submission: ${formatBruneiDateTime(orderData.dateTimeSubmission)}</p>
+            <p>Date Time Submission: ${formatBruneiDisplay(orderData.dateTimeSubmission)}</p>
             <p>Phone: ${orderData.receiverPhoneNumber || ''}</p>
             <p>IC Photos: Submitted - view in admin dashboard</p>
         `,

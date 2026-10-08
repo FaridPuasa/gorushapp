@@ -7,6 +7,7 @@ const { optionalAuth, requireAuth } = require('../middleware/auth');
 const { computeTotalPrice } = require('../lib/pricing');
 const { isChargeCurrentlyAvailable } = require('../lib/availability');
 const { getOrderCreatedAt, getOrderUpdatedAt, getOrderDeliveryDate } = require('../lib/orderDates');
+const { formatBruneiISO, formatBruneiDisplay } = require('../lib/bruneiTime');
 const postgresOrders = require('../lib/postgresOrders');
 const { generateTrackingNumber } = require('../lib/trackingNumber');
 const { createDetrackJob, getDetrackJobByTrackingNumber } = require('../lib/detrack');
@@ -84,10 +85,6 @@ const ORDER_ALERT_PRODUCT_NAME = {
     cbsl: 'CBSL',
 };
 
-function formatBruneiDateTime(date) {
-    return date ? new Date(date).toLocaleString('en-GB', { timeZone: 'Asia/Brunei' }) : '';
-}
-
 // Mirrors the 3 Make.com "Microsoft 365 Email" modules being replaced -
 // same subject format and same field list/order, confirmed 2026-08-26.
 // "Area" has no direct equivalent in gorushapp's schema (that was a
@@ -95,7 +92,7 @@ function formatBruneiDateTime(date) {
 // address's district as the closest match.
 function buildOrderAlertEmail(reason, orderData, trackingNumber) {
     const productName = ORDER_ALERT_PRODUCT_NAME[orderData.product] || orderData.product;
-    const dateTimeSubmission = formatBruneiDateTime(orderData.dateTimeSubmission);
+    const dateTimeSubmission = formatBruneiDisplay(orderData.dateTimeSubmission);
     const area = getDistrictLabel(orderData.address?.district) || '';
     // MOH uses bruhimsnum, JPMC/PHC use patientNumber - mutually exclusive
     // per product, so a single combined line covers all 3 pharmacy products.
@@ -488,8 +485,14 @@ router.get('/mine', requireAuth, async (req, res) => {
                 product: order.product,
                 trackingNumber: (order.doTrackingNumber && order.doTrackingNumber !== 'N/A') ? order.doTrackingNumber : null,
                 status: order.currentStatus,
-                date: getOrderCreatedAt(order),
-                deliveryDate: getOrderDeliveryDate(order),
+                // getOrderCreatedAt/getOrderDeliveryDate re-parse the already
+                // Brunei-formatted string (see lib/orderDates.js's
+                // parseFlexibleDate) back into a real Date object, which
+                // res.json() would otherwise serialize as raw UTC "Z" via
+                // Date.prototype.toJSON() - format it back to Brunei
+                // "+08:00" before it goes out.
+                date: formatBruneiISO(getOrderCreatedAt(order)),
+                deliveryDate: formatBruneiISO(getOrderDeliveryDate(order)),
                 jobMethod: order.jobMethod || null,
                 paymentMethod: order.paymentMethod || null,
                 totalPrice: order.totalPrice,
@@ -558,8 +561,8 @@ router.get('/track/:trackingNumber', async (req, res) => {
             trackingNumber: order.doTrackingNumber,
             status: order.currentStatus,
             history: order.history || [],
-            createdAt: getOrderCreatedAt(order),
-            updatedAt: getOrderUpdatedAt(order),
+            createdAt: formatBruneiISO(getOrderCreatedAt(order)),
+            updatedAt: formatBruneiISO(getOrderUpdatedAt(order)),
         });
     } catch (err) {
         console.error(err.message);

@@ -37,7 +37,13 @@ function formatBruneiDateTime(date) {
     let hours = brunei.getUTCHours();
     const ampm = hours >= 12 ? 'pm' : 'am';
     hours = hours % 12 || 12;
-    return `${day}-${month}-${brunei.getUTCFullYear()} ${hours}:${minutes} ${ampm}`;
+    // Same "(Brunei time)" wording the other 3 duplicate formatters now use
+    // (lib/bruneiTime.js's formatBruneiDisplay) - kept as its own hand-rolled
+    // implementation (not consolidated into that shared function) since this
+    // one needs a different display format for the Excel cell (no seconds,
+    // DD-MM-YYYY), but the explicit timezone callout should still read the
+    // same way everywhere.
+    return `${day}-${month}-${brunei.getUTCFullYear()} ${hours}:${minutes} ${ampm} (Brunei time)`;
 }
 
 let cachedToken = null;

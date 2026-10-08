@@ -77,25 +77,34 @@ const TABS = [
   { key: 'all', label: 'All', statuses: null },
 ];
 
+// The server sends a Brunei "+08:00" instant - shift it by +8h and read UTC
+// getters, so display always renders Brunei wall clock regardless of the
+// viewer's own device/browser timezone (was using local getters directly,
+// same bug class as lib/trackingHistory.js's formatHistoryDate).
+function toBruneiWallClock(value) {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getTime() + 8 * 60 * 60 * 1000);
+}
+
 // dd.mm.yyyy - display only, raw ISO stays untouched everywhere else.
 function formatDMY(value) {
-  if (!value) return '—';
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '—';
-  const dd = String(d.getDate()).padStart(2, '0');
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  return `${dd}.${mm}.${d.getFullYear()}`;
+  const d = toBruneiWallClock(value);
+  if (!d) return '—';
+  const dd = String(d.getUTCDate()).padStart(2, '0');
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${d.getUTCFullYear()}`;
 }
 
 // 12-hour, e.g. "12:00pm" / "5:30am" - no leading zero on the hour.
 function formatTime12(value) {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  let h = d.getHours();
+  const d = toBruneiWallClock(value);
+  if (!d) return '';
+  let h = d.getUTCHours();
   const ampm = h >= 12 ? 'pm' : 'am';
   h = h % 12;
   if (h === 0) h = 12;
-  const min = String(d.getMinutes()).padStart(2, '0');
+  const min = String(d.getUTCMinutes()).padStart(2, '0');
   return `${h}:${min}${ampm}`;
 }
 
@@ -132,7 +141,16 @@ function DateField({ value, onChange, formStyles }) {
           display="default"
           onChange={(event, selectedDate) => {
             setShow(false);
-            if (selectedDate) onChange(selectedDate.toISOString().slice(0, 10));
+            if (selectedDate) {
+              // Local getters, not .toISOString() - the native picker returns a Date
+              // representing the picked day at local midnight; converting to UTC first
+              // (as .toISOString() does) shifts back a day for any positive-offset
+              // timezone (e.g. Brunei +8), silently saving the wrong calendar day.
+              const y = selectedDate.getFullYear();
+              const m = String(selectedDate.getMonth() + 1).padStart(2, '0');
+              const d = String(selectedDate.getDate()).padStart(2, '0');
+              onChange(`${y}-${m}-${d}`);
+            }
           }}
         />
       )}

@@ -8,6 +8,7 @@
 // Emas guest-submission route (see routes/wargaEmasOrders.js).
 const axios = require('axios');
 const { getDistrictLabel, extractBaseJobMethod } = require('./jobMethodFormat');
+const { formatBruneiDisplay } = require('./bruneiTime');
 
 const PRODUCT_DISPLAY_NAME = {
     pharmacymoh: 'Pharmacy MOH',
@@ -17,10 +18,6 @@ const PRODUCT_DISPLAY_NAME = {
     cbsl: 'CBSL',
     wargaemas: 'Warga Emas',
 };
-
-function formatBruneiDateTime(date) {
-    return date ? new Date(date).toLocaleString('en-GB', { timeZone: 'Asia/Brunei' }) : '';
-}
 
 const CATEGORIES = [
     {
@@ -76,7 +73,7 @@ function buildOrderCard(title, orderData, trackingNumber, categoryKey) {
                         {
                             type: 'FactSet',
                             facts: [
-                                { title: 'Date Time Submission', value: formatBruneiDateTime(orderData.dateTimeSubmission) },
+                                { title: 'Date Time Submission', value: formatBruneiDisplay(orderData.dateTimeSubmission) },
                                 { title: 'Phone', value: orderData.receiverPhoneNumber || '' },
                                 { title: 'IC Photos', value: 'Submitted - view in admin dashboard' },
                             ],
@@ -89,7 +86,7 @@ function buildOrderCard(title, orderData, trackingNumber, categoryKey) {
 
     const facts = [
         { title: 'Tracking Number', value: trackingNumber || '' },
-        { title: 'Date Time Submission', value: formatBruneiDateTime(orderData.dateTimeSubmission) },
+        { title: 'Date Time Submission', value: formatBruneiDisplay(orderData.dateTimeSubmission) },
         { title: 'Product', value: productName },
         { title: 'Job Method', value: orderData.jobMethod || '' },
         { title: 'Receiver', value: orderData.receiverName || '' },

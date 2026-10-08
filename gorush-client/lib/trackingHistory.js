@@ -7,13 +7,18 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 export function formatHistoryDate(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return String(dateStr);
-  let hours = d.getHours();
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return String(dateStr);
+  // The server sends a Brunei "+08:00" instant - parse it correctly, then shift
+  // by +8h and read UTC getters, so the rendered day/time is always Brunei wall
+  // clock regardless of the viewer's own device/browser timezone (was using
+  // local getters directly on `parsed`, which rendered in the VIEWER's TZ).
+  const d = new Date(parsed.getTime() + 8 * 60 * 60 * 1000);
+  let hours = d.getUTCHours();
   const ampm = hours >= 12 ? 'PM' : 'AM';
   hours = hours % 12 || 12;
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}, ${hours}:${mm} ${ampm}`;
+  const mm = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}, ${hours}:${mm} ${ampm}`;
 }
 
 // The server returns history[] verbatim from Mongo — our own orders label each entry via

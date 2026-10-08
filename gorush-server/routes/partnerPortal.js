@@ -13,7 +13,7 @@
 const express = require('express');
 const prisma = require('../lib/prismaClient');
 const { requireRole } = require('../middleware/auth');
-const { getBruneiNow } = require('../lib/bruneiTime');
+const { getBruneiNow, formatBruneiISO } = require('../lib/bruneiTime');
 const { getPodImageSignedUrl } = require('../lib/podImageStorage');
 
 const router = express.Router();
@@ -27,6 +27,21 @@ const MAX_SEARCH_RESULTS = 2000;
 function toDateOnlyString(d) {
     if (!d) return null;
     return new Date(d).toISOString().slice(0, 10);
+}
+
+// Same shift as getBruneiNow(), but for an arbitrary stored DateTime (e.g.
+// `jobDate`) instead of "now" - needed because jobDate is a raw Prisma
+// DateTime (has a time-of-day, NOT a `@db.Date` date-only column), so taking
+// its date-only string with the generic UTC-based toDateOnlyString() above
+// would bucket orders placed Brunei 12:00am-7:59am (UTC previous-day
+// 4pm-11:59pm) into the wrong day versus getBruneiNow()'s own Brunei-shifted
+// "today". Both sides of every date-key comparison below must go through
+// this, not toDateOnlyString() directly on a raw DateTime.
+function toBruneiDateOnlyString(d) {
+    if (!d) return null;
+    const dt = new Date(d);
+    if (Number.isNaN(dt.getTime())) return null;
+    return toDateOnlyString(new Date(dt.getTime() + 8 * 60 * 60 * 1000));
 }
 
 // Days between now (Brunei wall-clock) and `date` - never negative, never
@@ -77,14 +92,14 @@ function toPartnerOrderShape(order, { includeHistory = false, ageDays = null } =
         latestReason: order.latestReason,
         attempt: order.attempt,
         jobMethod: order.jobMethod,
-        jobDate: order.jobDate,
-        creationDate: order.creationDate,
+        jobDate: formatBruneiISO(order.jobDate),
+        creationDate: formatBruneiISO(order.creationDate),
         mawbNo: order.mawbNo,
         warehouseEntry: order.warehouseEntry,
         cubicMeters: order.cubicMeters != null ? order.cubicMeters.toString() : null,
         parcelWeight: order.parcelWeight != null ? order.parcelWeight.toString() : null,
         items: order.items,
-        detrackCompletedTime: order.detrackCompletedTime,
+        detrackCompletedTime: formatBruneiISO(order.detrackCompletedTime),
         ageDays: ageDays != null ? ageDays : warehouseAgeDays(order),
     };
     if (includeHistory) {
@@ -97,7 +112,7 @@ function toPartnerOrderShape(order, { includeHistory = false, ageDays = null } =
         shaped.history = (order.history || []).map((h) => ({
             id: h.id.toString(),
             statusHistory: h.statusHistory,
-            dateUpdated: h.dateUpdated,
+            dateUpdated: formatBruneiISO(h.dateUpdated),
             reason: h.reason,
             lastLocation: h.lastLocation,
             // Real GPS coordinate captured by the driver app at the moment of
@@ -357,17 +372,24 @@ router.get('/active-jobs', async (req, res) => {
             where: { product: req.userRole, currentStatus: { in: ACTIVE_STATUSES } },
             orderBy: { jobDate: 'asc' },
         });
+        // Bucketed off `activeOrdersRaw`'s own raw (unshaped) jobDate, NOT the
+        // shaped `activeOrders` below - toPartnerOrderShape() now formats
+        // jobDate into a Brunei "+08:00" display string, and re-running
+        // toBruneiDateOnlyString() on an already-Brunei-shifted string would
+        // double-shift it by another +8h. Index-paired with activeOrders
+        // (same source array, same .map() order) so the raw date drives the
+        // bucket while the shaped object is what's actually returned.
         const activeOrders = activeOrdersRaw.map((o) => toPartnerOrderShape(o));
 
         const today = toDateOnlyString(getBruneiNow());
         const groups = new Map();
         let outdatedCount = 0;
-        for (const order of activeOrders) {
-            const dateKey = toDateOnlyString(order.jobDate) || 'Unscheduled';
+        activeOrdersRaw.forEach((rawOrder, i) => {
+            const dateKey = toBruneiDateOnlyString(rawOrder.jobDate) || 'Unscheduled';
             if (dateKey !== 'Unscheduled' && dateKey < today) outdatedCount += 1;
             if (!groups.has(dateKey)) groups.set(dateKey, []);
-            groups.get(dateKey).push(order);
-        }
+            groups.get(dateKey).push(activeOrders[i]);
+        });
         for (const [key, dateOrders] of groups) groups.set(key, groupSimilarOrders(dateOrders));
 
         const todayStart = new Date(`${today}T00:00:00+08:00`);
@@ -377,7 +399,7 @@ router.get('/active-jobs', async (req, res) => {
             prisma.order.count({ where: { product: req.userRole, jobDate: { gte: todayStart, lte: todayEnd }, currentStatus: 'Completed' } }),
             prisma.order.count({ where: { product: req.userRole, jobDate: { gte: todayStart, lte: todayEnd }, currentStatus: 'Return to Warehouse' } }),
         ]);
-        const todayActive = activeOrders.filter((o) => toDateOnlyString(o.jobDate) === today).length;
+        const todayActive = activeOrdersRaw.filter((o) => toBruneiDateOnlyString(o.jobDate) === today).length;
 
         res.json({
             summary: { total: todayTotal, active: todayActive, completed: todayCompleted, failed: todayFailed, outdated: outdatedCount },

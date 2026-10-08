@@ -4,6 +4,7 @@
 const prisma = require('./prismaClient');
 const { toNumber } = require('./detrack');
 const { parseGorushIso } = require('./dateHelpers');
+const { formatBruneiISO } = require('./bruneiTime');
 
 // Maps the object shape routes/orders.js builds (orderData) into a Prisma Order
 // create() data object. Reuses that object rather than re-deriving pricing/
@@ -181,9 +182,12 @@ function toLegacyShape(pgOrder) {
         paymentMethod: pgOrder.paymentMethod,
         remarks: pgOrder.remarks,
         totalPrice: pgOrder.totalPrice != null ? pgOrder.totalPrice.toFixed(2) : null,
-        dateTimeSubmission: pgOrder.dateTimeSubmission ? pgOrder.dateTimeSubmission.toISOString() : null,
-        creationDate: pgOrder.creationDate ? pgOrder.creationDate.toISOString() : null,
-        lastUpdateDateTime: pgOrder.lastUpdateDateTime ? pgOrder.lastUpdateDateTime.toISOString() : null,
+        // Brunei local time with an explicit "+08:00" offset (not raw UTC
+        // "Z") - these feed customer-facing endpoints (order-creation
+        // response, GET /mine, /status/:id, /track/:trackingNumber).
+        dateTimeSubmission: formatBruneiISO(pgOrder.dateTimeSubmission),
+        creationDate: formatBruneiISO(pgOrder.creationDate),
+        lastUpdateDateTime: formatBruneiISO(pgOrder.lastUpdateDateTime),
         weight: pgOrder.parcelWeight != null ? pgOrder.parcelWeight.toString() : null,
         cargoPrice: pgOrder.cargoPrice != null ? pgOrder.cargoPrice.toString() : null,
         // ISO date-only (YYYY-MM-DD) - no current consumer reconstructs the
@@ -215,7 +219,7 @@ function toLegacyShape(pgOrder) {
         gorushUserId: pgOrder.gorushUserId,
         history: (pgOrder.history || []).map((h) => ({
             statusHistory: h.statusHistory,
-            dateUpdated: h.dateUpdated ? h.dateUpdated.toISOString() : null,
+            dateUpdated: formatBruneiISO(h.dateUpdated),
             updatedBy: h.updatedBy,
             lastAssignedTo: h.lastAssignedTo,
             reason: h.reason,

@@ -12,6 +12,7 @@ const { cancelDetrackJob } = require('../lib/detrack');
 const { requireRole } = require('../middleware/auth');
 const { currentWindow, windowForDate } = require('../lib/jpmcWindow');
 const { getPaymentProofSignedUrl } = require('../lib/jpmcPaymentStorage');
+const { formatBruneiISO, getBruneiNow } = require('../lib/bruneiTime');
 
 function toDateOnlyString(d) {
     if (!d) return null;
@@ -102,7 +103,7 @@ function toApiShape(order, holidayDates) {
         processDate: toDateOnlyString(currentWindow(holidayDates, order.dateTimeSubmission).end),
         id: order.id.toString(),
         doTrackingNumber: order.doTrackingNumber,
-        dateTimeSubmission: order.dateTimeSubmission,
+        dateTimeSubmission: formatBruneiISO(order.dateTimeSubmission),
         paymentMethod: order.paymentMethod,
         jobMethod: order.jobMethod,
         receiverName: order.receiverName,
@@ -118,7 +119,7 @@ function toApiShape(order, holidayDates) {
         jpmcPatientInformed: order.jpmcPatientInformed,
         jpmcPharmacyRemarks: order.jpmcPharmacyRemarks,
         jpmcTotalAmount: order.jpmcTotalAmount != null ? order.jpmcTotalAmount.toString() : null,
-        jpmcFinanceDateReceived: order.jpmcFinanceDateReceived,
+        jpmcFinanceDateReceived: formatBruneiISO(order.jpmcFinanceDateReceived),
         // Never the raw storage path - the client fetches a short-lived signed
         // URL on demand via GET .../payment-proof when it actually needs to
         // display/download the image.
@@ -135,7 +136,7 @@ function toApiShape(order, holidayDates) {
             .sort((a, b) => new Date(a.dateUpdated || 0) - new Date(b.dateUpdated || 0))
             .map((h) => ({
                 status: h.statusHistory,
-                dateUpdated: h.dateUpdated,
+                dateUpdated: formatBruneiISO(h.dateUpdated),
                 updatedBy: h.updatedBy,
                 lastAssignedTo: h.lastAssignedTo,
                 lastLocation: h.lastLocation,
@@ -318,7 +319,13 @@ router.get('/orders/export', requireRole('jpmc', 'admin'), async (req, res) => {
             'Finance Date Received': o.jpmcFinanceDateReceived ? new Date(o.jpmcFinanceDateReceived) : '',
             'GO RUSH Status': o.goRushStatus || '',
             'GO RUSH Status History': o.goRushStatusHistory
-                .map((h) => `${h.status || '—'} (${h.dateUpdated ? new Date(h.dateUpdated).toLocaleString('en-GB') : '—'})`)
+                // Explicit timeZone - h.dateUpdated is already a Brunei
+                // "+08:00" string (toApiShape formats it via formatBruneiISO),
+                // but toLocaleString() with no timeZone option falls back to
+                // the server process's own local tz, which was the real bug
+                // here (ambiguous display regardless of the input's own
+                // offset) - always pin it to Asia/Brunei explicitly.
+                .map((h) => `${h.status || '—'} (${h.dateUpdated ? new Date(h.dateUpdated).toLocaleString('en-GB', { timeZone: 'Asia/Brunei' }) : '—'})`)
                 .join(' | '),
         }));
 
@@ -327,7 +334,7 @@ router.get('/orders/export', requireRole('jpmc', 'admin'), async (req, res) => {
         XLSX.utils.book_append_sheet(workbook, worksheet, 'JPMC Orders');
         const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
 
-        const filename = `jpmc-orders-${new Date().toISOString().slice(0, 10)}.xlsx`;
+        const filename = `jpmc-orders-${getBruneiNow().toISOString().slice(0, 10)}.xlsx`;
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.send(buffer);

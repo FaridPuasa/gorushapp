@@ -21,13 +21,10 @@ import { CONTROL_HEIGHT } from '../lib/theme';
 import { AnimatedPressable } from '../lib/animations';
 import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
 import { Badge, formatDMY, DateField, useDenseFontScale } from '../lib/partnerUi';
+import { getBruneiTodayISO } from '../lib/bruneiTime';
 import TrackingDetailModal from '../components/TrackingDetailModal';
 
 const WIDE_MAX_WIDTH = 1500;
-
-function todayISO() {
-  return new Date().toISOString().slice(0, 10);
-}
 
 // Row-level age badge - matches grfmxstatusupdate's per-row convention
 // (>=30 dark, >=10 red, >=7 amber, else green).
@@ -449,7 +446,7 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
   const [tab, setTab] = useState('active');
   const [active, setActive] = useState(null);
   const [activeLoading, setActiveLoading] = useState(true);
-  const [completedDate, setCompletedDate] = useState(todayISO());
+  const [completedDate, setCompletedDate] = useState(getBruneiTodayISO());
   const [completed, setCompleted] = useState(null);
   const [completedLoading, setCompletedLoading] = useState(false);
 

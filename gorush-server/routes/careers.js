@@ -9,6 +9,7 @@ const { sendJobApplicationAlert, dataUriToAttachment } = require('../lib/mailer'
 const { notifyTeamsJobApplication } = require('../lib/teamsNotify');
 const { uploadJobApplicationDoc } = require('../lib/jobApplicationDocsStorage');
 const { normalizePhoneNumber } = require('../lib/phoneNumber');
+const { formatBruneiISO } = require('../lib/bruneiTime');
 
 const CAPTCHA_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no 0/O/1/I
 function generateCaptchaCode() {
@@ -151,7 +152,13 @@ router.post('/apply', optionalAuth, async (req, res) => {
             parcelNum: rules.needsDeliverBefore && deliverBefore === 'Yes' ? parcelNum : null,
             driveManual: rules.needsDriveManual ? driveManual : null,
             status: 'New',
-            dateTimeSubmission: new Date().toISOString(),
+            // dateTimeSubmission is a String column (schema.prisma), not a
+            // native DateTime - whatever string gets written here is read
+            // back verbatim everywhere (Teams notification card, any future
+            // display), so it must already be Brunei "+08:00" at write time,
+            // not raw UTC "Z". createdAt below is a real DateTime column, so
+            // its write-side format doesn't matter.
+            dateTimeSubmission: formatBruneiISO(new Date()),
             createdAt: new Date(),
         };
 

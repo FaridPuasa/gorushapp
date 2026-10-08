@@ -19,9 +19,13 @@ const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 
 function formatOrderDate(dateStr) {
   if (!dateStr) return '—';
-  const d = new Date(dateStr);
-  if (Number.isNaN(d.getTime())) return '—';
-  return `${d.getDate()} ${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`;
+  const parsed = new Date(dateStr);
+  if (Number.isNaN(parsed.getTime())) return '—';
+  // Shift to Brunei wall clock + UTC getters, same technique as
+  // lib/trackingHistory.js's formatHistoryDate - renders the Brunei calendar
+  // day regardless of the viewer's own device/browser timezone.
+  const d = new Date(parsed.getTime() + 8 * 60 * 60 * 1000);
+  return `${d.getUTCDate()} ${MONTH_NAMES[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
 }
 
 // A single label/value row inside an order card — Product, Job Method, Payment Method,
