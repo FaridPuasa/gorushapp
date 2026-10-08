@@ -28,14 +28,14 @@ export function formatDMY(value) {
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   return `${dd}.${mm}.${d.getFullYear()}`;
 }
-// Partners get one combined "Go Rush Jangsak Warehouse" rather than the K1
-// (Kiulap) / K2 (Jangsak) split - same simplification already applied to the
-// Warehouse section's own summary/tabs, applied here too everywhere a
-// location string is shown (Shipment Info, Status History). Kept as the same
-// string as the Failed Delivery override below so "at warehouse"/"in sorting
-// area"/"return to warehouse"/"failed delivery" all read consistently.
+// Partners get one combined "Go Rush Warehouse" rather than the K1 (Kiulap) /
+// K2 (Jangsak) split - same simplification already applied to the Warehouse
+// section's own summary/tabs, applied here too everywhere a location string
+// is shown (Shipment Info, Status History). Kept as the same string as the
+// Failed Delivery override below so "at warehouse"/"in sorting area"/"return
+// to warehouse"/"failed delivery" all read consistently.
 export function displayLocation(value) {
-  if (value === 'Warehouse K1' || value === 'Warehouse K2') return 'Go Rush Jangsak Warehouse';
+  if (value === 'Warehouse K1' || value === 'Warehouse K2') return 'Go Rush Warehouse';
   return value;
 }
 
@@ -45,7 +45,7 @@ export function displayLocation(value) {
 // sendGDEXTrackingWebhook call sites + FGA_TRACKED_MILESTONE_MAP) uses fixed,
 // generic labels per status instead: "Brunei Customs" for On Hold/Custom
 // Clearing, "Go Rush Driver" for Out for Delivery, "Go Rush Kiulap Office"
-// for Self Collect, "Go Rush Jangsak Warehouse" for a Failed Delivery push, and the
+// for Self Collect, "Go Rush Warehouse" for a Failed Delivery push, and the
 // real delivery address (or "Go Rush Kiulap Office" again if the job method
 // was self-collect) for Completed. For internally-dispatched (non-GDEX)
 // products the SAME statuses instead store the dispatcher/driver's literal
@@ -57,7 +57,7 @@ const GDEX_STYLE_LOCATION_BY_STATUS = {
   'custom clearance': 'Brunei Customs',
   'out for delivery': 'Go Rush Driver',
   'self collect': 'Go Rush Kiulap Office',
-  'failed delivery': 'Go Rush Jangsak Warehouse',
+  'failed delivery': 'Go Rush Warehouse',
 };
 // `order` (optional) - the order/result object, needed only for the
 // Completed case (real address, or self-collect office) since that's the one
