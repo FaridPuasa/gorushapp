@@ -470,7 +470,6 @@ router.get('/search-jobs', async (req, res) => {
         if (q.mawbNo) and.push({ mawbNo: { contains: q.mawbNo, mode: 'insensitive' } });
         if (q.area) and.push({ area: { in: [].concat(q.area) } });
         if (q.currentStatus) and.push({ currentStatus: { in: [].concat(q.currentStatus) } });
-        if (q.latestReason) and.push({ latestReason: { in: [].concat(q.latestReason) } });
         if (q.jobDateFrom || q.jobDateTo) {
             const range = {};
             if (q.jobDateFrom) range.gte = new Date(`${q.jobDateFrom}T00:00:00+08:00`);

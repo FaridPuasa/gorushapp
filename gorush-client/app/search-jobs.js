@@ -25,12 +25,6 @@ const JOB_STATUS_OPTIONS = [
   'Info Received', 'On Hold', 'At Warehouse', 'In Sorting Area',
   'Out for Delivery', 'Self Collect', 'Completed', 'Return to Warehouse',
 ];
-const REASON_OPTIONS = [
-  'Unattempted Delivery', 'Reschedule delivery requested by customer',
-  'Reschedule to self collect requested by customer', 'Cash/Duty Not Ready',
-  'Customer not available / cannot be contacted', 'No Such Person',
-  'Customer declined delivery', 'Unable to Locate Address', 'Incorrect Address',
-];
 
 // Columns kept from the original Search Jobs table, per the project plan's
 // exclusion list (drops Go Rush Remark, Job Method, Assigned To, Payment
@@ -57,13 +51,18 @@ const COLUMNS = [
   { key: 'creationDate', label: 'Job Created Date', width: 120, format: formatDMY },
   { key: 'mawbNo', label: 'MAWB No.', width: 110 },
   { key: 'parcelWeight', label: 'Weight (KG)', width: 90 },
-  { key: 'detrackCompletedTime', label: 'Job Date Completed', width: 140 },
+  // detrackCompletedTime only gets populated for Detrack-tracked products -
+  // it's empty for GDEX/other completions even though the job really is
+  // Completed. grfmxstatusupdate's own gold-standard searchJobs.ejs doesn't
+  // use that field for this column either - it derives it the same way:
+  // jobDate when currentStatus is Completed, blank otherwise.
+  { key: 'jobDateCompletedDisplay', label: 'Job Date Completed', width: 140, format: (v, row) => (row.currentStatus === 'Completed' ? formatDMY(row.jobDate) : '—') },
 ];
 
 const EMPTY_FILTERS = {
   doTrackingNumber: '', receiverName: '', receiverAddress: '',
   jobDateFrom: '', jobDateTo: '', creationDateFrom: '', creationDateTo: '',
-  area: '', currentStatus: '', latestReason: '', mawbNo: '', receiverPostalCode: '', receiverPhoneNumber: '',
+  area: '', currentStatus: '', mawbNo: '', receiverPostalCode: '', receiverPhoneNumber: '',
 };
 
 function FilterField({ label, children, colors, scaleFont }) {
@@ -264,9 +263,6 @@ export default function PartnerSearchJobs() {
           </FilterField>
           <FilterField label="Job Status" colors={colors} scaleFont={scaleFont}>
             <SelectField value={filters.currentStatus} onChange={(v) => setField('currentStatus', v)} options={JOB_STATUS_OPTIONS} formStyles={formStyles} />
-          </FilterField>
-          <FilterField label="Reason" colors={colors} scaleFont={scaleFont}>
-            <SelectField value={filters.latestReason} onChange={(v) => setField('latestReason', v)} options={REASON_OPTIONS} formStyles={formStyles} />
           </FilterField>
           <FilterField label="MAWB No." colors={colors} scaleFont={scaleFont}>
             <TextInput style={formStyles.input} value={filters.mawbNo} onChangeText={(v) => setField('mawbNo', v)} onSubmitEditing={runSearch} />

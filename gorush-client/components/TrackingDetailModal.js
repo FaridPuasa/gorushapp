@@ -160,13 +160,12 @@ function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t, token, or
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
       <View style={{ width: 150, alignItems: 'center' }}>
-        <View style={{
-          width: isCurrent ? 16 : 12, height: isCurrent ? 16 : 12, borderRadius: 8,
-          backgroundColor: style.color, borderWidth: isCurrent ? 2 : 0, borderColor: colors.card,
-        }} />
+        {!isCurrent && (
+          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: style.color }} />
+        )}
         {isCurrent ? (
           <View style={{
-            marginTop: 8, alignItems: 'center', width: 140,
+            alignItems: 'center', width: 140,
             backgroundColor: colors.background, borderRadius: 16, borderWidth: 1, borderColor: style.color,
             paddingVertical: 12, paddingHorizontal: 10,
           }}>

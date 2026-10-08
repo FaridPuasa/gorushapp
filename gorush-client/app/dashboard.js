@@ -217,8 +217,11 @@ const SCAN_EXPORT_COLUMNS = [
 // what actually distinguishes a completed job from one still in progress or
 // one that failed, which the KPI strip above summarizes but the table itself
 // wasn't showing per row at all.
+// No Status column here - these tables only ever appear already split by
+// status (Active Jobs' own date groups are all "active" statuses; Job
+// Status's Completed/Out for Delivery/Failed are each their own group), so a
+// per-row status badge would just repeat what the group it's in already says.
 const JOBS_EXPORT_COLUMNS = [
-  { key: 'currentStatus', label: 'Status', flex: 1.4 },
   { key: 'doTrackingNumber', label: 'Tracking Number', flex: 1.3 },
   { key: 'attempt', label: 'Attempt', flex: 0.7 },
   { key: 'latestReason', label: 'Latest Reason', flex: 1.6 },
@@ -530,10 +533,8 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
                       instead of one flat mixed list - grfmxstatusupdate's own
                       Completed Jobs tab splits by dispatcher; a single-
                       product partner has no dispatcher concept, so outcome is
-                      the equivalent split. All three open by default once
-                      this section itself is expanded via Show. */}
+                      the equivalent split. Each stays collapsed until clicked. */}
                   <Collapsible
-                    defaultOpen
                     colors={colors}
                     scaleFont={scaleFont}
                     header={<GroupHeader title="Completed" count={completed.groups.completed.length} orders={completed.groups.completed} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Completed ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
@@ -541,7 +542,6 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
                     <OrdersTable orders={completed.groups.completed} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
                   </Collapsible>
                   <Collapsible
-                    defaultOpen
                     colors={colors}
                     scaleFont={scaleFont}
                     header={<GroupHeader title="Out for Delivery" count={completed.groups.outForDelivery.length} orders={completed.groups.outForDelivery} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Out for Delivery ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
@@ -549,7 +549,6 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
                     <OrdersTable orders={completed.groups.outForDelivery} variant="jobs" onOpenTracking={onOpenTracking} colors={colors} scaleFont={scaleFont} />
                   </Collapsible>
                   <Collapsible
-                    defaultOpen
                     colors={colors}
                     scaleFont={scaleFont}
                     header={<GroupHeader title="Failed" count={completed.groups.failed.length} orders={completed.groups.failed} exportColumns={JOBS_EXPORT_COLUMNS} sectionName={`Failed ${completed.date}`} colors={colors} scaleFont={scaleFont} />}
@@ -568,7 +567,6 @@ function ActiveCompletedCard({ token, onOpenTracking, colors, scaleFont, formSty
 
 // ---- New Orders / Incomplete Scan ----
 function NewOrdersCard({ token, onOpenTracking, colors, scaleFont }) {
-  const { user } = useAuth();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -590,7 +588,7 @@ function NewOrdersCard({ token, onOpenTracking, colors, scaleFont }) {
       {!loading && !error && (
         <>
           <KpiStrip>
-            <KpiTile icon="📦" value={data?.totalCount ?? 0} label={(user?.role || '').toUpperCase()} colors={colors} scaleFont={scaleFont} />
+            <KpiTile icon="📦" value={data?.totalCount ?? 0} label="Not Yet Scanned In Warehouse" colors={colors} scaleFont={scaleFont} />
           </KpiStrip>
 
           <ShowHideToggle expanded={expanded} onToggle={() => setExpanded((v) => !v)} colors={colors} scaleFont={scaleFont} />
