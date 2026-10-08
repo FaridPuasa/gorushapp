@@ -160,12 +160,15 @@ function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t, token, or
   return (
     <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
       <View style={{ width: 150, alignItems: 'center' }}>
-        {!isCurrent && (
-          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: style.color }} />
-        )}
+        {/* Reserve the same marker slot for every step (even the current one,
+            which no longer shows a visible dot) so the horizontal connector
+            lines - anchored to this slot via the fixed marginTop below - stay
+            level across the whole timeline instead of dipping down whenever
+            a step's content starts taller or shorter than its neighbors. */}
+        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: isCurrent ? 'transparent' : style.color }} />
         {isCurrent ? (
           <View style={{
-            alignItems: 'center', width: 140,
+            marginTop: 8, alignItems: 'center', width: 140,
             backgroundColor: colors.background, borderRadius: 16, borderWidth: 1, borderColor: style.color,
             paddingVertical: 12, paddingHorizontal: 10,
           }}>
