@@ -158,17 +158,19 @@ function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t, token, or
   const style = getStatusStyle(status, colors);
   const location = safeStepLocation(entry, status, order);
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+    // alignItems: 'center' (both here and on the row these steps are mapped
+    // into) centers each step's whole content block - dot+text, or the much
+    // taller "current" bubble - on the row's shared vertical center, so the
+    // connector lines (which sit on that same center line) run straight
+    // through the middle of every step's details instead of along their top.
+    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
       <View style={{ width: 150, alignItems: 'center' }}>
-        {/* Reserve the same marker slot for every step (even the current one,
-            which no longer shows a visible dot) so the horizontal connector
-            lines - anchored to this slot via the fixed marginTop below - stay
-            level across the whole timeline instead of dipping down whenever
-            a step's content starts taller or shorter than its neighbors. */}
-        <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: isCurrent ? 'transparent' : style.color }} />
+        {!isCurrent && (
+          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: style.color }} />
+        )}
         {isCurrent ? (
           <View style={{
-            marginTop: 8, alignItems: 'center', width: 140,
+            alignItems: 'center', width: 140,
             backgroundColor: colors.background, borderRadius: 16, borderWidth: 1, borderColor: style.color,
             paddingVertical: 12, paddingHorizontal: 10,
           }}>
@@ -191,7 +193,7 @@ function HistoryStep({ entry, isCurrent, isLast, colors, scaleFont, t, token, or
           </>
         )}
       </View>
-      {!isLast && <View style={{ width: 30, height: 2, backgroundColor: colors.border, marginTop: 7 }} />}
+      {!isLast && <View style={{ width: 30, height: 2, backgroundColor: colors.border }} />}
     </View>
   );
 }
@@ -321,7 +323,7 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
                     // leaving a long history sitting on its oldest step.
                     onContentSizeChange={(width) => historyScrollRef.current?.scrollTo({ x: width, animated: false })}
                   >
-                    <View style={{ flexDirection: 'row', paddingVertical: 4 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 4 }}>
                       {historyEntries.map((entry, i) => (
                         <HistoryStep
                           key={i}
