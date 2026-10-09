@@ -30,7 +30,6 @@ const ORDER_ALERT_RECIPIENTS = [
     'warehouse@globex.com.bn',
     'azura.whalid@globex.com.bn',
     'operation2@globex.com.bn',
-    'operation3@globex.com.bn',
     'syahmi.ghafar@globex.com.bn',
 ];
 
