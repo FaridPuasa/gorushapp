@@ -54,8 +54,8 @@ export default function CompanyMegaMenu({ label, items, isOpen, onToggle, onClos
                   scaleTo={1.02}
                   style={styles.item}
                   href={item.href}
-                  onPress={() => {
-                    if (item.href) router.push(item.href);
+                  onPress={(e) => {
+                    if (item.href) { e?.preventDefault?.(); router.push(item.href); }
                     item.onPress?.();
                     onClose?.();
                   }}

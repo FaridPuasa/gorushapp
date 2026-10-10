@@ -104,7 +104,17 @@ export default function Navbar() {
     { label: t('nav.logOut'), onPress: handleLogout },
   ];
 
-  const goTo = (href) => router.push(href);
+  // Every call site also passes `href` so right-click/cmd-click/middle-click still work (RNW
+  // renders a real <a href> whenever one is present) - but left-clicking a plain <a> also
+  // triggers the browser's own full-page navigation alongside this one, since react-native-web's
+  // Pressable doesn't preventDefault() a plain onPress (see its PressResponder, which only calls
+  // preventDefault for long-press/text-selection cases). Without stopping that, router.push's
+  // client-side transition briefly shows the new page, then the browser's own navigation reloads
+  // the whole document right behind it - looking exactly like the page loading twice.
+  const goTo = (e, href) => {
+    e?.preventDefault?.();
+    router.push(href);
+  };
 
   return (
     <>
@@ -113,7 +123,7 @@ export default function Navbar() {
           {isMobile ? (
             <>
               <View style={styles.mobileLogoCenter} pointerEvents="box-none">
-                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
+                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={(e) => goTo(e, isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
                   <Image source={require('../assets/logo.png')} accessibilityLabel="Go Rush" style={styles.brandImage} resizeMode="contain" />
                 </AnimatedPressable>
               </View>
@@ -122,7 +132,7 @@ export default function Navbar() {
               </AnimatedPressable>
             </>
           ) : (
-          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
+          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={(e) => goTo(e, isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
             <Image source={require('../assets/logo.png')} accessibilityLabel="Go Rush" style={styles.brandImage} resizeMode="contain" />
           </AnimatedPressable>
           )}
@@ -131,7 +141,7 @@ export default function Navbar() {
             {isJpmcPortalRole ? (
               !loading && (
                 <>
-                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/jpmc-portal" onPress={() => goTo('/jpmc-portal')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/jpmc-portal" onPress={(e) => goTo(e, '/jpmc-portal')}>
                     <Text style={styles.navText}>JPMC</Text>
                   </AnimatedPressable>
                   <SettingsDropdown
@@ -153,10 +163,10 @@ export default function Navbar() {
             ) : isPartnerRole ? (
               !loading && (
                 <>
-                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/dashboard" onPress={() => goTo('/dashboard')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/dashboard" onPress={(e) => goTo(e, '/dashboard')}>
                     <Text style={styles.navText}>{t('nav.dashboard')}</Text>
                   </AnimatedPressable>
-                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/search-jobs" onPress={() => goTo('/search-jobs')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/search-jobs" onPress={(e) => goTo(e, '/search-jobs')}>
                     <Text style={styles.navText}>{t('nav.searchJobs')}</Text>
                   </AnimatedPressable>
                   <SettingsDropdown
@@ -178,10 +188,10 @@ export default function Navbar() {
             ) : isAdmin ? (
               !loading && (
                 <>
-                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/admin" onPress={() => goTo('/admin')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/admin" onPress={(e) => goTo(e, '/admin')}>
                     <Text style={styles.navText}>Website</Text>
                   </AnimatedPressable>
-                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/jpmc-portal" onPress={() => goTo('/jpmc-portal')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/jpmc-portal" onPress={(e) => goTo(e, '/jpmc-portal')}>
                     <Text style={styles.navText}>JPMC</Text>
                   </AnimatedPressable>
                   <SettingsDropdown
@@ -196,16 +206,16 @@ export default function Navbar() {
               )
             ) : (
               <>
-                <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/" onPress={() => goTo('/')}>
+                <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/" onPress={(e) => goTo(e, '/')}>
                   <Text style={styles.navText}>{t('nav.home')}</Text>
                 </AnimatedPressable>
 
-                <AnimatedPressable scaleTo={1.04} style={styles.orderButton} href="/order-form" onPress={() => goTo('/order-form')}>
+                <AnimatedPressable scaleTo={1.04} style={styles.orderButton} href="/order-form" onPress={(e) => goTo(e, '/order-form')}>
                   <Text style={styles.orderButtonText}>{t('nav.orderNow')}</Text>
                 </AnimatedPressable>
 
                 {isGuest && (
-                  <AnimatedPressable scaleTo={1.04} style={styles.wargaEmasButton} href="/warga-emas-form" onPress={() => goTo('/warga-emas-form')}>
+                  <AnimatedPressable scaleTo={1.04} style={styles.wargaEmasButton} href="/warga-emas-form" onPress={(e) => goTo(e, '/warga-emas-form')}>
                     <Text style={styles.wargaEmasButtonText}>{t('nav.wargaEmas')}</Text>
                   </AnimatedPressable>
                 )}
@@ -214,7 +224,7 @@ export default function Navbar() {
                   scaleTo={1.04}
                   style={styles.trackOrderButton}
                   href="/?section=tracking"
-                  onPress={() => router.push({ pathname: '/', params: { section: 'tracking' } })}
+                  onPress={(e) => { e?.preventDefault?.(); router.push({ pathname: '/', params: { section: 'tracking' } }); }}
                 >
                   <Text style={styles.trackOrderButtonText}>{t('nav.trackOrder')}</Text>
                 </AnimatedPressable>
@@ -236,10 +246,10 @@ export default function Navbar() {
                         isOpen={openMenu === 'settings'}
                         onToggle={() => setOpenMenu(openMenu === 'settings' ? null : 'settings')}
                       />
-                      <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/login" onPress={() => goTo('/login')}>
+                      <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/login" onPress={(e) => goTo(e, '/login')}>
                         <Text style={styles.navText}>{t('nav.logIn')}</Text>
                       </AnimatedPressable>
-                      <AnimatedPressable scaleTo={1.04} style={styles.registerButton} href="/sign-up" onPress={() => goTo('/sign-up')}>
+                      <AnimatedPressable scaleTo={1.04} style={styles.registerButton} href="/sign-up" onPress={(e) => goTo(e, '/sign-up')}>
                         <Text style={styles.registerButtonText}>{t('nav.register')}</Text>
                       </AnimatedPressable>
                     </>
@@ -277,14 +287,14 @@ export default function Navbar() {
 
       {isMobile && !isAdmin && !isStaffPortalRole && (
         <View style={[styles.bottomNav, { height: BOTTOM_NAV_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}>
-          <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} href="/" onPress={() => goTo('/')}>
+          <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} href="/" onPress={(e) => goTo(e, '/')}>
             <Ionicons name="home" size={scaleFont(24)} color={colors.textPrimary} />
           </AnimatedPressable>
           <AnimatedPressable
             scaleTo={1.15}
             style={styles.bottomNavItem}
             href="/?section=tracking"
-            onPress={() => router.push({ pathname: '/', params: { section: 'tracking' } })}
+            onPress={(e) => { e?.preventDefault?.(); router.push({ pathname: '/', params: { section: 'tracking' } }); }}
           >
             <Ionicons name="search" size={scaleFont(24)} color={colors.textPrimary} />
           </AnimatedPressable>
@@ -294,14 +304,14 @@ export default function Navbar() {
               randomly resetting. The 4 remaining flex:1 items redistribute evenly
               across the freed-up width on their own, no layout change needed. */}
           {!isOrderFormPage && (
-            <AnimatedPressable scaleTo={1.06} style={styles.bottomNavCenterButton} href="/order-form" onPress={() => goTo('/order-form')}>
+            <AnimatedPressable scaleTo={1.06} style={styles.bottomNavCenterButton} href="/order-form" onPress={(e) => goTo(e, '/order-form')}>
               <Text style={styles.bottomNavCenterText}>{t('nav.orderNow').replace(' ', '\n')}</Text>
             </AnimatedPressable>
           )}
           <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} onPress={() => setInfoOpen(true)}>
             <Ionicons name="information-circle" size={scaleFont(24)} color={colors.textPrimary} />
           </AnimatedPressable>
-          <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} href="/contact-us" onPress={() => goTo('/contact-us')}>
+          <AnimatedPressable scaleTo={1.15} style={styles.bottomNavItem} href="/contact-us" onPress={(e) => goTo(e, '/contact-us')}>
             <Ionicons name="call" size={scaleFont(24)} color={colors.textPrimary} />
           </AnimatedPressable>
         </View>
@@ -325,7 +335,7 @@ export default function Navbar() {
                     scaleTo={1.02}
                     style={[styles.mobileItem, { backgroundColor: '#FFC72C' }]}
                     href="/warga-emas-form"
-                    onPress={() => { goTo('/warga-emas-form'); setInfoOpen(false); }}
+                    onPress={(e) => { goTo(e, '/warga-emas-form'); setInfoOpen(false); }}
                   >
                     <Text style={[styles.mobileItemText, { color: '#000' }]}>{t('nav.wargaEmas')}</Text>
                   </AnimatedPressable>
@@ -336,7 +346,7 @@ export default function Navbar() {
                     scaleTo={1.02}
                     style={styles.mobileItem}
                     href={item.href}
-                    onPress={() => { goTo(item.href); setInfoOpen(false); }}
+                    onPress={(e) => { goTo(e, item.href); setInfoOpen(false); }}
                   >
                     <Text style={styles.mobileItemText}>{item.icon} {item.label}</Text>
                   </AnimatedPressable>
@@ -364,7 +374,7 @@ export default function Navbar() {
                   scaleTo={1.02}
                   style={styles.mobileItem}
                   href="/admin"
-                  onPress={() => { goTo('/admin'); closeAccountMenu(); }}
+                  onPress={(e) => { goTo(e, '/admin'); closeAccountMenu(); }}
                 >
                   <Text style={styles.mobileItemText}>Website</Text>
                 </AnimatedPressable>
@@ -374,7 +384,7 @@ export default function Navbar() {
                   scaleTo={1.02}
                   style={styles.mobileItem}
                   href="/jpmc-portal"
-                  onPress={() => { goTo('/jpmc-portal'); closeAccountMenu(); }}
+                  onPress={(e) => { goTo(e, '/jpmc-portal'); closeAccountMenu(); }}
                 >
                   <Text style={styles.mobileItemText}>JPMC</Text>
                 </AnimatedPressable>
@@ -385,7 +395,7 @@ export default function Navbar() {
                     scaleTo={1.02}
                     style={styles.mobileItem}
                     href="/dashboard"
-                    onPress={() => { goTo('/dashboard'); closeAccountMenu(); }}
+                    onPress={(e) => { goTo(e, '/dashboard'); closeAccountMenu(); }}
                   >
                     <Text style={styles.mobileItemText}>{t('nav.dashboard')}</Text>
                   </AnimatedPressable>
@@ -393,7 +403,7 @@ export default function Navbar() {
                     scaleTo={1.02}
                     style={styles.mobileItem}
                     href="/search-jobs"
-                    onPress={() => { goTo('/search-jobs'); closeAccountMenu(); }}
+                    onPress={(e) => { goTo(e, '/search-jobs'); closeAccountMenu(); }}
                   >
                     <Text style={styles.mobileItemText}>{t('nav.searchJobs')}</Text>
                   </AnimatedPressable>
@@ -443,8 +453,8 @@ export default function Navbar() {
                         scaleTo={1.02}
                         style={styles.mobileSubItem}
                         href={item.href}
-                        onPress={() => {
-                          if (item.href) goTo(item.href);
+                        onPress={(e) => {
+                          if (item.href) goTo(e, item.href);
                           item.onPress?.();
                           closeAccountMenu();
                         }}
@@ -460,7 +470,7 @@ export default function Navbar() {
                       scaleTo={1.02}
                       style={styles.mobileItem}
                       href={item.href}
-                      onPress={() => { goTo(item.href); closeAccountMenu(); }}
+                      onPress={(e) => { goTo(e, item.href); closeAccountMenu(); }}
                     >
                       <Text style={styles.mobileItemText}>{item.icon} {item.label}</Text>
                     </AnimatedPressable>
@@ -482,8 +492,8 @@ export default function Navbar() {
                         scaleTo={1.02}
                         style={styles.mobileSubItem}
                         href={item.href}
-                        onPress={() => {
-                          if (item.href) goTo(item.href);
+                        onPress={(e) => {
+                          if (item.href) goTo(e, item.href);
                           item.onPress?.();
                           closeAccountMenu();
                         }}

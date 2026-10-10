@@ -52,7 +52,7 @@ export default function SettingsDropdown({ isOpen, onToggle, align = 'left', lab
                   scaleTo={1.03}
                   style={styles.extraItem}
                   href={item.href}
-                  onPress={() => { router.push(item.href); onToggle(); }}
+                  onPress={(e) => { e?.preventDefault?.(); router.push(item.href); onToggle(); }}
                 >
                   <Text style={{ color: colors.primary, fontWeight: '700', fontSize: scaleFont(14) }}>{item.icon ? `${item.icon} ` : ''}{item.label}</Text>
                 </AnimatedPressable>

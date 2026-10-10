@@ -51,7 +51,7 @@ export default function Footer() {
     <View style={styles.footer}>
       <View style={styles.linkRow}>
         {LINKS.map((link) => (
-          <AnimatedPressable key={link.href} scaleTo={1.05} style={styles.linkItem} href={link.href} onPress={() => router.push(link.href)}>
+          <AnimatedPressable key={link.href} scaleTo={1.05} style={styles.linkItem} href={link.href} onPress={(e) => { e?.preventDefault?.(); router.push(link.href); }}>
             <Text style={styles.linkText}>{link.label}</Text>
           </AnimatedPressable>
         ))}

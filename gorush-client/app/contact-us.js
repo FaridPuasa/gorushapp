@@ -100,7 +100,7 @@ export default function ContactUs() {
           </View>
         )}
 
-        <AnimatedPressable scaleTo={1.03} style={formStyles.button} href={GOOGLE_MAPS_URL} hrefAttrs={EXTERNAL_LINK_ATTRS} onPress={() => Linking.openURL(GOOGLE_MAPS_URL)}>
+        <AnimatedPressable scaleTo={1.03} style={formStyles.button} href={GOOGLE_MAPS_URL} hrefAttrs={EXTERNAL_LINK_ATTRS} onPress={(e) => { e?.preventDefault?.(); Linking.openURL(GOOGLE_MAPS_URL); }}>
           <Text style={formStyles.buttonText}>{t('static.contactUs.viewOnMaps')}</Text>
         </AnimatedPressable>
       </Card>
@@ -113,7 +113,7 @@ export default function ContactUs() {
           value={`+${WHATSAPP_NUMBER}`}
           href={`https://wa.me/${WHATSAPP_NUMBER}`}
           hrefAttrs={EXTERNAL_LINK_ATTRS}
-          onPress={() => Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}`)}
+          onPress={(e) => { e?.preventDefault?.(); Linking.openURL(`https://wa.me/${WHATSAPP_NUMBER}`); }}
           formStyles={formStyles}
           colors={colors}
         />
@@ -125,7 +125,7 @@ export default function ContactUs() {
             label={t('static.contactUs.callUs')}
             value={`+${num}`}
             href={`tel:+${num}`}
-            onPress={() => Linking.openURL(`tel:+${num}`)}
+            onPress={(e) => { e?.preventDefault?.(); Linking.openURL(`tel:+${num}`); }}
             isLast={i === PHONE_NUMBERS.length - 1}
             formStyles={formStyles}
             colors={colors}

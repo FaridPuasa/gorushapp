@@ -26,7 +26,7 @@ const INSTAGRAM_GRADIENT = ['#FEDA75', '#FA7E1E', '#D62976', '#962FBF', '#4F5BD5
 const EXTERNAL_LINK_ATTRS = { target: '_blank', rel: 'noopener noreferrer' };
 
 export function SocialIcon({ platform, url, size = 32 }) {
-  const onPress = () => Linking.openURL(url);
+  const onPress = (e) => { e?.preventDefault?.(); Linking.openURL(url); };
   const radius = size * 0.28;
 
   if (platform === 'instagram') {
