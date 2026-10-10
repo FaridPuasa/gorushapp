@@ -3,7 +3,7 @@ import { Animated, Easing, Platform, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { AnimatedPressable } from '../lib/animations';
-import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, PageHeading } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
@@ -294,8 +294,8 @@ export default function DeliveryPrice() {
   const activeSection = TABS.find((s) => s.title === activeTab);
 
   return (
-    <PageScroll title={t('static.deliveryRates.pageTitle')}>
-      <Text style={formStyles.title}>{t('static.deliveryRates.pageTitle')}</Text>
+    <PageScroll title={t('static.deliveryRates.pageTitle')} description="Check Go Rush's delivery rates and charges for local delivery, cross-border shipping, and courier services in Brunei.">
+      <PageHeading>{t('static.deliveryRates.pageTitle')}</PageHeading>
       <Text style={formStyles.subtitle}>{t('static.deliveryRates.subtitle')}</Text>
       <Text style={[formStyles.subtitle, { fontSize: scaleFont(13), marginBottom: 16 }]}>{t('static.deliveryRates.tagline')}</Text>
 

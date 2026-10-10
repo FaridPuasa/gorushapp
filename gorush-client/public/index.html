@@ -5,6 +5,51 @@
     <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
     <title>%WEB_TITLE%</title>
+    <meta name="description" content="Go Rush is a courier and delivery service in Brunei offering fast parcel delivery, errand running, and logistics for individuals and businesses." />
+    <!-- No static canonical/robots meta here - this one shell is shared by every route, so a
+         fixed canonical would wrongly tell crawlers every page's "real" URL is the homepage.
+         Each page sets its own via PageScroll (lib/formPrimitives.js) / this file's own Head
+         instead - omitting it here entirely (rather than defaulting to index,follow) avoids a
+         brief window, before that per-page tag mounts, where two conflicting robots directives
+         could both be present in the DOM at once. -->
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Go Rush" />
+    <meta property="og:title" content="Go Rush - Courier & Delivery Service in Brunei" />
+    <meta property="og:description" content="Fast parcel delivery, errand running, and logistics across Brunei. Book a rider or track your delivery with Go Rush." />
+    <meta property="og:url" content="https://gorushbn.com/" />
+    <meta property="og:image" content="https://gorushbn.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Go Rush - Courier & Delivery Service in Brunei" />
+    <meta name="twitter:description" content="Fast parcel delivery, errand running, and logistics across Brunei. Book a rider or track your delivery with Go Rush." />
+    <meta name="twitter:image" content="https://gorushbn.com/og-image.png" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
+        "name": "Go Rush",
+        "image": "https://gorushbn.com/og-image.png",
+        "url": "https://gorushbn.com/",
+        "telephone": ["+6732332065", "+6732353259"],
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "Unit 7, 1st Floor, Block B, Bangunan Begawan Pehin Dato Hj Md Yusof, Simpang 88, Kg. Kiulap",
+          "addressLocality": "Bandar Seri Begawan",
+          "postalCode": "BE1518",
+          "addressCountry": "BN"
+        },
+        "sameAs": [
+          "https://www.facebook.com/go.rush.bwn",
+          "https://www.instagram.com/gorush.bn",
+          "https://www.tiktok.com/@gorushexpress"
+        ]
+      }
+    </script>
+
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
     <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />

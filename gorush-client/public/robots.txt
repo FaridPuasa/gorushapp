@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+# These pages also carry a client-rendered noindex tag (see PageScroll in
+# gorush-client/lib/formPrimitives.js) - listed here too since that tag only
+# appears after JS runs, and a crawler that skips JS would otherwise never see it.
+Disallow: /login
+Disallow: /sign-up
+Disallow: /edit-profile
+Disallow: /my-orders
+Disallow: /search-jobs
+Disallow: /dashboard
+Disallow: /admin
+Disallow: /jpmc-portal
+
+Sitemap: https://gorushbn.com/sitemap.xml

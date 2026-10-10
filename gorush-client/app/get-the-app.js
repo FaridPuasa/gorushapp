@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Text, View, Image, Pressable, StyleSheet } from 'react-native';
-import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, PageHeading } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { detectPlatform, isNonSafariIOSBrowser, isAlreadyInstalled } from '../lib/pwaInstall';
@@ -68,8 +68,8 @@ export default function GetTheApp() {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(pageUrl)}`;
 
     return (
-        <PageScroll title={t('getApp.pageTitle')}>
-            <Text style={formStyles.title}>{t('getApp.pageTitle')}</Text>
+        <PageScroll title={t('getApp.pageTitle')} description="Download the Go Rush app to book deliveries, track parcels, and manage your orders on the go.">
+            <PageHeading>{t('getApp.pageTitle')}</PageHeading>
             <Text style={formStyles.subtitle}>{t('getApp.subtitle')}</Text>
 
             {installed ? (
@@ -122,7 +122,7 @@ export default function GetTheApp() {
                         <Card icon="💻" title={t('getApp.desktopTitle')}>
                             <Text style={formStyles.bodyText}>{t('getApp.desktopBody')}</Text>
                             <View style={styles.qrWrap}>
-                                <Image source={{ uri: qrUrl }} style={styles.qrImage} />
+                                <Image source={{ uri: qrUrl }} accessibilityLabel="QR code to download the Go Rush app" style={styles.qrImage} />
                             </View>
                         </Card>
                     )}

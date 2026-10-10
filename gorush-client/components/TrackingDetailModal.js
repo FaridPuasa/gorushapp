@@ -84,6 +84,7 @@ function PodPhotoLightbox({ url, onClose, colors, scaleFont }) {
           <Pressable onPress={(e) => { e.stopPropagation(); handleImagePress(); }} style={{ width: '92%', height: '92%' }}>
             <Image
               source={{ uri: url }}
+              accessibilityLabel="Delivery photo"
               style={{ width: '100%', height: '100%', transform: [{ scale: zoomed ? 2 : 1 }] }}
               resizeMode="contain"
             />
@@ -133,7 +134,7 @@ function PodPhotosButton({ historyId, token, colors, scaleFont }) {
         <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
           {urls.map((u, i) => (
             <AnimatedPressable key={i} scaleTo={1.08} onPress={() => setLightboxUrl(u)}>
-              <Image source={{ uri: u }} style={{ width: 48, height: 48, borderRadius: 6, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.subtleBackground }} resizeMode="cover" />
+              <Image source={{ uri: u }} accessibilityLabel="Delivery photo" style={{ width: 48, height: 48, borderRadius: 6, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.subtleBackground }} resizeMode="cover" />
             </AnimatedPressable>
           ))}
         </View>

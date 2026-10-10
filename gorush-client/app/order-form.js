@@ -3,7 +3,7 @@ import { Text, TextInput, View, ActivityIndicator, Platform } from 'react-native
 import { AnimatedPressable } from '../lib/animations';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { useFormStyles, Card, PageScroll, useFieldFocus } from '../lib/formPrimitives';
+import { useFormStyles, Card, PageScroll, useFieldFocus, PageHeading } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { isValidEmail, isValidPostalCode, splitPhoneNumber, isPrefixOnly, isValidJpmcPatientNumber } from '../lib/validators';
@@ -450,7 +450,7 @@ export default function Order() {
 
   if (step === 'placed') {
     return (
-      <PageScroll title={t('order.orderPlaced')}>
+      <PageScroll title={t('order.orderPlaced')} noindex>
         <Card icon="✅" title={t('order.orderPlaced')}>
           <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color, marginBottom: 10 }}>
             {t('order.saveTrackingNumber')}
@@ -476,8 +476,13 @@ export default function Order() {
   }
 
   return (
-    <PageScroll ref={scrollRef} title={t('nav.orderNow')} scrollToTopKey={step}>
-      <Text style={formStyles.title}>{t('order.title')}</Text>
+    <PageScroll
+      ref={scrollRef}
+      title={t('nav.orderNow')}
+      description="Place a delivery order with Go Rush. Local delivery, cross-border shipping, pharmacy and courier services across Brunei."
+      scrollToTopKey={step}
+    >
+      <PageHeading>{t('order.title')}</PageHeading>
       <Text style={formStyles.subtitle}>
         {isGuest ? t('order.subtitleGuest') : t('order.subtitleLoggedIn')}
       </Text>

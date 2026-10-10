@@ -42,7 +42,12 @@
       <img src="/icon-192.png" alt="Go Rush" />
       <h1>You're offline</h1>
       <p>Check your internet connection and try again.</p>
-      <button onclick="window.location.reload()">Retry</button>
+      <button id="retry-button">Retry</button>
     </div>
+    <script>
+      document.getElementById('retry-button').addEventListener('click', function () {
+        window.location.reload();
+      });
+    </script>
   </body>
 </html>

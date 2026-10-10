@@ -36,24 +36,25 @@ function AboutTop({ title, titleStyle, body, bodyStyle }) {
   return (
     <View style={{ width: '100%', marginBottom: 32 }}>
       <View style={{ width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 20 }}>
-        <Text style={titleStyle}>{title}</Text>
+        <Text accessibilityRole="header" aria-level={1} style={titleStyle}>{title}</Text>
         <Text style={[bodyStyle, { marginTop: 18 }]}>{body}</Text>
       </View>
       <View style={{ width: '100%', aspectRatio: TEAM_PHOTO_RATIO, marginTop: 28 }}>
-        <Image source={TEAM_PHOTO} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+        <Image source={TEAM_PHOTO} accessibilityLabel="The Go Rush team" style={{ width: '100%', height: '100%' }} resizeMode="contain" />
       </View>
     </View>
   );
 }
 
+// Nested under the "What We Offer" h2 below, so these are h3 - not h2 themselves.
 function SectionHeading({ icon, title, style }) {
-  return <FadeIn><Text style={[style, { textAlign: 'center' }]}>{icon}  {title}</Text></FadeIn>;
+  return <FadeIn><Text accessibilityRole="header" aria-level={3} style={[style, { textAlign: 'center' }]}>{icon}  {title}</Text></FadeIn>;
 }
 
 // On desktop/web, lays text and image side by side (imageSide picks which column the
 // image sits in); on mobile it always stacks, image-then-text, matching a single reading
 // column — same visual order regardless of imageSide since there's no "side" to speak of.
-function SplitSection({ imageSide = 'right', image, imageRatio, isMobile, children }) {
+function SplitSection({ imageSide = 'right', image, imageAlt, imageRatio, isMobile, children }) {
   const imageEl = (
     <AnimatedPressable
       scaleTo={1.05}
@@ -61,7 +62,7 @@ function SplitSection({ imageSide = 'right', image, imageRatio, isMobile, childr
         ? { width: '100%', aspectRatio: imageRatio, borderRadius: 12, marginBottom: 16, overflow: 'hidden' }
         : { width: '48%', aspectRatio: imageRatio, borderRadius: 12, overflow: 'hidden' }}
     >
-      <Image source={image} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+      <Image source={image} accessibilityLabel={imageAlt} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
     </AnimatedPressable>
   );
   const textEl = <View style={isMobile ? { width: '100%', marginBottom: 16 } : { width: '48%' }}>{children}</View>;
@@ -77,10 +78,10 @@ function SplitSection({ imageSide = 'right', image, imageRatio, isMobile, childr
   return <FadeInUp>{content}</FadeInUp>;
 }
 
-function LogoTile({ source, width, height = 88 }) {
+function LogoTile({ source, label, width, height = 88 }) {
   return (
     <AnimatedPressable scaleTo={1.1} style={{ marginHorizontal: 16, marginVertical: 10, borderRadius: 8, overflow: 'hidden' }}>
-      <Image source={source} style={{ width, height }} resizeMode="contain" />
+      <Image source={source} accessibilityLabel={label} style={{ width, height }} resizeMode="contain" />
     </AnimatedPressable>
   );
 }
@@ -93,6 +94,7 @@ export default function About() {
   return (
     <PageScroll
       title={t('nav.aboutUs')}
+      description="Learn about Go Rush, Brunei's courier and delivery company — our story, services, and commitment to fast, reliable delivery."
       beforeContent={
         <AboutTop
           title={t('static.about.pageTitle')}
@@ -103,18 +105,18 @@ export default function About() {
       }
     >
       <View style={{ marginBottom: 24 }}>
-        <SplitSection imageSide="right" image={INTRO_PHOTO} imageRatio={INTRO_PHOTO_RATIO} isMobile={isMobile}>
+        <SplitSection imageSide="right" image={INTRO_PHOTO} imageAlt="Go Rush rider on a delivery" imageRatio={INTRO_PHOTO_RATIO} isMobile={isMobile}>
           <Text style={formStyles.bodyText}>{t('static.about.ourMissionBody')}</Text>
         </SplitSection>
       </View>
 
       <FadeIn>
-        <Text style={[formStyles.title, { fontSize: formStyles.title.fontSize - 4, marginTop: 4, marginBottom: 20 }]}>{t('static.about.whatWeOffer')}</Text>
+        <Text accessibilityRole="header" aria-level={2} style={[formStyles.title, { fontSize: formStyles.title.fontSize - 4, marginTop: 4, marginBottom: 20 }]}>{t('static.about.whatWeOffer')}</Text>
       </FadeIn>
 
       <View style={{ marginBottom: 24 }}>
         <SectionHeading icon="💊" title={t('static.about.pharmacyDelivery')} style={formStyles.sectionHeader} />
-        <SplitSection imageSide="left" image={PHARMACY_PHOTO} imageRatio={PHARMACY_PHOTO_RATIO} isMobile={isMobile}>
+        <SplitSection imageSide="left" image={PHARMACY_PHOTO} imageAlt="Pharmacy delivery in progress" imageRatio={PHARMACY_PHOTO_RATIO} isMobile={isMobile}>
           <Text style={formStyles.bodyText}>{t('static.about.pharmacyDeliveryBody')}</Text>
         </SplitSection>
       </View>
@@ -126,15 +128,15 @@ export default function About() {
           ...LOGO_CARD_SHADOW,
         }}
       >
-        <LogoTile source={LOGO_MOH} width={195} />
-        <LogoTile source={LOGO_JPMC} width={130} />
-        <LogoTile source={LOGO_PJSC} width={130} />
-        <LogoTile source={LOGO_PHC} width={130} />
+        <LogoTile source={LOGO_MOH} label="Ministry of Health logo" width={195} />
+        <LogoTile source={LOGO_JPMC} label="JPMC logo" width={130} />
+        <LogoTile source={LOGO_PJSC} label="PJSC logo" width={130} />
+        <LogoTile source={LOGO_PHC} label="PHC logo" width={130} />
       </FadeInUp>
 
       <View>
         <SectionHeading icon="🚚" title={t('static.about.localDelivery')} style={formStyles.sectionHeader} />
-        <SplitSection imageSide="right" image={LOCAL_DELIVERY_PHOTO} imageRatio={LOCAL_DELIVERY_PHOTO_RATIO} isMobile={isMobile}>
+        <SplitSection imageSide="right" image={LOCAL_DELIVERY_PHOTO} imageAlt="Go Rush local delivery" imageRatio={LOCAL_DELIVERY_PHOTO_RATIO} isMobile={isMobile}>
           <Text style={formStyles.bodyText}>{t('static.about.localDeliveryBody')}</Text>
         </SplitSection>
       </View>

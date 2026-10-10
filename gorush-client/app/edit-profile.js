@@ -3,7 +3,7 @@ import { Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, useFieldFocus } from '../lib/formPrimitives';
+import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, useFieldFocus, PageHeading } from '../lib/formPrimitives';
 import { isValidEmail, getPasswordStrength } from '../lib/validators';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -253,7 +253,7 @@ export default function EditProfile() {
 
   if (loadingProfile) {
     return (
-      <PageScroll title={t('editProfile.title')}>
+      <PageScroll title={t('editProfile.title')} noindex>
         <View style={{ alignItems: 'center', paddingVertical: 40 }}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -263,7 +263,7 @@ export default function EditProfile() {
 
   if (loadError || !profile) {
     return (
-      <PageScroll title={t('editProfile.title')}>
+      <PageScroll title={t('editProfile.title')} noindex>
         <StatusBanner statusMessage={{ type: 'error', text: loadError || t('editProfile.genericLoadError') }} />
       </PageScroll>
     );
@@ -277,16 +277,16 @@ export default function EditProfile() {
   // manage.
   if (isJpmcPortalStaff) {
     return (
-      <PageScroll ref={scrollRef} title={t('editProfile.title')}>
-        <Text style={formStyles.title}>{t('editProfile.title')}</Text>
+      <PageScroll ref={scrollRef} title={t('editProfile.title')} noindex>
+        <PageHeading>{t('editProfile.title')}</PageHeading>
         <PasswordSection headers={headers} scrollRef={scrollRef} />
       </PageScroll>
     );
   }
 
   return (
-    <PageScroll ref={scrollRef} title={t('editProfile.title')}>
-      <Text style={formStyles.title}>{t('editProfile.title')}</Text>
+    <PageScroll ref={scrollRef} title={t('editProfile.title')} noindex>
+      <PageHeading>{t('editProfile.title')}</PageHeading>
       <Text style={formStyles.subtitle}>{t('editProfile.subtitle')}</Text>
 
       <AccountSection profile={profile} headers={headers} onSaved={async () => { await loadProfile(); await refreshProfile(); }} scrollRef={scrollRef} />

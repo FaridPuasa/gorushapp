@@ -1,6 +1,7 @@
 import React, { useMemo, useRef, useEffect, forwardRef } from 'react';
 import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
 import Head from 'expo-router/head';
+import { usePathname } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import FontAwesome5 from '@expo/vector-icons/FontAwesome5';
@@ -77,8 +78,9 @@ export function SocialIcon({ platform, url, size = 32 }) {
 // the first invalid field on a failed form submit, via useFieldFocus below).
 // PageScroll still works exactly as before for callers that don't pass one -
 // it falls back to its own internal ref for the scrollToTopKey behavior.
-export const PageScroll = forwardRef(function PageScroll({ children, title, beforeContent, scrollToTopKey }, forwardedScrollRef) {
+export const PageScroll = forwardRef(function PageScroll({ children, title, description, noindex, beforeContent, scrollToTopKey }, forwardedScrollRef) {
   const formStyles = useFormStyles();
+  const pathname = usePathname();
   const revealRegistry = useRevealRegistry();
   useRevealOnResize(revealRegistry);
   const ownScrollRef = useRef(null);
@@ -95,6 +97,9 @@ export const PageScroll = forwardRef(function PageScroll({ children, title, befo
     <>
       <Head>
         <title>{title ? `${title} — Go Rush` : 'Go Rush'}</title>
+        {description ? <meta name="description" content={description} /> : null}
+        {noindex ? <meta name="robots" content="noindex, nofollow" /> : null}
+        <link rel="canonical" href={`https://gorushbn.com${pathname}`} />
       </Head>
       <ScrollView
         ref={scrollRef}
@@ -121,6 +126,19 @@ export const PageScroll = forwardRef(function PageScroll({ children, title, befo
     </>
   );
 });
+
+// Renders as a real <h1> on web (react-native-web maps accessibilityRole="header" +
+// aria-level to an actual heading element, not just an ARIA attribute on a <div>) —
+// every page's main on-screen heading should use this instead of a plain <Text> so the
+// page has real semantic structure for search engines and screen readers.
+export function PageHeading({ level = 1, style, children }) {
+  const formStyles = useFormStyles();
+  return (
+    <Text accessibilityRole="header" aria-level={level} style={[formStyles.title, style]}>
+      {children}
+    </Text>
+  );
+}
 
 export function Card({ icon, title, centered, titleStyle, eyebrow, eyebrowStyle, children }) {
   const formStyles = useFormStyles();

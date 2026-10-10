@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Text, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
-import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, PageHeading } from '../lib/formPrimitives';
 import { formatAnnouncementDate, localizeAnnouncement, renderRichText } from '../lib/announcements';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -36,8 +36,8 @@ export default function Announcements() {
   }, []);
 
   return (
-    <PageScroll title={t('static.announcements.pageTitle')}>
-      <Text style={formStyles.title}>{t('static.announcements.pageTitle')}</Text>
+    <PageScroll title={t('static.announcements.pageTitle')} description="Read the latest announcements and updates from Go Rush.">
+      <PageHeading>{t('static.announcements.pageTitle')}</PageHeading>
       <Text style={formStyles.subtitle}>{t('static.announcements.subtitle')}</Text>
 
       {announcements.map((item) => {

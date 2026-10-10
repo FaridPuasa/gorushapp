@@ -11,7 +11,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers, PageScroll, useFieldFocus } from '../lib/formPrimitives';
+import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers, PageScroll, useFieldFocus, PageHeading } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import {
   isValidEmail, formatPostalCode, isValidPostalCode, formatICNumber,
@@ -176,9 +176,9 @@ export default function Register() {
   if (authLoading || !isGuest) return null;
 
   return (
-    <PageScroll ref={scrollRef} title={t('nav.register')}>
+    <PageScroll ref={scrollRef} title={t('nav.register')} noindex>
       <View style={{ width: '100%', maxWidth: 520, alignSelf: 'center' }}>
-        <Text style={formStyles.title}>{t('auth.register.title')}</Text>
+        <PageHeading>{t('auth.register.title')}</PageHeading>
         <Text style={formStyles.subtitle}>{t('auth.register.subtitle')}</Text>
 
         {statusMessage && (

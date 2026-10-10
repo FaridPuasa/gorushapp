@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../context/AuthContext';
-import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers, PageScroll } from '../lib/formPrimitives';
+import { useFormStyles, Card, Field, makeInputStyle, makeFocusHandlers, PageScroll, PageHeading } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import { isValidEmail } from '../lib/validators';
 import { useTheme } from '../context/ThemeContext';
@@ -58,9 +58,9 @@ export default function Login() {
   if (authLoading || !isGuest) return null;
 
   return (
-    <PageScroll title={t('nav.logIn')}>
+    <PageScroll title={t('nav.logIn')} noindex>
       <View style={{ width: '100%', maxWidth: 460, alignSelf: 'center', marginBottom: 24 }}>
-        <Text style={formStyles.title}>{t('auth.login.title')}</Text>
+        <PageHeading>{t('auth.login.title')}</PageHeading>
         <Text style={formStyles.subtitle}>{t('auth.login.subtitle')}</Text>
 
         {statusMessage && (

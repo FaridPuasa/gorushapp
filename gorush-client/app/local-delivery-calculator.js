@@ -3,7 +3,7 @@ import { Text, TextInput, View } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { AnimatedPressable } from '../lib/animations';
-import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers } from '../lib/formPrimitives';
+import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, PageHeading } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
@@ -40,8 +40,8 @@ export default function Calculator() {
   const holidayDates = useHolidayDates();
 
   return (
-    <PageScroll title={t('nav.calculator')}>
-      <Text style={formStyles.title}>{t('nav.calculator')}</Text>
+    <PageScroll title={t('nav.calculator')} description="Calculate your local delivery charges in Brunei with Go Rush's delivery price calculator.">
+      <PageHeading>{t('nav.calculator')}</PageHeading>
       <Text style={formStyles.subtitle}>{t('calculator.subtitle')}</Text>
 
       <Card icon="🧮" title={t('calculator.cardTitle')}>

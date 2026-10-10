@@ -4,7 +4,7 @@ import { Picker } from '@react-native-picker/picker';
 import { useRouter } from 'expo-router';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, PageHeading } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 import { useTheme } from '../context/ThemeContext';
 import { PRODUCT_CODES, PRODUCTS } from '../lib/pricing';
@@ -121,8 +121,8 @@ export default function MyOrders() {
   if (authLoading || isGuest) return null;
 
   return (
-    <PageScroll title={t('myOrders.pageTitle')}>
-      <Text style={formStyles.title}>{t('myOrders.pageTitle')}</Text>
+    <PageScroll title={t('myOrders.pageTitle')} noindex>
+      <PageHeading>{t('myOrders.pageTitle')}</PageHeading>
       <Text style={formStyles.subtitle}>{t('myOrders.subtitle')}</Text>
 
       <View style={{ marginBottom: 20 }}>

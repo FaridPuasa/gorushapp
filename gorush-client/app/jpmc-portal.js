@@ -16,7 +16,7 @@ import { Picker } from '@react-native-picker/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, PageHeading } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { AnimatedPressable } from '../lib/animations';
@@ -390,7 +390,7 @@ function PaymentProofControl({ order, authHeader, colors, scaleFont, formStyles 
                 <Text style={{ fontSize: scaleFont(18), color: colors.textMuted }}>✕</Text>
               </AnimatedPressable>
             </View>
-            {viewerUrl && <Image source={{ uri: viewerUrl }} style={{ width: '100%', height: 360, borderRadius: 8, backgroundColor: colors.subtleBackground }} resizeMode="contain" />}
+            {viewerUrl && <Image source={{ uri: viewerUrl }} accessibilityLabel="Order document preview" style={{ width: '100%', height: 360, borderRadius: 8, backgroundColor: colors.subtleBackground }} resizeMode="contain" />}
             <AnimatedPressable
               scaleTo={1.03}
               onPress={() => viewerUrl && Linking.openURL(viewerUrl)}
@@ -937,7 +937,7 @@ export default function JpmcPortal() {
 
   const pageContent = (
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
-      <Text style={[formStyles.title, { fontSize: scaleFont(26) }]}>JPMC Pharmacy Orders</Text>
+      <PageHeading style={{ fontSize: scaleFont(26) }}>JPMC Pharmacy Orders</PageHeading>
       <Text style={[formStyles.subtitle, { fontSize: scaleFont(14) }]}>{subtitle}</Text>
 
       {/* One bordered panel groups every filter, visually separate from the table below.
@@ -1128,7 +1128,7 @@ export default function JpmcPortal() {
 
   return (
     <>
-      <PageScroll title="JPMC Pharmacy Orders" beforeContent={pageContent} />
+      <PageScroll title="JPMC Pharmacy Orders" beforeContent={pageContent} noindex />
 
       <Modal visible={!!viewOrder} transparent animationType="fade" onRequestClose={() => setViewOrder(null)}>
         <Pressable

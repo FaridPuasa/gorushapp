@@ -8,7 +8,7 @@ import { Text, TextInput, View, ActivityIndicator, ScrollView } from 'react-nati
 import { Picker } from '@react-native-picker/picker';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, PageHeading } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { AnimatedPressable } from '../lib/animations';
 import { copyTrackingNumbers, exportOrdersToExcel } from '../lib/partnerExport';
@@ -239,7 +239,7 @@ export default function PartnerSearchJobs() {
 
   const pageContent = (
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
-      <Text style={[formStyles.title, { fontSize: scaleFont(26), marginBottom: 28 }]}>Search Jobs</Text>
+      <PageHeading style={{ fontSize: scaleFont(26), marginBottom: 28 }}>Search Jobs</PageHeading>
 
       <Card icon="🔍" title="Filters">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 16 }}>
@@ -348,5 +348,5 @@ export default function PartnerSearchJobs() {
     </View>
   );
 
-  return <PageScroll title="Search Jobs" beforeContent={pageContent} />;
+  return <PageScroll title="Search Jobs" beforeContent={pageContent} noindex />;
 }

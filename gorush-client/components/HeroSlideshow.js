@@ -68,9 +68,19 @@ export default function HeroSlideshow() {
         keyExtractor={(item, index) => item._id || String(index)}
         renderItem={({ item, index }) => {
           const slideStyle = [styles.slide, { width, height: heroHeight, backgroundColor: fallbackColors[index % fallbackColors.length] }];
+          // Only the first slide's headline is a real <h1> - the slideshow rotates through
+          // several, and a page should only ever have one, so later slides stay plain text.
           const inner = (
             <>
-              {!!item.headline && <Text style={styles.headline}>{renderRichText(item.headline, styles.headline)}</Text>}
+              {!!item.headline && (
+                <Text
+                  accessibilityRole={index === 0 ? 'header' : undefined}
+                  aria-level={index === 0 ? 1 : undefined}
+                  style={styles.headline}
+                >
+                  {renderRichText(item.headline, styles.headline)}
+                </Text>
+              )}
               {!!item.subtext && <Text style={styles.subtext}>{renderRichText(item.subtext, styles.subtext)}</Text>}
             </>
           );

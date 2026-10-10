@@ -110,7 +110,7 @@ export default function CrossBorderFields({
 
             <Field label={t('order.uploadInvoice')} required error={itemErrs.screenshotInvoice} fieldKey={`cbslItems[${index}].screenshotInvoice`} registerRef={registerFieldRef}>
               {item.screenshotInvoice ? (
-                <Image source={{ uri: item.screenshotInvoice }} style={{ width: 120, height: 120, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
+                <Image source={{ uri: item.screenshotInvoice }} accessibilityLabel="Uploaded invoice screenshot" style={{ width: 120, height: 120, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
               ) : null}
               <AnimatedPressable style={formStyles.button} scaleTo={1.03} onPress={() => pickInvoice(index)}>
                 <Text style={formStyles.buttonText}>{item.screenshotInvoice ? t('order.changeImage') : t('order.chooseImage')}</Text>

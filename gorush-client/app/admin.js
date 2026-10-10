@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Picker } from '@react-native-picker/picker';
 import { WebView } from 'react-native-webview';
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
-import { PageScroll, Card, Field, useFormStyles, DeleteConfirm } from '../lib/formPrimitives';
+import { PageScroll, Card, Field, useFormStyles, DeleteConfirm, PageHeading } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import { useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
@@ -773,7 +773,7 @@ function SlidesTab({ formStyles, colors, authHeader }) {
         <Field label="Image" hint="Optional — without one, the slide falls back to a solid brand color">
           {form.image ? (
             <AnimatedPressable scaleTo={1.06} style={{ width: 160, height: 90, borderRadius: 8, marginBottom: 10, overflow: 'hidden' }}>
-              <Image source={{ uri: form.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+              <Image source={{ uri: form.image }} accessibilityLabel="Image preview" style={{ width: '100%', height: '100%' }} resizeMode="cover" />
             </AnimatedPressable>
           ) : null}
           <AnimatedPressable scaleTo={1.04} style={[formStyles.button, { backgroundColor: colors.subtleBackground }, pickingImage && formStyles.buttonDisabled]} onPress={pickImage} disabled={pickingImage}>
@@ -825,7 +825,7 @@ function SlidesTab({ formStyles, colors, authHeader }) {
           <View key={item._id} style={rowStyle(colors)}>
             {item.image ? (
               <AnimatedPressable scaleTo={1.06} style={{ width: 56, height: 40, borderRadius: 6, marginRight: 12, overflow: 'hidden' }}>
-                <Image source={{ uri: item.image }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                <Image source={{ uri: item.image }} accessibilityLabel="Image preview" style={{ width: '100%', height: '100%' }} resizeMode="cover" />
               </AnimatedPressable>
             ) : (
               <View style={{ width: 56, height: 40, borderRadius: 6, marginRight: 12, backgroundColor: colors.primary }} />
@@ -1192,8 +1192,8 @@ export default function Admin() {
   };
 
   return (
-    <PageScroll title="Admin">
-      <Text style={formStyles.title}>Admin</Text>
+    <PageScroll title="Admin" noindex>
+      <PageHeading>Admin</PageHeading>
       <Text style={formStyles.subtitle}>Manage public holidays, announcements, hero slides, career vacancies, and delivery pricing.</Text>
 
       <View style={tabStyles.tabRow}>

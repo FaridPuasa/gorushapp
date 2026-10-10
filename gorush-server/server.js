@@ -1,5 +1,6 @@
 require('dotenv').config(); // This loads the hidden keys from your .env file
 const express = require('express');
+const helmet = require('helmet');
 const compression = require('compression');
 const cors = require('cors');
 
@@ -16,6 +17,33 @@ if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
 }
 
 // Middleware
+// Allowlist built from what index.html/offline.html and the client actually load:
+// - script-src: Google Tag Manager's gtag.js, plus 'unsafe-inline' for index.html's own
+//   inline <script> blocks (GA init, service worker registration, PWA install listener) -
+//   there's no per-request templating here to stamp a nonce into that static file, so a
+//   nonce isn't an option without a bigger change.
+// - img-src: 'self'/data: (default) for same-origin assets and the base64 hero-slide images
+//   (lib/imageCompress.js stores those directly in Postgres), plus Supabase Storage, where
+//   POD photos/JPMC payment proofs/job application docs actually live (lib/podImageStorage.js
+//   and friends) - a wildcard since the exact project subdomain lives in an env var, not here.
+// - connect-src: 'self' (default, same-origin API calls) plus GA's own ping/collect domains.
+// - frame-src: the Google Maps embed on the Contact Us page (contactInfo.js's
+//   GOOGLE_MAPS_EMBED_URL).
+// Cross-Origin-Resource-Policy left off - its default 'same-origin' would block the browser
+// from reading this API's responses in local dev, where gorush-client's own dev server (a
+// different host/port - see app.json's apiBaseUrl) calls it cross-origin; in production
+// client and API share an origin, so this costs nothing there.
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.googletagmanager.com'],
+      imgSrc: ["'self'", 'data:', 'https://*.supabase.co'],
+      connectSrc: ["'self'", 'https://www.google-analytics.com', 'https://analytics.google.com', 'https://www.googletagmanager.com'],
+      frameSrc: ["'self'", 'https://www.google.com'],
+    },
+  },
+  crossOriginResourcePolicy: false,
+}));
 app.use(cors());
 // Gzips every response (API JSON + the webapp bundle/HTML below) - same bytes
 // decoded client-side, just smaller over the wire. Biggest win for the ~1.9MB
@@ -54,17 +82,34 @@ app.use('/api/jpmc', require('./routes/jpmc'));
 app.use('/api/partner', require('./routes/partnerPortal'));
 app.use('/api', require('./routes/content'));
 
-// Serves the Expo Router web export's index.html for every non-API route,
-// so client-side routing (e.g. refreshing on /my-orders) resolves instead
-// of 404ing. Falls back to a plain status message when no web build is
-// present (e.g. local dev without ever having run the export).
+// Every real page gorush-client's app/ directory defines (expo-router's file-based routing -
+// keep this in sync with that directory). Used below to tell a genuine route from a typo/stale
+// link, since both are otherwise indistinguishable to this catch-all.
+const KNOWN_CLIENT_ROUTES = new Set([
+  '/', '/about-us', '/admin', '/careers', '/contact-us', '/dashboard', '/delivery-rates',
+  '/edit-profile', '/get-the-app', '/jpmc-portal', '/latest-update', '/local-delivery-calculator',
+  '/login', '/my-orders', '/order-form', '/privacy-policy', '/search-jobs', '/sign-up',
+  '/warga-emas-form',
+]);
+
+// Serves the Expo Router web export's index.html for every non-API route, so client-side
+// routing (e.g. refreshing on /my-orders) resolves instead of 404ing. Falls back to a plain
+// status message when no web build is present (e.g. local dev without ever having run the
+// export). A path outside KNOWN_CLIENT_ROUTES still gets the same SPA shell (expo-router
+// renders its own not-found screen client-side), but with a real 404 status - without this,
+// search engines saw every typo'd/stale URL as a normal 200 page (a "soft 404") and could
+// index it.
 app.get(/^(?!\/api).*/, (req, res) => {
   const indexPath = path.join(__dirname, 'webapp', 'index.html');
-  if (fs.existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
+  if (!fs.existsSync(indexPath)) {
     res.send("Go Rush Backend Server is active.");
+    return;
   }
+  const cleanPath = req.path.length > 1 ? req.path.replace(/\/+$/, '') : req.path;
+  if (!KNOWN_CLIENT_ROUTES.has(cleanPath)) {
+    res.status(404);
+  }
+  res.sendFile(indexPath);
 });
 
 app.listen(PORT, () => {

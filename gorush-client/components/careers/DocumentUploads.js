@@ -89,7 +89,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
     <Card icon="📎" title={t('careers.documents')}>
       <Field label={t('careers.uploadIcFront')} required error={errors.icFront} fieldKey="icFront" registerRef={registerFieldRef}>
         {values.icFront ? (
-          <Image source={{ uri: values.icFront }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
+          <Image source={{ uri: values.icFront }} accessibilityLabel="Uploaded IC front" style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
         ) : null}
         <AnimatedPressable scaleTo={1.04} style={[formStyles.button, pickingKey === 'icFront' && formStyles.buttonDisabled]} onPress={() => pickImage('icFront')} disabled={!!pickingKey}>
           {pickingKey === 'icFront' ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>{values.icFront ? t('order.changeImage') : t('order.chooseImage')}</Text>}
@@ -107,7 +107,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
         <>
           <Field label={t('careers.uploadLicenseFront')} required error={errors.drivingLicenseFront} fieldKey="drivingLicenseFront" registerRef={registerFieldRef}>
             {values.drivingLicenseFront ? (
-              <Image source={{ uri: values.drivingLicenseFront }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
+              <Image source={{ uri: values.drivingLicenseFront }} accessibilityLabel="Uploaded driving license front" style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
             ) : null}
             <AnimatedPressable scaleTo={1.04} style={[formStyles.button, pickingKey === 'drivingLicenseFront' && formStyles.buttonDisabled]} onPress={() => pickImage('drivingLicenseFront')} disabled={!!pickingKey}>
               {pickingKey === 'drivingLicenseFront' ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>{values.drivingLicenseFront ? t('order.changeImage') : t('order.chooseImage')}</Text>}
@@ -116,7 +116,7 @@ export default function DocumentUploads({ vacancy, values, onChange, errors = {}
 
           <Field label={t('careers.uploadLicenseBack')} required error={errors.drivingLicenseBack} fieldKey="drivingLicenseBack" registerRef={registerFieldRef}>
             {values.drivingLicenseBack ? (
-              <Image source={{ uri: values.drivingLicenseBack }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
+              <Image source={{ uri: values.drivingLicenseBack }} accessibilityLabel="Uploaded driving license back" style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
             ) : null}
             <AnimatedPressable scaleTo={1.04} style={[formStyles.button, pickingKey === 'drivingLicenseBack' && formStyles.buttonDisabled]} onPress={() => pickImage('drivingLicenseBack')} disabled={!!pickingKey}>
               {pickingKey === 'drivingLicenseBack' ? <ActivityIndicator color="#fff" /> : <Text style={formStyles.buttonText}>{values.drivingLicenseBack ? t('order.changeImage') : t('order.chooseImage')}</Text>}

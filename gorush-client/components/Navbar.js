@@ -114,7 +114,7 @@ export default function Navbar() {
             <>
               <View style={styles.mobileLogoCenter} pointerEvents="box-none">
                 <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
-                  <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
+                  <Image source={require('../assets/logo.png')} accessibilityLabel="Go Rush" style={styles.brandImage} resizeMode="contain" />
                 </AnimatedPressable>
               </View>
               <AnimatedPressable scaleTo={1.12} style={[styles.hamburger, styles.hamburgerMobile]} onPress={() => setAccountMenuOpen((v) => !v)}>
@@ -123,7 +123,7 @@ export default function Navbar() {
             </>
           ) : (
           <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={() => goTo(isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
-            <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
+            <Image source={require('../assets/logo.png')} accessibilityLabel="Go Rush" style={styles.brandImage} resizeMode="contain" />
           </AnimatedPressable>
           )}
           {!isMobile && (
@@ -352,7 +352,7 @@ export default function Navbar() {
           <SafeAreaView style={styles.modalRoot}>
             <View style={styles.modalHeader}>
               <AnimatedPressable scaleTo={1.08}>
-                <Image source={require('../assets/logo.png')} style={styles.brandImage} resizeMode="contain" />
+                <Image source={require('../assets/logo.png')} accessibilityLabel="Go Rush" style={styles.brandImage} resizeMode="contain" />
               </AnimatedPressable>
               <AnimatedPressable scaleTo={1.12} style={styles.hamburger} onPress={closeAccountMenu}>
                 <Text style={styles.hamburgerIcon}>✕</Text>

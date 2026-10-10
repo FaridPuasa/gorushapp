@@ -3,7 +3,7 @@ import { Text, TextInput, View, Image } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
-import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers } from '../lib/formPrimitives';
+import { PageScroll, Card, Field, useFormStyles, makeInputStyle, makeFocusHandlers, PageHeading } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -83,7 +83,7 @@ export default function WargaEmas() {
 
   if (submitted) {
     return (
-      <PageScroll title={t('nav.wargaEmas')}>
+      <PageScroll title={t('nav.wargaEmas')} noindex>
         <Card icon="✅" title={t('wargaEmasForm.submittedTitle')}>
           <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color, lineHeight: scaleFont(20) }}>
             {t('wargaEmasForm.submittedBody')}
@@ -94,8 +94,8 @@ export default function WargaEmas() {
   }
 
   return (
-    <PageScroll title={t('nav.wargaEmas')}>
-      <Text style={formStyles.title}>{t('nav.wargaEmas')}</Text>
+    <PageScroll title={t('nav.wargaEmas')} description="A simpler way for senior citizens to order - our customer service team helps place your order so you don't have to fill in all the details yourself.">
+      <PageHeading>{t('nav.wargaEmas')}</PageHeading>
       <Text style={formStyles.subtitle}>{t('wargaEmasForm.subtitle')}</Text>
 
       {statusMessage && (
@@ -130,7 +130,7 @@ export default function WargaEmas() {
 
         <Field label={t('wargaEmasForm.icFront')} required error={errors.icFront}>
           {icFront ? (
-            <Image source={{ uri: icFront }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
+            <Image source={{ uri: icFront }} accessibilityLabel="Uploaded IC front" style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
           ) : null}
           <AnimatedPressable scaleTo={1.03} style={formStyles.button} onPress={() => pickImage(setIcFront)}>
             <Text style={formStyles.buttonText}>{icFront ? t('order.changeImage') : t('order.chooseImage')}</Text>
@@ -139,7 +139,7 @@ export default function WargaEmas() {
 
         <Field label={t('wargaEmasForm.icBack')} required error={errors.icBack}>
           {icBack ? (
-            <Image source={{ uri: icBack }} style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
+            <Image source={{ uri: icBack }} accessibilityLabel="Uploaded IC back" style={{ width: 160, height: 100, borderRadius: 8, marginBottom: 10 }} resizeMode="cover" />
           ) : null}
           <AnimatedPressable scaleTo={1.03} style={formStyles.button} onPress={() => pickImage(setIcBack)}>
             <Text style={formStyles.buttonText}>{icBack ? t('order.changeImage') : t('order.chooseImage')}</Text>

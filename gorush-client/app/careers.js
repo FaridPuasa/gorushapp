@@ -5,7 +5,7 @@ import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
-import { PageScroll, useFormStyles, Card, useFieldFocus } from '../lib/formPrimitives';
+import { PageScroll, useFormStyles, Card, useFieldFocus, PageHeading } from '../lib/formPrimitives';
 import { isValidEmail, isValidPostalCode, splitPhoneNumber } from '../lib/validators';
 import { getApplicationTypeConfig } from '../lib/careersOptions';
 import VacancyList from '../components/careers/VacancyList';
@@ -220,7 +220,7 @@ export default function Careers() {
 
   if (step === 'submitted') {
     return (
-      <PageScroll ref={scrollRef} title={t('nav.careers')}>
+      <PageScroll ref={scrollRef} title={t('nav.careers')} description="Explore job vacancies and submit your application to join the Go Rush team in Brunei.">
         <Card icon="✅" title={t('careers.thankYou').replace('${name}', applicantName)}>
           <Text style={[formStyles.bodyText, { marginBottom: 16 }]}>{t('careers.submittedBody')}</Text>
           <AnimatedPressable style={formStyles.buttonAccent} onPress={handleApplyAnother} scaleTo={1.04}>
@@ -232,8 +232,8 @@ export default function Careers() {
   }
 
   return (
-    <PageScroll ref={scrollRef} title={t('nav.careers')}>
-      <Text style={formStyles.title}>{t('careers.title')}</Text>
+    <PageScroll ref={scrollRef} title={t('nav.careers')} description="Explore job vacancies and submit your application to join the Go Rush team in Brunei.">
+      <PageHeading>{t('careers.title')}</PageHeading>
       <Text style={formStyles.subtitle}>
         {step === 'list' ? t('careers.subtitle') : t('careers.applyingFor').replace('${title}', vacancy.title)}
       </Text>
@@ -249,6 +249,7 @@ export default function Careers() {
           <VacancyList onApply={handleApply} />
           <Image
             source={require('../assets/careers-hero.jpg')}
+            accessibilityLabel="Join the Go Rush team"
             style={{ width: '100%', height: 620, borderRadius: 16, marginTop: 4 }}
             resizeMode="cover"
           />

@@ -46,6 +46,8 @@ export default function Home() {
     <>
       <Head>
         <title>Home — Go Rush</title>
+        <meta name="description" content="Go Rush is a courier and delivery service in Brunei offering fast parcel delivery, errand running, and logistics for individuals and businesses." />
+        <link rel="canonical" href="https://gorushbn.com/" />
       </Head>
       <ScrollView
         ref={scrollRef}

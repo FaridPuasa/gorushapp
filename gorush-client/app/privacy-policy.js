@@ -1,6 +1,6 @@
 import React from 'react';
 import { Text } from 'react-native';
-import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, PageHeading } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function PrivacyPolicy() {
@@ -20,8 +20,8 @@ export default function PrivacyPolicy() {
   ];
 
   return (
-    <PageScroll title={t('footer.privacyPolicy')}>
-      <Text style={formStyles.title}>{t('static.privacyPolicy.pageTitle')}</Text>
+    <PageScroll title={t('footer.privacyPolicy')} description="Read Go Rush's privacy policy to learn how we collect, use, and protect your personal information.">
+      <PageHeading>{t('static.privacyPolicy.pageTitle')}</PageHeading>
       <Text style={formStyles.subtitle}>{t('static.privacyPolicy.subtitle')}</Text>
 
       {SECTIONS.map((section) => (

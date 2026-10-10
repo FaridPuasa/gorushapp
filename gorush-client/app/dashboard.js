@@ -15,7 +15,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { Text, TextInput, View, ActivityIndicator } from 'react-native';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { PageScroll, Card, useFormStyles } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, PageHeading } from '../lib/formPrimitives';
 import { useTheme } from '../context/ThemeContext';
 import { CONTROL_HEIGHT } from '../lib/theme';
 import { AnimatedPressable } from '../lib/animations';
@@ -636,7 +636,7 @@ export default function PartnerDashboard() {
 
   const pageContent = (
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
-      <Text style={[formStyles.title, { fontSize: scaleFont(26), marginBottom: 28 }]}>Dashboard</Text>
+      <PageHeading style={{ fontSize: scaleFont(26), marginBottom: 28 }}>Dashboard</PageHeading>
 
       <TrackingSearchCard token={token} onOpenTracking={setOpenTracking} colors={colors} scaleFont={scaleFont} formStyles={formStyles} />
       <WarehouseCard token={token} onOpenTracking={setOpenTracking} colors={colors} scaleFont={scaleFont} />
@@ -647,7 +647,7 @@ export default function PartnerDashboard() {
 
   return (
     <>
-      <PageScroll title="Dashboard" beforeContent={pageContent} />
+      <PageScroll title="Dashboard" beforeContent={pageContent} noindex />
       <TrackingDetailModal trackingNumber={openTracking} token={token} onClose={() => setOpenTracking(null)} onOpenTracking={setOpenTracking} />
     </>
   );

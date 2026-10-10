@@ -1,7 +1,7 @@
 import React from 'react';
 import { Text, View, Linking, Platform } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { PageScroll, Card, useFormStyles, SocialIcon } from '../lib/formPrimitives';
+import { PageScroll, Card, useFormStyles, SocialIcon, PageHeading } from '../lib/formPrimitives';
 import { AnimatedPressable } from '../lib/animations';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
@@ -68,8 +68,8 @@ export default function ContactUs() {
   ];
 
   return (
-    <PageScroll title={t('nav.contactUs')}>
-      <Text style={formStyles.title}>{t('static.contactUs.pageTitle')}</Text>
+    <PageScroll title={t('nav.contactUs')} description="Get in touch with Go Rush. Find our address, phone numbers, and social media for courier and delivery enquiries in Brunei.">
+      <PageHeading>{t('static.contactUs.pageTitle')}</PageHeading>
       <Text style={formStyles.subtitle}>{t('static.contactUs.subtitle')}</Text>
 
       <Card icon="🕐" title={t('static.contactUs.workingHoursTitle')} centered>
