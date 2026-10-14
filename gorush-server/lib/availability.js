@@ -22,8 +22,8 @@ function isExpressOrSelfCollectAvailable(d) {
   const minutes = d.getUTCHours() * 60 + d.getUTCMinutes();
   const allowedDays = [0, 1, 2, 3, 4]; // Sun-Thu
   if (!allowedDays.includes(day)) return false;
-  if (day === 4) return minutes < 10 * 60 + 30; // Thursday cutoff 10:30am
-  return true;
+  if (day === 0) return true; // Sunday: available all day
+  return minutes >= 8 * 60 && minutes < 10 * 60 + 30; // Mon-Thu: 8:00am-10:30am
 }
 
 function isLocalDeliveryExpressAvailable(d) {

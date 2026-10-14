@@ -87,7 +87,8 @@ const RATE_SECTIONS = [
       },
     ],
     notes: [
-      'All orders will be processed before 11am daily except Friday, Sunday and Public Holiday. Any orders that go through after the stated time will be processed on the next working day.',
+      'All orders will be processed before 10.30am daily except Friday, Sunday and Public Holiday. Any orders that go through after the stated time will be processed on the next working day.',
+      'Express Orders are available all day on Sunday, and from 8am until 10:30am Monday to Thursday.',
       'Immediate Orders are available from 8am until 2pm everyday except for Friday and Sunday.',
       'Delivery duration will start after medicine is collected from Pharmacy.',
       'Paying Patient: 3% or $2 surcharge, whichever is higher.',
@@ -124,7 +125,8 @@ const RATE_SECTIONS = [
       },
     ],
     notes: [
-      'All orders will be processed before 11am daily except Friday, Sunday and Public Holiday. Any orders that go through after the stated time will be processed on the next working day.',
+      'All orders will be processed before 10.30am daily except Friday, Sunday and Public Holiday. Any orders that go through after the stated time will be processed on the next working day.',
+      'Express Orders are available all day on Sunday, and from 8am until 10:30am Monday to Thursday.',
       'Immediate Orders are available from 8am until 11am everyday except for Sunday.',
       'Delivery duration will start after medicine is collected from Pharmacy.',
       'Direct payment to JPMC is available.',
@@ -149,7 +151,7 @@ const RATE_SECTIONS = [
       },
     ],
     notes: [
-      'All orders will be processed before 11am daily except Friday, Sunday and Public Holiday. Any orders that go through after the stated time will be processed on the next working day.',
+      'All orders will be processed before 10.30am daily except Friday, Sunday and Public Holiday. Any orders that go through after the stated time will be processed on the next working day.',
       'Pickup available on Wednesday and Saturday.',
     ],
   },
@@ -166,7 +168,7 @@ const RATE_SECTIONS = [
       },
     ],
     notes: [
-      'All orders will be processed before 11am daily except Friday, Sunday and Public Holiday. Any orders that go through after the stated time will be processed on the next working day.',
+      'All orders will be processed before 10.30am daily except Friday, Sunday and Public Holiday. Any orders that go through after the stated time will be processed on the next working day.',
     ],
   },
   {
