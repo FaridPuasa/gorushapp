@@ -217,6 +217,7 @@ function toLegacyShape(pgOrder) {
         currentStatus: pgOrder.currentStatus,
         detrackJobId: pgOrder.detrackJobId,
         gorushUserId: pgOrder.gorushUserId,
+        paymentScreenshotPath: pgOrder.paymentScreenshotPath || null,
         history: (pgOrder.history || []).map((h) => ({
             statusHistory: h.statusHistory,
             dateUpdated: formatBruneiISO(h.dateUpdated),
@@ -271,6 +272,36 @@ async function findByTrackingNumber(trackingNumber) {
     return pgOrder ? toLegacyShape(pgOrder) : null;
 }
 
+// Customer-uploaded Bank Transfer/Bill Payment screenshot. Separate field
+// from JPMC's own jpmcPaymentProofPath (routes/jpmc.js) - different feature,
+// different product, not reused. Only orders whose paymentMethod actually
+// contains "Bank Transfer" or "Bill Payment" are eligible - matches
+// grfmxstatusupdate's /bankTransferBillPayment admin page's own filter, so a
+// guest-supplied orderId can't be used to stash an image against an
+// unrelated order.
+async function findPaymentScreenshotEligibleOrder(orderId) {
+    const pgOrder = await prisma.order.findUnique({
+        where: { id: BigInt(orderId) },
+        select: { id: true, paymentMethod: true, paymentScreenshotPath: true },
+    });
+    if (!pgOrder) return null;
+    const method = pgOrder.paymentMethod || '';
+    const eligible = method.includes('Bank Transfer') || method.includes('Bill Payment');
+    if (!eligible) return null;
+    return pgOrder;
+}
+
+async function setPaymentScreenshotPath(orderId, path, updatedByUserId) {
+    await prisma.order.update({
+        where: { id: BigInt(orderId) },
+        data: {
+            paymentScreenshotPath: path,
+            paymentScreenshotUpdatedBy: updatedByUserId ? String(updatedByUserId) : null,
+            paymentScreenshotUpdatedAt: new Date(),
+        },
+    });
+}
+
 module.exports = {
     buildPostgresOrderRow,
     insertOrder,
@@ -279,4 +310,6 @@ module.exports = {
     findMine,
     findStatusById,
     findByTrackingNumber,
+    findPaymentScreenshotEligibleOrder,
+    setPaymentScreenshotPath,
 };

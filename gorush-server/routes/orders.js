@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const users = require('../lib/postgresUsers');
 const { findAllHolidays } = require('../lib/postgresPricingHoliday');
 const { optionalAuth, requireAuth } = require('../middleware/auth');
+const { uploadPaymentScreenshot, getPaymentScreenshotSignedUrl, deletePaymentScreenshot } = require('../lib/paymentScreenshotStorage');
 const { computeTotalPrice } = require('../lib/pricing');
 const { isChargeCurrentlyAvailable } = require('../lib/availability');
 const { getOrderCreatedAt, getOrderUpdatedAt, getOrderDeliveryDate } = require('../lib/orderDates');
@@ -496,6 +497,7 @@ router.get('/mine', requireAuth, async (req, res) => {
                 jobMethod: order.jobMethod || null,
                 paymentMethod: order.paymentMethod || null,
                 totalPrice: order.totalPrice,
+                hasPaymentScreenshot: !!order.paymentScreenshotPath,
             })),
             page,
             totalPages: Math.max(Math.ceil(totalCount / limit), 1),
@@ -504,6 +506,63 @@ router.get('/mine', requireAuth, async (req, res) => {
     } catch (err) {
         console.error(err.message);
         res.status(500).json({ error: "Internal server order error." });
+    }
+});
+
+// Bank Transfer/Bill Payment screenshot upload - guest AND logged-in orders
+// both need this (right after order submission, or later from "My Orders"),
+// so these deliberately use optionalAuth, not requireAuth: there is no
+// userId to key on for a guest order. Instead, access is scoped by the order
+// actually being a Bank Transfer/Bill Payment order
+// (findPaymentScreenshotEligibleOrder), so an arbitrary orderId can't be used
+// to plant an image against an unrelated order. Separate field
+// (paymentScreenshotPath) and bucket from JPMC's own payment-proof feature
+// (routes/jpmc.js) - not reused, different product/workflow.
+router.get('/:id/payment-screenshot', optionalAuth, async (req, res) => {
+    try {
+        if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'Invalid order id.' });
+        const order = await postgresOrders.findPaymentScreenshotEligibleOrder(req.params.id);
+        if (!order) return res.status(404).json({ error: 'Order not found.' });
+        if (!order.paymentScreenshotPath) return res.status(404).json({ error: 'No payment screenshot uploaded yet.' });
+        const url = await getPaymentScreenshotSignedUrl(order.paymentScreenshotPath);
+        res.json({ url });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Failed to load payment screenshot.' });
+    }
+});
+
+// Upload/reupload - body: { imageBase64: "data:image/jpeg;base64,..." }
+router.post('/:id/payment-screenshot', optionalAuth, async (req, res) => {
+    try {
+        if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'Invalid order id.' });
+        if (!req.body.imageBase64) return res.status(400).json({ error: 'No image uploaded.' });
+        const order = await postgresOrders.findPaymentScreenshotEligibleOrder(req.params.id);
+        if (!order) return res.status(404).json({ error: 'Order not found.' });
+        const path = await uploadPaymentScreenshot(req.params.id, req.body.imageBase64);
+        await postgresOrders.setPaymentScreenshotPath(req.params.id, path, req.userId);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Failed to upload payment screenshot.' });
+    }
+});
+
+// Remove - unlike a reupload (which just points the order at a new file and
+// leaves the old one orphaned), this actually deletes the file from storage
+// and clears the order's column.
+router.delete('/:id/payment-screenshot', optionalAuth, async (req, res) => {
+    try {
+        if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'Invalid order id.' });
+        const order = await postgresOrders.findPaymentScreenshotEligibleOrder(req.params.id);
+        if (!order) return res.status(404).json({ error: 'Order not found.' });
+        if (!order.paymentScreenshotPath) return res.status(404).json({ error: 'No payment screenshot uploaded yet.' });
+        await deletePaymentScreenshot(order.paymentScreenshotPath);
+        await postgresOrders.setPaymentScreenshotPath(req.params.id, null, req.userId);
+        res.json({ ok: true });
+    } catch (err) {
+        console.error(err.message);
+        res.status(500).json({ error: 'Failed to remove payment screenshot.' });
     }
 });
 

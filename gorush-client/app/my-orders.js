@@ -11,6 +11,22 @@ import { PRODUCT_CODES, PRODUCTS } from '../lib/pricing';
 import { AnimatedPressable } from '../lib/animations';
 import { STATUS_ORDER, getStatusStyle, displayStatusLabel } from '../lib/trackingHistory';
 import TrackOrderButton from '../components/TrackOrderButton';
+import PaymentScreenshotUpload from '../components/PaymentScreenshotUpload';
+
+// Matches the same ".includes(...)" convention grfmxstatusupdate's admin
+// pages and order-form.js use for these two payment method values.
+function isBankTransferOrBillPayment(paymentMethod) {
+  return !!paymentMethod && (paymentMethod.includes('Bank Transfer') || paymentMethod.includes('Bill Payment'));
+}
+
+// The screenshot-upload feature officially starts 15 October 2026 (Brunei
+// wall-clock) - matches grfmxstatusupdate's BT_BP_SCREENSHOT_LIVE_FROM.
+// Orders placed before that only had the pre-existing WhatsApp-based
+// payment-slip flow, so the upload option stays hidden for them here.
+const PAYMENT_SCREENSHOT_LIVE_FROM = new Date('2026-10-15T00:00:00+08:00');
+function isPaymentScreenshotLive(order) {
+  return !!order.date && new Date(order.date) >= PAYMENT_SCREENSHOT_LIVE_FROM;
+}
 
 const PRODUCT_LABELS = Object.fromEntries(
   Object.entries(PRODUCT_CODES).map(([label, code]) => [code, label])
@@ -221,6 +237,12 @@ export default function MyOrders() {
             </View>
 
             {order.trackingNumber ? <TrackOrderButton trackingNumber={order.trackingNumber} /> : null}
+
+            {order.trackingNumber && isBankTransferOrBillPayment(order.paymentMethod) && isPaymentScreenshotLive(order) && (
+              <View style={{ marginTop: 12 }}>
+                <PaymentScreenshotUpload orderId={order.orderId} initialHasScreenshot={order.hasPaymentScreenshot} token={token} />
+              </View>
+            )}
           </Card>
         );
       })}

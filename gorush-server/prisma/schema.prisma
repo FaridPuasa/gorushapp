@@ -153,6 +153,13 @@ model Order {
   jpmcFieldsUpdatedBy     String?   @map("jpmc_fields_updated_by")
   jpmcFieldsUpdatedAt     DateTime? @map("jpmc_fields_updated_at")
 
+  // Customer-uploaded Bank Transfer/Bill Payment screenshot - see
+  // grfmxstatusupdate's schema.prisma (source of truth) for the authoritative
+  // column definitions.
+  paymentScreenshotPath      String?   @map("payment_screenshot_path")
+  paymentScreenshotUpdatedBy String?   @map("payment_screenshot_updated_by")
+  paymentScreenshotUpdatedAt DateTime? @map("payment_screenshot_updated_at")
+
   history OrderHistory[]
 
   @@index([parcelTrackingNum])

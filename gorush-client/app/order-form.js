@@ -3,7 +3,7 @@ import { Text, TextInput, View, ActivityIndicator, Platform } from 'react-native
 import { AnimatedPressable } from '../lib/animations';
 import { api } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { useFormStyles, Card, PageScroll, useFieldFocus, PageHeading } from '../lib/formPrimitives';
+import { useFormStyles, Card, PageScroll, useFieldFocus, PageHeading, InfoNotice } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
 import { isValidEmail, isValidPostalCode, splitPhoneNumber, isPrefixOnly, isValidJpmcPatientNumber } from '../lib/validators';
@@ -21,6 +21,21 @@ import ChargesAndPayment from '../components/order/ChargesAndPayment';
 import Captcha from '../components/order/Captcha';
 import TermsCheckbox from '../components/order/TermsCheckbox';
 import OrderSummary from '../components/order/OrderSummary';
+import PaymentScreenshotUpload from '../components/PaymentScreenshotUpload';
+
+// Matches the same ".includes(...)" convention grfmxstatusupdate's admin
+// pages and gorush-client's pricing options use for these two payment
+// method values (e.g. "Bank Transfer BIBD" / "Bill Payment Baiduri").
+function isBankTransferOrBillPayment(paymentMethod) {
+  return !!paymentMethod && (paymentMethod.includes('Bank Transfer') || paymentMethod.includes('Bill Payment'));
+}
+
+// The screenshot-upload feature officially starts 15 October 2026 (Brunei
+// wall-clock) - matches grfmxstatusupdate's BT_BP_SCREENSHOT_LIVE_FROM and
+// my-orders.js's own cutoff. An order placed before that only has the
+// pre-existing WhatsApp-based payment-slip flow (still shown below via
+// InfoNotice either way).
+const PAYMENT_SCREENSHOT_LIVE_FROM = new Date('2026-10-15T00:00:00+08:00');
 
 function emptyParty() {
   return { fullName: '', houseunitno: '', jalan: '', kampong: '', simpang: '', district: 'Brunei', postalcode: '', email: '', phone: '', additionalPhone: '' };
@@ -404,7 +419,7 @@ export default function Order() {
       const response = await api.post('/api/orders', payload, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
-      setPlacedOrder({ orderId: response.data.orderId, trackingNumber: null, status: response.data.status, totalPrice: response.data.totalPrice });
+      setPlacedOrder({ orderId: response.data.orderId, trackingNumber: null, status: response.data.status, totalPrice: response.data.totalPrice, paymentMethod: details.paymentMethod, product });
       setStep('placed');
     } catch (error) {
       setStatusMessage({ type: 'error', text: error.response?.data?.error || t('order.genericSubmitError') });
@@ -467,7 +482,32 @@ export default function Order() {
               </View>
             )}
           </View>
-          <AnimatedPressable scaleTo={1.03} style={formStyles.buttonAccent} onPress={handleNewOrder}>
+          {placedOrder.trackingNumber && isBankTransferOrBillPayment(placedOrder.paymentMethod) && (
+            <View style={{ marginTop: 16, marginBottom: 4 }}>
+              {new Date() >= PAYMENT_SCREENSHOT_LIVE_FROM && (
+                <>
+                  <Text style={{ fontSize: scaleFont(16), fontWeight: '700', color: formStyles.subtitle.color, marginBottom: 6 }}>
+                    {t('order.payNowTitle')}
+                  </Text>
+                  <Text style={{ fontSize: scaleFont(13), color: formStyles.subtitle.color, marginBottom: 12 }}>
+                    {isGuest ? t('order.payNowBodyGuest') : t('order.payNowBodyLoggedIn')}
+                  </Text>
+                  <PaymentScreenshotUpload orderId={placedOrder.orderId} token={token} />
+                </>
+              )}
+
+              <View style={{ marginTop: 14 }}>
+                <InfoNotice
+                  icon="💳"
+                  title={placedOrder.product === 'Cross Border Service Limbang' ? t('order.paymentNoticeTitleCbsl') : t('order.paymentNoticeTitle')}
+                >
+                  {placedOrder.product === 'Cross Border Service Limbang' ? t('order.paymentNoticeAccountsCbsl') : t('order.paymentNoticeAccounts')}
+                </InfoNotice>
+              </View>
+            </View>
+          )}
+
+          <AnimatedPressable scaleTo={1.03} style={[formStyles.buttonAccent, { marginTop: 16 }]} onPress={handleNewOrder}>
             <Text style={formStyles.buttonText}>{t('order.placeAnotherOrder')}</Text>
           </AnimatedPressable>
         </Card>
