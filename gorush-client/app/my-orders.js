@@ -241,7 +241,10 @@ export default function MyOrders() {
             {order.trackingNumber ? <TrackOrderButton trackingNumber={order.trackingNumber} /> : null}
 
             {order.trackingNumber && isBankTransferOrBillPayment(order.paymentMethod) && isPaymentScreenshotLive(order) && (
-              <View style={{ marginTop: 12 }}>
+              <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: colors.border, alignItems: 'center' }}>
+                <Text style={{ fontSize: formStyles.bodyText.fontSize - 2, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 8 }}>
+                  {t('myOrders.paymentScreenshot')}
+                </Text>
                 <PaymentScreenshotUpload orderId={order.orderId} initialHasScreenshot={order.hasPaymentScreenshot} token={token} />
               </View>
             )}

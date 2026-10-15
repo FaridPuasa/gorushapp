@@ -495,8 +495,7 @@ export default function Order() {
                   💳 {t('order.payNowTitle')}
                 </Text>
                 <Text style={{ fontSize: scaleFont(13), color: colors.textPrimary, marginBottom: 14, textAlign: 'center', lineHeight: scaleFont(19) }}>
-                  {(isGuest ? t('order.payNowBodyGuest') : t('order.payNowBodyLoggedIn'))}{' '}
-                  {placedOrder.product === 'Cross Border Service Limbang' ? t('order.paymentNoticeTitleCbsl') : t('order.paymentNoticeTitle')}
+                  {(isGuest ? t('order.payNowBodyGuest') : t('order.payNowBodyLoggedIn')).replace('{whatsapp}', placedOrder.product === 'Cross Border Service Limbang' ? '+6738929772' : '+6732332065')}
                   {'\n'}
                   {placedOrder.product === 'Cross Border Service Limbang' ? t('order.paymentNoticeAccountsCbsl') : t('order.paymentNoticeAccounts')}
                 </Text>
