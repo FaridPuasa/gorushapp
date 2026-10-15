@@ -30,12 +30,12 @@ function isBankTransferOrBillPayment(paymentMethod) {
   return !!paymentMethod && (paymentMethod.includes('Bank Transfer') || paymentMethod.includes('Bill Payment'));
 }
 
-// The screenshot-upload feature officially starts 15 October 2026 (Brunei
-// wall-clock) - matches grfmxstatusupdate's BT_BP_SCREENSHOT_LIVE_FROM and
-// my-orders.js's own cutoff. An order placed before that only has the
-// pre-existing WhatsApp-based payment-slip flow (still shown below via
-// InfoNotice either way).
-const PAYMENT_SCREENSHOT_LIVE_FROM = new Date('2026-10-15T00:00:00+08:00');
+// The screenshot-upload feature went live the moment this code was
+// committed/pushed (2026-10-14 14:29:23 Brunei time) - matches
+// grfmxstatusupdate's BT_BP_SCREENSHOT_LIVE_FROM and my-orders.js's own
+// cutoff. An order placed before that only has the pre-existing WhatsApp-
+// based payment-slip flow (still shown below via InfoNotice either way).
+const PAYMENT_SCREENSHOT_LIVE_FROM = new Date('2026-10-14T14:29:23+08:00');
 
 function emptyParty() {
   return { fullName: '', houseunitno: '', jalan: '', kampong: '', simpang: '', district: 'Brunei', postalcode: '', email: '', phone: '', additionalPhone: '' };

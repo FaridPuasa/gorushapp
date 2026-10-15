@@ -19,11 +19,13 @@ function isBankTransferOrBillPayment(paymentMethod) {
   return !!paymentMethod && (paymentMethod.includes('Bank Transfer') || paymentMethod.includes('Bill Payment'));
 }
 
-// The screenshot-upload feature officially starts 15 October 2026 (Brunei
-// wall-clock) - matches grfmxstatusupdate's BT_BP_SCREENSHOT_LIVE_FROM.
-// Orders placed before that only had the pre-existing WhatsApp-based
-// payment-slip flow, so the upload option stays hidden for them here.
-const PAYMENT_SCREENSHOT_LIVE_FROM = new Date('2026-10-15T00:00:00+08:00');
+// The screenshot-upload feature went live the moment this code was
+// committed/pushed (2026-10-14 14:29:23 Brunei time) - matches
+// grfmxstatusupdate's BT_BP_SCREENSHOT_LIVE_FROM. Orders placed before that
+// only had the pre-existing WhatsApp-based payment-slip flow (they were
+// never offered the in-app upload), so the upload option stays hidden for
+// them here.
+const PAYMENT_SCREENSHOT_LIVE_FROM = new Date('2026-10-14T14:29:23+08:00');
 function isPaymentScreenshotLive(order) {
   return !!order.date && new Date(order.date) >= PAYMENT_SCREENSHOT_LIVE_FROM;
 }
