@@ -545,7 +545,10 @@ router.post('/:id/payment-screenshot', optionalAuth, async (req, res) => {
         if (!order) return res.status(404).json({ error: 'Order not found.' });
         if (order.paymentScreenshotPath) return res.status(409).json({ error: 'A payment screenshot has already been uploaded for this order.' });
         const path = await uploadPaymentScreenshot(req.params.id, req.body.imageBase64);
-        await postgresOrders.setPaymentScreenshotPath(req.params.id, path, req.userId);
+        // Literal "Customer" (guest or logged-in, doesn't matter which) -
+        // grfmxstatusupdate's "Payment Uploaded By" column shows this as-is,
+        // vs. the staff login name its own upload route stores.
+        await postgresOrders.setPaymentScreenshotPath(req.params.id, path, 'Customer');
         res.json({ ok: true });
     } catch (err) {
         console.error(err.message);
