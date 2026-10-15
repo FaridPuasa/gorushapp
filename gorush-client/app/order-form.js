@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useFormStyles, Card, PageScroll, useFieldFocus, PageHeading, InfoNotice } from '../lib/formPrimitives';
 import { useLanguage } from '../context/LanguageContext';
 import { useFontScale } from '../context/FontScaleContext';
+import { useTheme } from '../context/ThemeContext';
 import { isValidEmail, isValidPostalCode, splitPhoneNumber, isPrefixOnly, isValidJpmcPatientNumber } from '../lib/validators';
 import { PRODUCT_CODES } from '../lib/pricing';
 
@@ -122,6 +123,7 @@ export default function Order() {
   const { t } = useLanguage();
   const formStyles = useFormStyles();
   const { scaleFont } = useFontScale();
+  const { colors } = useTheme();
 
   const [step, setStep] = useState('form'); // 'form' | 'summary' | 'placed'
   const [product, setProduct] = useState('');
@@ -467,6 +469,7 @@ export default function Order() {
     return (
       <PageScroll title={t('order.orderPlaced')} noindex>
         <Card icon="✅" title={t('order.orderPlaced')}>
+          {/* Section 1: tracking number */}
           <Text style={{ fontSize: scaleFont(14), color: formStyles.subtitle.color, marginBottom: 10 }}>
             {t('order.saveTrackingNumber')}
           </Text>
@@ -482,21 +485,25 @@ export default function Order() {
               </View>
             )}
           </View>
-          {placedOrder.trackingNumber && isBankTransferOrBillPayment(placedOrder.paymentMethod) && (
-            <View style={{ marginTop: 16, marginBottom: 4 }}>
-              {new Date() >= PAYMENT_SCREENSHOT_LIVE_FROM && (
-                <>
-                  <Text style={{ fontSize: scaleFont(16), fontWeight: '700', color: formStyles.subtitle.color, marginBottom: 6 }}>
-                    {t('order.payNowTitle')}
-                  </Text>
-                  <Text style={{ fontSize: scaleFont(13), color: formStyles.subtitle.color, marginBottom: 12 }}>
-                    {isGuest ? t('order.payNowBodyGuest') : t('order.payNowBodyLoggedIn')}
-                  </Text>
-                  <PaymentScreenshotUpload orderId={placedOrder.orderId} token={token} />
-                </>
-              )}
 
-              <View style={{ marginTop: 14 }}>
+          {/* Section 2: Pay Now - visually its own panel, clearly separate from
+              the tracking number above and "Place Another Order" below. */}
+          {placedOrder.trackingNumber && isBankTransferOrBillPayment(placedOrder.paymentMethod) && (
+            new Date() >= PAYMENT_SCREENSHOT_LIVE_FROM ? (
+              <View style={{ marginTop: 20, backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.tertiary, borderRadius: 12, padding: 16, alignItems: 'center' }}>
+                <Text style={{ fontSize: scaleFont(16), fontWeight: '700', color: colors.textPrimary, marginBottom: 6, textAlign: 'center' }}>
+                  💳 {t('order.payNowTitle')}
+                </Text>
+                <Text style={{ fontSize: scaleFont(13), color: colors.textPrimary, marginBottom: 14, textAlign: 'center', lineHeight: scaleFont(19) }}>
+                  {(isGuest ? t('order.payNowBodyGuest') : t('order.payNowBodyLoggedIn'))}{' '}
+                  {placedOrder.product === 'Cross Border Service Limbang' ? t('order.paymentNoticeTitleCbsl') : t('order.paymentNoticeTitle')}
+                  {'\n'}
+                  {placedOrder.product === 'Cross Border Service Limbang' ? t('order.paymentNoticeAccountsCbsl') : t('order.paymentNoticeAccounts')}
+                </Text>
+                <PaymentScreenshotUpload orderId={placedOrder.orderId} token={token} />
+              </View>
+            ) : (
+              <View style={{ marginTop: 20 }}>
                 <InfoNotice
                   icon="💳"
                   title={placedOrder.product === 'Cross Border Service Limbang' ? t('order.paymentNoticeTitleCbsl') : t('order.paymentNoticeTitle')}
@@ -504,10 +511,11 @@ export default function Order() {
                   {placedOrder.product === 'Cross Border Service Limbang' ? t('order.paymentNoticeAccountsCbsl') : t('order.paymentNoticeAccounts')}
                 </InfoNotice>
               </View>
-            </View>
+            )
           )}
 
-          <AnimatedPressable scaleTo={1.03} style={[formStyles.buttonAccent, { marginTop: 16 }]} onPress={handleNewOrder}>
+          {/* Section 3: start over */}
+          <AnimatedPressable scaleTo={1.03} style={[formStyles.buttonAccent, { marginTop: 20 }]} onPress={handleNewOrder}>
             <Text style={formStyles.buttonText}>{t('order.placeAnotherOrder')}</Text>
           </AnimatedPressable>
         </Card>

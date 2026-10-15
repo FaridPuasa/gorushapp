@@ -532,13 +532,18 @@ router.get('/:id/payment-screenshot', optionalAuth, async (req, res) => {
     }
 });
 
-// Upload/reupload - body: { imageBase64: "data:image/jpeg;base64,..." }
+// One-shot upload only - body: { imageBase64: "data:image/jpeg;base64,..." }.
+// A customer who already has one uploaded gets a 409, not silently
+// overwritten - reupload/remove is reserved for staff on
+// grfmxstatusupdate's own /bankTransferBillPayment page (separate
+// orderId-keyed endpoints there, this route isn't shared with it).
 router.post('/:id/payment-screenshot', optionalAuth, async (req, res) => {
     try {
         if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'Invalid order id.' });
         if (!req.body.imageBase64) return res.status(400).json({ error: 'No image uploaded.' });
         const order = await postgresOrders.findPaymentScreenshotEligibleOrder(req.params.id);
         if (!order) return res.status(404).json({ error: 'Order not found.' });
+        if (order.paymentScreenshotPath) return res.status(409).json({ error: 'A payment screenshot has already been uploaded for this order.' });
         const path = await uploadPaymentScreenshot(req.params.id, req.body.imageBase64);
         await postgresOrders.setPaymentScreenshotPath(req.params.id, path, req.userId);
         res.json({ ok: true });
@@ -548,22 +553,11 @@ router.post('/:id/payment-screenshot', optionalAuth, async (req, res) => {
     }
 });
 
-// Remove - unlike a reupload (which just points the order at a new file and
-// leaves the old one orphaned), this actually deletes the file from storage
-// and clears the order's column.
+// Customers cannot remove their own upload - kept as a disabled endpoint
+// (rather than deleted) in case a future admin-facing use needs it; nothing
+// in gorush-client calls this today.
 router.delete('/:id/payment-screenshot', optionalAuth, async (req, res) => {
-    try {
-        if (!/^\d+$/.test(req.params.id)) return res.status(400).json({ error: 'Invalid order id.' });
-        const order = await postgresOrders.findPaymentScreenshotEligibleOrder(req.params.id);
-        if (!order) return res.status(404).json({ error: 'Order not found.' });
-        if (!order.paymentScreenshotPath) return res.status(404).json({ error: 'No payment screenshot uploaded yet.' });
-        await deletePaymentScreenshot(order.paymentScreenshotPath);
-        await postgresOrders.setPaymentScreenshotPath(req.params.id, null, req.userId);
-        res.json({ ok: true });
-    } catch (err) {
-        console.error(err.message);
-        res.status(500).json({ error: 'Failed to remove payment screenshot.' });
-    }
+    res.status(403).json({ error: 'Payment screenshots cannot be removed here - please contact us if you need to change it.' });
 });
 
 // Polled by the client right after submit, until the external watcher assigns doTrackingNumber.
