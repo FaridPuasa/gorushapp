@@ -188,7 +188,7 @@ const POSTCODE_AREA_MAP = {
     "BN1311": "G",
     "BN2111": "G",
     "BN2311": "G",
-    "BN1111": "TEMBURONG",
+    "BN1111": "G",
     "BN1711": "G",
     "BN1511": "G",
     "BN1911": "G",
@@ -197,7 +197,7 @@ const POSTCODE_AREA_MAP = {
     "BL1712": "B",
     "BL1912": "B",
     "BL2112": "KB / SERIA",
-    "BL2312": "TEMBURONG",
+    "BL2312": "B",
     "BL1112": "B",
     "KF4138": "KB / SERIA",
     "KF4338": "KB / SERIA",
@@ -221,12 +221,12 @@ const POSTCODE_AREA_MAP = {
     "TB2141": "TUTONG",
     "TB1341": "TUTONG",
     "TB3341": "TUTONG",
-    "TB2541": "TEMBURONG",
+    "TB2541": "TUTONG",
     "TB1141": "TUTONG",
     "TB2941": "TUTONG",
     "TB1541": "TUTONG",
     "TB3141": "TUTONG",
-    "TB1941": "B",
+    "TB1941": "TUTONG",
     "TB2341": "TUTONG",
     "TB1741": "TUTONG",
     "TB2741": "TUTONG",
@@ -266,7 +266,7 @@ const POSTCODE_AREA_MAP = {
     "TA2941": "TUTONG",
     "TH1949": "TUTONG",
     "TH3949": "TUTONG",
-    "TH2749": "TEMBURONG",
+    "TH2749": "TUTONG",
     "TH4149": "TUTONG",
     "TH1749": "TUTONG",
     "TH2549": "TUTONG",
@@ -1595,10 +1595,6 @@ const KAMPONG_AREA_RULES = [
         "area": "TEMBURONG"
     },
     {
-        "keyword": "LUAGAN",
-        "area": "TEMBURONG"
-    },
-    {
         "keyword": "MANIUP",
         "area": "TEMBURONG"
     },
@@ -1612,10 +1608,6 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "NEGALANG UNAT",
-        "area": "TEMBURONG"
-    },
-    {
-        "keyword": "PARIT",
         "area": "TEMBURONG"
     },
     {
@@ -1704,10 +1696,6 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "SIMBATANG BOKOK",
-        "area": "TEMBURONG"
-    },
-    {
-        "keyword": "SUBOK",
         "area": "TEMBURONG"
     },
     {
