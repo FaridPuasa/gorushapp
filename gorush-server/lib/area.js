@@ -444,7 +444,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "SETIA NEGARA",
-        "area": "B"
+        "area": "KB"
     },
     {
         "keyword": "PASIR BERAKAS",
@@ -672,7 +672,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "BATU SATU",
-        "area": "JT"
+        "area": "G"
     },
     {
         "keyword": "BENGKURONG",
@@ -1096,7 +1096,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "BADAS",
-        "area": "LUMUT"
+        "area": "SERIA"
     },
     {
         "keyword": "BATANG DURI",
@@ -1105,6 +1105,22 @@ const KAMPONG_AREA_RULES = [
     {
         "keyword": "BANG",
         "area": "KB / SERIA"
+    },
+    {
+        "keyword": "BANG DALAM",
+        "area": "TUTONG"
+    },
+    {
+        "keyword": "BANG NUKAT",
+        "area": "TUTONG"
+    },
+    {
+        "keyword": "BANG PANGAN",
+        "area": "TUTONG"
+    },
+    {
+        "keyword": "BANG BINGOL",
+        "area": "TUTONG"
     },
     {
         "keyword": "GARANG",
@@ -1204,7 +1220,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "LABI",
-        "area": "LUMUT"
+        "area": "KB / SERIA"
     },
     {
         "keyword": "LAKANG",
@@ -1371,10 +1387,6 @@ const KAMPONG_AREA_RULES = [
         "area": "KB / SERIA"
     },
     {
-        "keyword": "SIMPANG TIGA",
-        "area": "LUMUT"
-    },
-    {
         "keyword": "SINGAP",
         "area": "KB / SERIA"
     },
@@ -1388,7 +1400,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "DAMIT",
-        "area": "KB / SERIA"
+        "area": "TUTONG"
     },
     {
         "keyword": "BERA",
@@ -1500,7 +1512,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "SERIA",
-        "area": "KB / SERIA"
+        "area": "SERIA"
     },
     {
         "keyword": "AMO",
@@ -1616,7 +1628,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "PAYAU",
-        "area": "TEMBURONG"
+        "area": "TUTONG"
     },
     {
         "keyword": "PELIUNAN",
@@ -1640,7 +1652,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "PUNI",
-        "area": "TEMBURONG"
+        "area": "B"
     },
     {
         "keyword": "RATAIE",
@@ -1708,7 +1720,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "SUMBILING LAMA",
-        "area": "TEMBURONG"
+        "area": "G"
     },
     {
         "keyword": "SUNGAI RADANG",
@@ -1843,6 +1855,14 @@ function getAreaFromAddress(address) {
     // "Lugu" (JT). Only used as a last resort for genuine Muara-town
     // addresses with no more specific kampong mentioned.
     if (hasWord(upperAddress, "MUARA")) return "B";
+
+    // "Simpang Tiga" is ambiguous between the real kampong in Lumut and a
+    // plain "T-junction" near Kampong Sengkarai in Tutong (confirmed by
+    // postcode: "Jalan Simpang Tiga, Sengkarai, Tutong"). At 12 characters
+    // it was beating the shorter but more specific "SENGKARAI" (9) keyword
+    // whenever both appeared. Demoted so Sengkarai wins when present; this
+    // LUMUT fallback only fires for a genuine standalone mention.
+    if (hasWord(upperAddress, "SIMPANG TIGA")) return "LUMUT";
 
     return 'N/A';
 }
