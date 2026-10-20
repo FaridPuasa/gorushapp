@@ -951,10 +951,6 @@ const KAMPONG_AREA_RULES = [
         "area": "TUTONG"
     },
     {
-        "keyword": "MAU",
-        "area": "TUTONG"
-    },
-    {
         "keyword": "PENGKALAN MAU",
         "area": "TUTONG"
     },
@@ -1005,6 +1001,14 @@ const KAMPONG_AREA_RULES = [
     {
         "keyword": "LUBOK",
         "area": "TUTONG"
+    },
+    {
+        "keyword": "LUBOK PALAM",
+        "area": "KB"
+    },
+    {
+        "keyword": "LUBOK JELUTONG",
+        "area": "KB / SERIA"
     },
     {
         "keyword": "PULAU",
@@ -1179,10 +1183,6 @@ const KAMPONG_AREA_RULES = [
         "area": "KB"
     },
     {
-        "keyword": "BALAI",
-        "area": "KB"
-    },
-    {
         "keyword": "KUALA BELAIT",
         "area": "KB"
     },
@@ -1315,10 +1315,6 @@ const KAMPONG_AREA_RULES = [
         "area": "KB"
     },
     {
-        "keyword": "PADANG",
-        "area": "KB"
-    },
-    {
         "keyword": "PANAGA",
         "area": "SERIA"
     },
@@ -1423,10 +1419,6 @@ const KAMPONG_AREA_RULES = [
         "area": "KB / SERIA"
     },
     {
-        "keyword": "MAU",
-        "area": "KB / SERIA"
-    },
-    {
         "keyword": "MELILIT",
         "area": "KB / SERIA"
     },
@@ -1476,7 +1468,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "TARAP",
-        "area": "KB / SERIA"
+        "area": "JT"
     },
     {
         "keyword": "TEMPINAK",
@@ -1920,7 +1912,7 @@ const FUZZY_DENYLIST = new Set([
     "MENCEGAH", "KEWANGAN", "PENYERANG", "SUKAN", "CINA", "MARA", "TENGKU",
     "UNGKU", "ATOK", "KETUA", "PERDANA", "KENANGAN", "TUNGGU", "MAIN",
     "PART", "GATES", "RATA", "TAMAN", "PERUMAHAN", "KOMPLEKS", "TINGKAT",
-    "LORONG", "RUMAH", "BANGUNAN", "TENGAH", "LONG",
+    "LORONG", "RUMAH", "BANGUNAN", "TENGAH", "LONG", "PADANG", "BALAI",
 ]);
 
 // Does `haystack` contain a substring within `maxDist` edits of `needle`?
