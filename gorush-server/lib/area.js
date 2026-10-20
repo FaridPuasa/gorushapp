@@ -211,10 +211,10 @@ const POSTCODE_AREA_MAP = {
     "KF3338": "KB / SERIA",
     "KF3138": "KB / SERIA",
     "KF3938": "KB / SERIA",
-    "KF4738": "TUTONG",
+    "KF4738": "KB / SERIA",
     "KF4538": "KB / SERIA",
     "KF2938": "KB / SERIA",
-    "KF1138": "TUTONG",
+    "KF1138": "KB / SERIA",
     "KF1538": "KB / SERIA",
     "KF3738": "KB / SERIA",
     "KF1938": "KB / SERIA",
@@ -987,10 +987,6 @@ const KAMPONG_AREA_RULES = [
         "area": "TUTONG"
     },
     {
-        "keyword": "MENENGAH",
-        "area": "TUTONG"
-    },
-    {
         "keyword": "PANCHONG",
         "area": "TUTONG"
     },
@@ -1000,6 +996,14 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "TANJONG MAYA",
+        "area": "TUTONG"
+    },
+    {
+        "keyword": "TANJUNG MAYA",
+        "area": "TUTONG"
+    },
+    {
+        "keyword": "TG MAYA",
         "area": "TUTONG"
     },
     {
@@ -1180,7 +1184,7 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "KELUYOH",
-        "area": "KB / SERIA"
+        "area": "LUMUT"
     },
     {
         "keyword": "KENAPOL",
@@ -1279,10 +1283,6 @@ const KAMPONG_AREA_RULES = [
         "area": "KB / SERIA"
     },
     {
-        "keyword": "ASLI",
-        "area": "KB / SERIA"
-    },
-    {
         "keyword": "MELAYU ASLI",
         "area": "KB / SERIA"
     },
@@ -1328,10 +1328,6 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "PENGKALAN SIONG",
-        "area": "KB / SERIA"
-    },
-    {
-        "keyword": "SIONG",
         "area": "KB / SERIA"
     },
     {
@@ -1503,10 +1499,6 @@ const KAMPONG_AREA_RULES = [
         "area": "LUMUT"
     },
     {
-        "keyword": "UBOK",
-        "area": "KB / SERIA"
-    },
-    {
         "keyword": "SERIA",
         "area": "KB / SERIA"
     },
@@ -1575,10 +1567,6 @@ const KAMPONG_AREA_RULES = [
         "area": "TEMBURONG"
     },
     {
-        "keyword": "GADONG BARU",
-        "area": "TEMBURONG"
-    },
-    {
         "keyword": "KENUA",
         "area": "TEMBURONG"
     },
@@ -1612,10 +1600,6 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "MANIUP",
-        "area": "TEMBURONG"
-    },
-    {
-        "keyword": "MENENGAH",
         "area": "TEMBURONG"
     },
     {
