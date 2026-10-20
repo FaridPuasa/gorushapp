@@ -479,6 +479,14 @@ const KAMPONG_AREA_RULES = [
         "area": "B"
     },
     {
+        "keyword": "PANCHOR MENGKUBAU",
+        "area": "B"
+    },
+    {
+        "keyword": "MENGKUBAU",
+        "area": "B"
+    },
+    {
         "keyword": "MERAGANG",
         "area": "B"
     },
@@ -859,10 +867,6 @@ const KAMPONG_AREA_RULES = [
         "area": "JT"
     },
     {
-        "keyword": "MUARA",
-        "area": "B"
-    },
-    {
         "keyword": "SENGKARAI",
         "area": "TUTONG"
     },
@@ -1035,10 +1039,6 @@ const KAMPONG_AREA_RULES = [
         "area": "TUTONG"
     },
     {
-        "keyword": "LONG",
-        "area": "TUTONG"
-    },
-    {
         "keyword": "MAYAN",
         "area": "TUTONG"
     },
@@ -1060,10 +1060,6 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "BERUANG",
-        "area": "TUTONG"
-    },
-    {
-        "keyword": "TUTONG",
         "area": "TUTONG"
     },
     {
@@ -1116,10 +1112,6 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "ULU",
-        "area": "KB / SERIA"
-    },
-    {
-        "keyword": "TENGAH",
         "area": "KB / SERIA"
     },
     {
@@ -1233,10 +1225,6 @@ const KAMPONG_AREA_RULES = [
     {
         "keyword": "LUMUT",
         "area": "LUMUT"
-    },
-    {
-        "keyword": "LORONG",
-        "area": "SERIA"
     },
     {
         "keyword": "LORONG TENGAH",
@@ -1383,10 +1371,6 @@ const KAMPONG_AREA_RULES = [
         "area": "KB / SERIA"
     },
     {
-        "keyword": "SIMPANG",
-        "area": "KB / SERIA"
-    },
-    {
         "keyword": "SIMPANG TIGA",
         "area": "LUMUT"
     },
@@ -1520,10 +1504,6 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "UBOK",
-        "area": "KB / SERIA"
-    },
-    {
-        "keyword": "BELAIT",
         "area": "KB / SERIA"
     },
     {
@@ -1855,371 +1835,44 @@ function getAreaFromAddress(address) {
     if (!address) return 'N/A';
 
     const upperAddress = address.toUpperCase();
-    let area = 'N/A';
-    let kampong = '';
 
-    if (hasWord(upperAddress, "MANGGIS") == true) { area = "B", kampong = "MANGGIS" }
-    else if (hasWord(upperAddress, "DELIMA") == true) { area = "B", kampong = "DELIMA" }
-    else if (hasWord(upperAddress, "ANGGREK DESA") == true) { area = "B", kampong = "ANGGREK DESA" }
-    else if (hasWord(upperAddress, "ANGGREK") == true) { area = "B", kampong = "ANGGREK DESA" }
-    else if (hasWord(upperAddress, "PULAIE") == true) { area = "B", kampong = "PULAIE" }
-    else if (hasWord(upperAddress, "LAMBAK") == true) { area = "B", kampong = "LAMBAK" }
-    else if (hasWord(upperAddress, "TERUNJING") == true) { area = "B", kampong = "TERUNJING" }
-    else if (hasWord(upperAddress, "MADANG") == true) { area = "B", kampong = "MADANG" }
-    else if (hasWord(upperAddress, "AIRPORT") == true) { area = "B", kampong = "AIRPORT" }
-    else if (hasWord(upperAddress, "ORANG KAYA BESAR IMAS") == true) { area = "B", kampong = "OKBI" }
-    else if (hasWord(upperAddress, "OKBI") == true) { area = "B", kampong = "OKBI" }
-    else if (hasWord(upperAddress, "SERUSOP") == true) { area = "B", kampong = "SERUSOP" }
-    else if (hasWord(upperAddress, "BURONG PINGAI") == true) { area = "B", kampong = "BURONG PINGAI" }
-    else if (hasWord(upperAddress, "SETIA NEGARA") == true) { area = "B", kampong = "SETIA NEGARA" }
-    else if (hasWord(upperAddress, "PASIR BERAKAS") == true) { area = "B", kampong = "PASIR BERAKAS" }
-    else if (hasWord(upperAddress, "MENTERI BESAR") == true) { area = "B", kampong = "MENTERI BESAR" }
-    else if (hasWord(upperAddress, "KEBANGSAAN LAMA") == true) { area = "B", kampong = "KEBANGSAAN LAMA" }
-    else if (hasWord(upperAddress, "BATU MARANG") == true) { area = "B", kampong = "BATU MARANG" }
-    else if (hasWord(upperAddress, "DATO GANDI") == true) { area = "B", kampong = "DATO GANDI" }
-    else if (hasWord(upperAddress, "KAPOK") == true) { area = "B", kampong = "KAPOK" }
-    else if (hasWord(upperAddress, "KOTA BATU") == true) { area = "B", kampong = "KOTA BATU" }
-    else if (hasWord(upperAddress, "MENTIRI") == true) { area = "B", kampong = "MENTIRI" }
-    else if (hasWord(upperAddress, "MERAGANG") == true) { area = "B", kampong = "MERAGANG" }
-    else if (hasWord(upperAddress, "PELAMBAIAN") == true) { area = "B", kampong = "PELAMBAIAN" }
-    else if (hasWord(upperAddress, "PINTU MALIM") == true) { area = "B", kampong = "PINTU MALIM" }
-    else if (hasWord(upperAddress, "SALAMBIGAR") == true) { area = "B", kampong = "SALAMBIGAR" }
-    else if (hasWord(upperAddress, "SALAR") == true) { area = "B", kampong = "SALAR" }
-    else if (hasWord(upperAddress, "SERASA") == true) { area = "B", kampong = "SERASA" }
-    else if (hasWord(upperAddress, "SERDANG") == true) { area = "B", kampong = "SERDANG" }
-    else if (hasWord(upperAddress, "SUNGAI BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
-    else if (hasWord(upperAddress, "SG BASAR") == true) { area = "B", kampong = "SUNGAI BASAR" }
-    else if (hasWord(upperAddress, "SUNGAI BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
-    else if (hasWord(upperAddress, "SG BELUKUT") == true) { area = "B", kampong = "SUNGAI BELUKUT" }
-    else if (hasWord(upperAddress, "SUNGAI HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
-    else if (hasWord(upperAddress, "SG HANCHING") == true) { area = "B", kampong = "SUNGAI HANCHING" }
-    else if (hasWord(upperAddress, "SUNGAI TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
-    else if (hasWord(upperAddress, "SG TILONG") == true) { area = "B", kampong = "SUNGAI TILONG" }
-    else if (hasWord(upperAddress, "SUBOK") == true) { area = "B", kampong = "SUBOK" }
-    else if (hasWord(upperAddress, "SUNGAI AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
-    else if (hasWord(upperAddress, "SG AKAR") == true) { area = "B", kampong = "SUNGAI AKAR" }
-    else if (hasWord(upperAddress, "SUNGAI BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
-    else if (hasWord(upperAddress, "SG BULOH") == true) { area = "B", kampong = "SUNGAI BULOH" }
-    else if (hasWord(upperAddress, "TANAH JAMBU") == true) { area = "B", kampong = "TANAH JAMBU" }
-    else if (hasWord(upperAddress, "SUNGAI OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
-    else if (hasWord(upperAddress, "SG OROK") == true) { area = "B", kampong = "SUNGAI OROK" }
-    else if (hasWord(upperAddress, "KATOK") == true) { area = "G", kampong = "KATOK" }
-    else if (hasWord(upperAddress, "MATA-MATA") == true) { area = "G", kampong = "MATA-MATA" }
-    else if (hasWord(upperAddress, "MATA MATA") == true) { area = "G", kampong = "MATA-MATA" }
-    else if (hasWord(upperAddress, "RIMBA") == true) { area = "G", kampong = "RIMBA" }
-    else if (hasWord(upperAddress, "TUNGKU") == true) { area = "G", kampong = "TUNGKU" }
-    else if (hasWord(upperAddress, "UBD") == true) { area = "G", kampong = "UBD" }
-    else if (hasWord(upperAddress, "UNIVERSITI BRUNEI DARUSSALAM") == true) { area = "G", kampong = "UBD" }
-    else if (hasWord(upperAddress, "JIS") == true) { area = "G" }
-    else if (hasWord(upperAddress, "JERUDONG INTERNATIONAL SCHOOL") == true) { area = "G", kampong = "JIS" }
-    else if (hasWord(upperAddress, "BERANGAN") == true) { area = "G", kampong = "BERANGAN" }
-    else if (hasWord(upperAddress, "BERIBI") == true) { area = "G", kampong = "BERIBI" }
-    else if (hasWord(upperAddress, "KIULAP") == true) { area = "G", kampong = "KIULAP" }
-    else if (hasWord(upperAddress, "RIPAS") == true) { area = "G", kampong = "RIPAS" }
-    else if (hasWord(upperAddress, "RAJA ISTERI PENGIRAN ANAK SALLEHA") == true) { area = "G", kampong = "RIPAS" }
-    else if (hasWord(upperAddress, "KIARONG") == true) { area = "G", kampong = "KIARONG" }
-    else if (hasWord(upperAddress, "PUSAR ULAK") == true) { area = "G", kampong = "PUSAR ULAK" }
-    else if (hasWord(upperAddress, "KUMBANG PASANG") == true) { area = "G", kampong = "KUMBANG PASANG" }
-    else if (hasWord(upperAddress, "MENGLAIT") == true) { area = "G", kampong = "MENGLAIT" }
-    else if (hasWord(upperAddress, "MABOHAI") == true) { area = "G", kampong = "MABOHAI" }
-    else if (hasWord(upperAddress, "ONG SUM PING") == true) { area = "G", kampong = "ONG SUM PING" }
-    else if (hasWord(upperAddress, "GADONG") == true) { area = "G", kampong = "GADONG" }
-    else if (hasWord(upperAddress, "TASEK LAMA") == true) { area = "G", kampong = "TASEK LAMA" }
-    else if (hasWord(upperAddress, "BANDAR TOWN") == true) { area = "G", kampong = "BANDAR TOWN" }
-    else if (hasWord(upperAddress, "BATU SATU") == true) { area = "JT", kampong = "BATU SATU" }
-    else if (hasWord(upperAddress, "BENGKURONG") == true) { area = "JT", kampong = "BENGKURONG" }
-    else if (hasWord(upperAddress, "BUNUT") == true) { area = "JT", kampong = "BUNUT" }
-    else if (hasWord(upperAddress, "JALAN BABU RAJA") == true) { area = "JT", kampong = "JALAN BABU RAJA" }
-    else if (hasWord(upperAddress, "JALAN ISTANA") == true) { area = "JT", kampong = "JALAN ISTANA" }
-    else if (hasWord(upperAddress, "JUNJONGAN") == true) { area = "JT", kampong = "JUNJONGAN" }
-    else if (hasWord(upperAddress, "KASAT") == true) { area = "JT", kampong = "KASAT" }
-    else if (hasWord(upperAddress, "LUMAPAS") == true) { area = "JT", kampong = "LUMAPAS" }
-    else if (hasWord(upperAddress, "JALAN HALUS") == true) { area = "JT", kampong = "JALAN HALUS" }
-    else if (hasWord(upperAddress, "MADEWA") == true) { area = "JT", kampong = "MADEWA" }
-    else if (hasWord(upperAddress, "PUTAT") == true) { area = "JT", kampong = "PUTAT" }
-    else if (hasWord(upperAddress, "SINARUBAI") == true) { area = "JT", kampong = "SINARUBAI" }
-    else if (hasWord(upperAddress, "TASEK MERADUN") == true) { area = "JT", kampong = "TASEK MERADUN" }
-    else if (hasWord(upperAddress, "TELANAI") == true) { area = "JT", kampong = "TELANAI" }
-    else if (hasWord(upperAddress, "BAN 1") == true) { area = "JT", kampong = "BAN" }
-    else if (hasWord(upperAddress, "BAN 2") == true) { area = "JT", kampong = "BAN" }
-    else if (hasWord(upperAddress, "BAN 3") == true) { area = "JT", kampong = "BAN" }
-    else if (hasWord(upperAddress, "BAN 4") == true) { area = "JT", kampong = "BAN" }
-    else if (hasWord(upperAddress, "BAN 5") == true) { area = "JT", kampong = "BAN" }
-    else if (hasWord(upperAddress, "BAN 6") == true) { area = "JT", kampong = "BAN" }
-    else if (hasWord(upperAddress, "BATONG") == true) { area = "JT", kampong = "BATONG" }
-    else if (hasWord(upperAddress, "BATU AMPAR") == true) { area = "JT", kampong = "BATU AMPAR" }
-    else if (hasWord(upperAddress, "BEBATIK") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
-    else if (hasWord(upperAddress, "BEBULOH") == true) { area = "JT", kampong = "BEBULOH" }
-    else if (hasWord(upperAddress, "BEBATIK KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
-    else if (hasWord(upperAddress, "KILANAS") == true) { area = "JT", kampong = "BEBATIK KILANAS" }
-    else if (hasWord(upperAddress, "DADAP") == true) { area = "JT", kampong = "DADAP" }
-    else if (hasWord(upperAddress, "KUALA LURAH") == true) { area = "JT", kampong = "KUALA LURAH" }
-    else if (hasWord(upperAddress, "KULAPIS") == true) { area = "JT", kampong = "KULAPIS" }
-    else if (hasWord(upperAddress, "LIMAU MANIS") == true) { area = "JT", kampong = "LIMAU MANIS" }
-    else if (hasWord(upperAddress, "MASIN") == true) { area = "JT", kampong = "MASIN" }
-    else if (hasWord(upperAddress, "MULAUT") == true) { area = "JT", kampong = "MULAUT" }
-    else if (hasWord(upperAddress, "PANCHOR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
-    else if (hasWord(upperAddress, "PANCHUR MURAI") == true) { area = "JT", kampong = "PANCHOR MURAI" }
-    else if (hasWord(upperAddress, "PANGKALAN BATU") == true) { area = "JT", kampong = "PANGKALAN BATU" }
-    else if (hasWord(upperAddress, "PASAI") == true) { area = "JT", kampong = "PASAI" }
-    else if (hasWord(upperAddress, "WASAN") == true) { area = "JT", kampong = "WASAN" }
-    else if (hasWord(upperAddress, "PARIT") == true) { area = "JT", kampong = "PARIT" }
-    else if (hasWord(upperAddress, "EMPIRE") == true) { area = "JT", kampong = "EMPIRE" }
-    else if (hasWord(upperAddress, "JANGSAK") == true) { area = "JT", kampong = "JANGSAK" }
-    else if (hasWord(upperAddress, "JERUDONG") == true) { area = "JT", kampong = "JERUDONG" }
-    else if (hasWord(upperAddress, "KATIMAHAR") == true) { area = "JT", kampong = "KATIMAHAR" }
-    else if (hasWord(upperAddress, "LUGU") == true) { area = "JT", kampong = "LUGU" }
-    else if (hasWord(upperAddress, "SENGKURONG") == true) { area = "JT", kampong = "SENGKURONG" }
-    else if (hasWord(upperAddress, "TANJONG NANGKA") == true) { area = "JT", kampong = "TANJONG NANGKA" }
-    else if (hasWord(upperAddress, "TANJONG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
-    else if (hasWord(upperAddress, "TANJUNG BUNUT") == true) { area = "JT", kampong = "TANJONG BUNUT" }
-    else if (hasWord(upperAddress, "SUNGAI TAMPOI") == true) { area = "JT", kampung = "SUNGAI TAMPOI" }
-    else if (hasWord(upperAddress, "SG TAMPOI") == true) { area = "JT", kampong = "SUNGAI TAMPOI" }
-    else if (hasWord(upperAddress, "MUARA") == true) { area = "B", kampong = "MUARA" }
-    //TU
-    else if (hasWord(upperAddress, "SENGKARAI") == true) { area = "TUTONG", kampong = "SENGKARAI" }
-    else if (hasWord(upperAddress, "PANCHOR") == true) { area = "TUTONG", kampong = "PANCHOR" }
-    else if (hasWord(upperAddress, "PENABAI") == true) { area = "TUTONG", kampong = "PENABAI" }
-    else if (hasWord(upperAddress, "KUALA TUTONG") == true) { area = "TUTONG", kampong = "KUALA TUTONG" }
-    else if (hasWord(upperAddress, "PENANJONG") == true) { area = "TUTONG", kampong = "PENANJONG" }
-    else if (hasWord(upperAddress, "KERIAM") == true) { area = "TUTONG", kampong = "KERIAM" }
-    else if (hasWord(upperAddress, "BUKIT PANGGAL") == true) { area = "TUTONG", kampong = "BUKIT PANGGAL" }
-    else if (hasWord(upperAddress, "PANGGAL") == true) { area = "TUTONG", kampong = "BUKIT PANGGAL" }
-    else if (hasWord(upperAddress, "LUAGAN") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
-    else if (hasWord(upperAddress, "DUDOK") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
-    else if (hasWord(upperAddress, "LUAGAN DUDOK") == true) { area = "TUTONG", kampong = "LUAGAN DUDOK" }
-    else if (hasWord(upperAddress, "SINAUT") == true) { area = "TUTONG", kampong = "SINAUT" }
-    else if (hasWord(upperAddress, "SUNGAI KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
-    else if (hasWord(upperAddress, "KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
-    else if (hasWord(upperAddress, "SG KELUGOS") == true) { area = "TUTONG", kampong = "SUNGAI KELUGOS" }
-    else if (hasWord(upperAddress, "KUPANG") == true) { area = "TUTONG", kampong = "KUPANG" }
-    else if (hasWord(upperAddress, "KIUDANG") == true) { area = "TUTONG", kampong = "KIUDANG" }
-    else if (hasWord(upperAddress, "PAD") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
-    else if (hasWord(upperAddress, "NUNOK") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
-    else if (hasWord(upperAddress, "PAD NUNOK") == true) { area = "TUTONG", kampong = "PAD NUNOK" }
-    else if (hasWord(upperAddress, "BEKIAU") == true) { area = "TUTONG", kampong = "BEKIAU" }
-    else if (hasWord(upperAddress, "MAU") == true) { area = "TUTONG", kampong = "PENGKALAN MAU" }
-    else if (hasWord(upperAddress, "PENGKALAN MAU") == true) { area = "TUTONG", kampong = "PENGKALAN MAU" }
-    else if (hasWord(upperAddress, "BATANG MITUS") == true) { area = "TUTONG", kampong = "BATANG MITUS" }
-    else if (hasWord(upperAddress, "MITUS") == true) { area = "TUTONG", kampong = "BATANG MITUS" }
-    else if (hasWord(upperAddress, "KEBIA") == true) { area = "TUTONG", kampong = "KEBIA" }
-    else if (hasWord(upperAddress, "BIRAU") == true) { area = "TUTONG", kampong = "BIRAU" }
-    else if (hasWord(upperAddress, "LAMUNIN") == true) { area = "TUTONG", kampong = "LAMUNIN" }
-    else if (hasWord(upperAddress, "LAYONG") == true) { area = "TUTONG", kampong = "LAYONG" }
-    else if (hasWord(upperAddress, "MENENGAH") == true) { area = "TUTONG", kampong = "MENENGAH" }
-    else if (hasWord(upperAddress, "PANCHONG") == true) { area = "TUTONG", kampong = "PANCHONG" }
-    else if (hasWord(upperAddress, "PENAPAR") == true) { area = "TUTONG", kampong = "PANAPAR" }
-    else if (hasWord(upperAddress, "TANJONG MAYA") == true) { area = "TUTONG", kampong = "TANJONG MAYA" }
-    else if (hasWord(upperAddress, "MAYA") == true) { area = "TUTONG", kampong = "MAYA" }
-    else if (hasWord(upperAddress, "LUBOK") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
-    else if (hasWord(upperAddress, "PULAU") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
-    else if (hasWord(upperAddress, "LUBOK PULAU") == true) { area = "TUTONG", kampong = "LUBOK PULAU" }
-    else if (hasWord(upperAddress, "BUKIT UDAL") == true) { area = "TUTONG", kampong = "BUKIT UDAL" }
-    else if (hasWord(upperAddress, "UDAL") == true) { area = "TUTONG", kampong = "BUKIT UDAL" }
-    else if (hasWord(upperAddress, "RAMBAI") == true) { area = "TUTONG", kampong = "RAMBAI" }
-    else if (hasWord(upperAddress, "BENUTAN") == true) { area = "TUTONG", kampong = "BENUTAN" }
-    else if (hasWord(upperAddress, "MERIMBUN") == true) { area = "TUTONG", kampong = "MERIMBUN" }
-    else if (hasWord(upperAddress, "UKONG") == true) { area = "TUTONG", kampong = "UKONG" }
-    else if (hasWord(upperAddress, "LONG") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
-    else if (hasWord(upperAddress, "MAYAN") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
-    else if (hasWord(upperAddress, "LONG MAYAN") == true) { area = "TUTONG", kampong = "LONG MAYAN" }
-    else if (hasWord(upperAddress, "TELISAI") == true) { area = "TUTONG", kampong = "TELISAI" }
-    else if (hasWord(upperAddress, "DANAU") == true) { area = "TUTONG", kampong = "DANAU" }
-    else if (hasWord(upperAddress, "BUKIT BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
-    else if (hasWord(upperAddress, "BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
-    else if (hasWordAsDistrict(upperAddress, "TUTONG") == true) { area = "TUTONG", kampong = "TUTONG" }
-    else if (/(JALAN|JLN)\s*TUTONG/.test(upperAddress)) { area = "JT", kampong = "JALAN TUTONG" }
-    //KB
-    else if (hasWord(upperAddress, "AGIS") == true) { area = "LUMUT", kampong = "AGIS" }
-    else if (hasWord(upperAddress, "ANDALAU") == true) { area = "LUMUT", kampong = "ANDALAU" }
-    else if (hasWord(upperAddress, "ANDUKI") == true) { area = "LUMUT", kampong = "ANDUKI" }
-    else if (hasWord(upperAddress, "APAK") == true) { area = "KB / SERIA", kampong = "APAK" }
-    else if (hasWord(upperAddress, "BADAS") == true) { area = "LUMUT", kampong = "BADAS" }
-    else if (hasWord(upperAddress, "BATANG DURI") == true) { area = "TEMBURONG", kampong = "BATANG DURI" }
-    else if (hasWord(upperAddress, "BANG") == true) { area = "KB / SERIA", kampong = "BANG" }
-    else if (hasWord(upperAddress, "GARANG") == true) { area = "KB / SERIA", kampong = "GARANG" }
-    else if (hasWord(upperAddress, "PUKUL") == true) { area = "KB / SERIA", kampong = "PUKUL" }
-    else if (hasWord(upperAddress, "TAJUK") == true) { area = "KB / SERIA", kampong = "TAJUK" }
-    else if (hasWord(upperAddress, "BENGERANG") == true) { area = "KB / SERIA", kampong = "BENGERANG" }
-    else if (hasWord(upperAddress, "BIADONG") == true) { area = "KB / SERIA", kampong = "BIADONG" }
-    else if (hasWord(upperAddress, "ULU") == true) { area = "KB / SERIA", kampong = "ULU" }
-    else if (hasWord(upperAddress, "TENGAH") == true) { area = "KB / SERIA", kampong = "TENGAH" }
-    else if (hasWord(upperAddress, "BISUT") == true) { area = "KB / SERIA", kampong = "BISUT" }
-    else if (hasWord(upperAddress, "BUAU") == true) { area = "KB / SERIA", kampong = "BUAU" }
-    else if (hasWord(upperAddress, "KANDOL") == true) { area = "KB / SERIA", kampong = "KANDOL" }
-    else if (hasWord(upperAddress, "PUAN") == true) { area = "KB / SERIA", kampong = "PUAN" }
-    else if (hasWord(upperAddress, "TUDING") == true) { area = "LUMUT", kampong = "TUDING" }
-    else if (hasWord(upperAddress, "SAWAT") == true) { area = "KB / SERIA", kampong = "SAWAT" }
-    else if (hasWord(upperAddress, "SERAWONG") == true) { area = "KB / SERIA", kampong = "SERAWONG" }
-    else if (hasWord(upperAddress, "CHINA") == true) { area = "KB / SERIA", kampong = "CHINA" }
-    else if (hasWord(upperAddress, "DUGUN") == true) { area = "KB / SERIA", kampong = "DUGUN" }
-    else if (hasWord(upperAddress, "GATAS") == true) { area = "KB / SERIA", kampong = "GATAS" }
-    else if (hasWord(upperAddress, "JABANG") == true) { area = "KB / SERIA", kampong = "JABANG" }
-    else if (hasWord(upperAddress, "KAGU") == true) { area = "KB / SERIA", kampong = "KAGU" }
-    else if (hasWord(upperAddress, "KAJITAN") == true) { area = "KB / SERIA", kampong = "KAJITAN" }
-    else if (hasWord(upperAddress, "KELUYOH") == true) { area = "KB / SERIA", kampong = "KELUYOH" }
-    else if (hasWord(upperAddress, "KENAPOL") == true) { area = "KB / SERIA", kampong = "KENAPOL" }
-    else if (hasWord(upperAddress, "KUALA BALAI") == true) { area = "KB", kampong = "KUALA BALAI" }
-    else if (hasWord(upperAddress, "BALAI") == true) { area = "KB", kampong = "KUALA BALAI" }
-    else if (hasWord(upperAddress, "KUALA BELAIT") == true) { area = "KB", kampong = "KUALA BELAIT" }
-    else if (hasWord(upperAddress, "KUKUB") == true) { area = "KB / SERIA", kampong = "KUKUB" }
-    else if (hasWord(upperAddress, "LABI") == true) { area = "LUMUT", kampong = "LABI" }
-    else if (hasWord(upperAddress, "LAKANG") == true) { area = "KB / SERIA", kampong = "LAKANG" }
-    else if (hasWord(upperAddress, "LAONG ARUT") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
-    else if (hasWord(upperAddress, "ARUT") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
-    else if (hasWord(upperAddress, "LAONG") == true) { area = "KB / SERIA", kampong = "LAONG ARUT" }
-    else if (hasWord(upperAddress, "LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
-    else if (hasWord(upperAddress, "SUNGAI LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
-    else if (hasWord(upperAddress, "SG LIANG") == true) { area = "LUMUT", kampong = "SUNGAI LIANG" }
-    else if (hasWord(upperAddress, "LUMUT") == true) { area = "LUMUT", kampong = "LUMUT" }
-    else if (hasWord(upperAddress, "LORONG") == true) { area = "SERIA", kampong = "LORONG" }
-    else if (hasWord(upperAddress, "LORONG TENGAH") == true) { area = "SERIA", kampong = "LORONG TENGAH" }
-    else if (hasWord(upperAddress, "LORONG TIGA SELATAN") == true) { area = "SERIA", kampong = "LORONG TIGA SELATAN" }
-    else if (hasWord(upperAddress, "LILAS") == true) { area = "KB / SERIA", kampong = "LILAS" }
-    else if (hasWord(upperAddress, "LUBUK LANYAP") == true) { area = "KB / SERIA", kampong = "LUBUK LANYAP" }
-    else if (hasWord(upperAddress, "LANYAP") == true) { area = "KB / SERIA", kampong = "LUBUK LANYAP" }
-    else if (hasWord(upperAddress, "LUBUK TAPANG") == true) { area = "KB / SERIA", kampong = "LUBUK TAPANG" }
-    else if (hasWord(upperAddress, "TAPANG") == true) { area = "KB / SERIA", kampong = "LUBUK TAPANG" }
-    else if (hasWord(upperAddress, "MALA'AS") == true) { area = "KB / SERIA", kampong = "MALA'AS" }
-    else if (hasWord(upperAddress, "MALAAS") == true) { area = "KB / SERIA", kampong = "MALA'AS" }
-    else if (hasWord(upperAddress, "MALAYAN") == true) { area = "KB / SERIA", kampong = "MELAYAN" }
-    else if (hasWord(upperAddress, "MELAYU") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
-    else if (hasWord(upperAddress, "ASLI") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
-    else if (hasWord(upperAddress, "MELAYU ASLI") == true) { area = "KB / SERIA", kampong = "MELAYU ASLI" }
-    else if (hasWord(upperAddress, "MELILAS") == true) { area = "LUMUT", kampong = "MELILAS" }
-    else if (hasWord(upperAddress, "MENDARAM") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
-    else if (hasWord(upperAddress, "MENDARAM BESAR") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
-    else if (hasWord(upperAddress, "MENDARAM KECIL") == true) { area = "KB / SERIA", kampong = "MENDARAM" }
-    else if (hasWord(upperAddress, "MERANGKING") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
-    else if (hasWord(upperAddress, "MERANGKING ULU") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
-    else if (hasWord(upperAddress, "MERANGKING HILIR") == true) { area = "KB / SERIA", kampong = "MERANGKING" }
-    else if (hasWord(upperAddress, "MUMONG") == true) { area = "KB", kampong = "MUMONG" }
-    else if (hasWord(upperAddress, "PANDAN") == true) { area = "KB", kampong = "PANDAN" }
-    else if (hasWord(upperAddress, "PADANG") == true) { area = "KB", kampong = "PADANG" }
-    else if (hasWord(upperAddress, "PANAGA") == true) { area = "SERIA", kampong = "PANAGA" }
-    else if (hasWord(upperAddress, "PENGKALAN SIONG") == true) { area = "KB / SERIA", kampong = "PENGKALAN SIONG" }
-    else if (hasWord(upperAddress, "SIONG") == true) { area = "KB / SERIA", kampong = "PENGKALAN SIONG" }
-    else if (hasWord(upperAddress, "PENGALAYAN") == true) { area = "KB / SERIA", kampong = "PENGALAYAN" }
-    else if (hasWord(upperAddress, "PENYRAP") == true) { area = "KB / SERIA", kampong = "PENYRAP" }
-    else if (hasWord(upperAddress, "PERANGKONG") == true) { area = "KB / SERIA", kampong = "PERANGKONG" }
-    else if (hasWord(upperAddress, "PERUMPONG") == true) { area = "LUMUT", kampong = "PERUMPONG" }
-    else if (hasWord(upperAddress, "PESILIN") == true) { area = "KB / SERIA", kampong = "PESILIN" }
-    else if (hasWord(upperAddress, "PULAU APIL") == true) { area = "KB / SERIA", kampong = "PULAU APIL" }
-    else if (hasWord(upperAddress, "APIL") == true) { area = "KB / SERIA", kampong = "PULAU APIL" }
-    else if (hasWord(upperAddress, "RAMPAYOH") == true) { area = "KB / SERIA", kampong = "RAMPAYOH" }
-    else if (hasWord(upperAddress, "RATAN") == true) { area = "KB / SERIA", kampong = "RATAN" }
-    else if (hasWord(upperAddress, "SAUD") == true) { area = "KB / SERIA", kampong = "SAUD" }
-    //else if (hasWord(upperAddress, "SIMPANG") == true) {area = "KB / SERIA", kampong = "SIMPANG TIGA"}
-    else if (hasWord(upperAddress, "SIMPANG TIGA") == true) { area = "LUMUT", kampong = "SIMPANG TIGA" }
-    else if (hasWord(upperAddress, "SINGAP") == true) { area = "KB / SERIA", kampong = "SINGAP" }
-    else if (hasWord(upperAddress, "SUKANG") == true) { area = "KB / SERIA", kampong = "SUKANG" }
-    else if (hasWord(upperAddress, "BAKONG") == true) { area = "LUMUT", kampong = "BAKONG" }
-    else if (hasWord(upperAddress, "DAMIT") == true) { area = "KB / SERIA", kampong = "DAMIT" }
-    else if (hasWord(upperAddress, "BERA") == true) { area = "KB / SERIA", kampong = "BERA" }
-    else if (hasWord(upperAddress, "DUHON") == true) { area = "KB / SERIA", kampong = "DUHON" }
-    else if (hasWord(upperAddress, "GANA") == true) { area = "LUMUT", kampong = "GANA" }
-    else if (hasWord(upperAddress, "HILIR") == true) { area = "KB / SERIA", kampong = "HILIR" }
-    else if (hasWord(upperAddress, "KANG") == true) { area = "LUMUT", kampong = "KANG" }
-    else if (hasWord(upperAddress, "KURU") == true) { area = "LUMUT", kampong = "KURU" }
-    else if (hasWord(upperAddress, "LALIT") == true) { area = "LUMUT", kampong = "LALIT" }
-    else if (hasWord(upperAddress, "LUTONG") == true) { area = "KB / SERIA", kampong = "LUTONG" }
-    else if (hasWord(upperAddress, "MAU") == true) { area = "KB / SERIA", kampong = "MAU" }
-    else if (hasWord(upperAddress, "MELILIT") == true) { area = "KB / SERIA", kampong = "MELILIT" }
-    else if (hasWord(upperAddress, "PETAI") == true) { area = "KB / SERIA", kampong = "PETAI" }
-    else if (hasWord(upperAddress, "TALI") == true) { area = "LUMUT", kampong = "TALI" }
-    else if (hasWord(upperAddress, "TARING") == true) { area = "LUMUT", kampong = "TARING" }
-    else if (hasWord(upperAddress, "TERABAN") == true) { area = "KB", kampong = "TERABAN" }
-    else if (hasWord(upperAddress, "UBAR") == true) { area = "KB / SERIA", kampong = "UBAR" }
-    else if (hasWord(upperAddress, "TANAJOR") == true) { area = "KB / SERIA", kampong = "TANAJOR" }
-    else if (hasWord(upperAddress, "TANJONG RANGGAS") == true) { area = "KB / SERIA", kampong = "TANJONG RANGGAS" }
-    else if (hasWord(upperAddress, "RANGGAS") == true) { area = "KB / SERIA", kampong = "TANJONG RANGGAS" }
-    else if (hasWord(upperAddress, "TANJONG SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
-    else if (hasWord(upperAddress, "SUDAI") == true) { area = "KB / SERIA", kampong = "TANJONG SUDAI" }
-    else if (hasWord(upperAddress, "TAPANG LUPAK") == true) { area = "KB / SERIA", kampong = "TAPANG LUPAK" }
-    else if (hasWord(upperAddress, "TARAP") == true) { area = "KB / SERIA", kampong = "TARAP" }
-    else if (hasWord(upperAddress, "TEMPINAK") == true) { area = "KB / SERIA", kampong = "TEMPINAK" }
-    else if (hasWord(upperAddress, "TERAJA") == true) { area = "KB / SERIA", kampong = "TERAJA" }
-    else if (hasWord(upperAddress, "TERAWAN") == true) { area = "KB / SERIA", kampong = "TERAWAN" }
-    else if (hasWord(upperAddress, "TERUNAN") == true) { area = "KB / SERIA", kampong = "TERUNAN" }
-    else if (hasWord(upperAddress, "TUGONG") == true) { area = "KB / SERIA", kampong = "TUGONG" }
-    else if (hasWord(upperAddress, "TUNGULLIAN") == true) { area = "LUMUT", kampong = "TUNGULLIAN" }
-    else if (hasWord(upperAddress, "UBOK") == true) { area = "KB / SERIA", kampong = "UBOK" }
-    else if (hasWord(upperAddress, "BELAIT") == true) { area = "KB / SERIA", kampong = "BELAIT" }
-    else if (hasWord(upperAddress, "SERIA") == true) { area = "KB / SERIA", kampong = "BELAIT" }
-    //TE
-    else if (hasWord(upperAddress, "AMO") == true) { area = "TEMBURONG", kampong = "AMO" }
-    else if (hasWord(upperAddress, "AYAM-AYAM") == true) { area = "TEMBURONG", kampong = "AYAM-AYAM" }
-    else if (hasWord(upperAddress, "AYAM AYAM") == true) { area = "TEMBURONG", kampong = "AYAM-AYAM" }
-    else if (hasWord(upperAddress, "BAKARUT") == true) { area = "TEMBURONG", kampong = "BAKARUT" }
-    else if (hasWord(upperAddress, "BATANG TUAU") == true) { area = "TEMBURONG", kampong = "BATANG TUAU" }
-    else if (hasWord(upperAddress, "BATU APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
-    else if (hasWord(upperAddress, "APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
-    else if (hasWord(upperAddress, "BATU BEJARAH") == true) { area = "TEMBURONG", kampong = "BATU BEJARAH" }
-    else if (hasWord(upperAddress, "BEJARAH") == true) { area = "TEMBURONG", kampong = "BATU BEJARAH" }
-    else if (hasWord(upperAddress, "BELABAN") == true) { area = "TEMBURONG", kampong = "BELABAN" }
-    else if (hasWord(upperAddress, "BELAIS") == true) { area = "TEMBURONG", kampong = "BELAIS" }
-    else if (hasWord(upperAddress, "BELINGOS") == true) { area = "TEMBURONG", kampong = "BELINGOS" }
-    else if (hasWord(upperAddress, "BIANG") == true) { area = "TEMBURONG", kampong = "BIANG" }
-    else if (hasWord(upperAddress, "BOKOK") == true) { area = "TEMBURONG", kampong = "BOKOK" }
-    else if (hasWord(upperAddress, "BUDA BUDA") == true) { area = "TEMBURONG", kampong = "BUDA-BUDA" }
-    else if (hasWord(upperAddress, "BUDA-BUDA") == true) { area = "TEMBURONG", kampong = "BUDA-BUDA" }
-    else if (hasWord(upperAddress, "GADONG BARU") == true) { area = "TEMBURONG", kampong = "GADONG BARU" }
-    else if (hasWord(upperAddress, "KENUA") == true) { area = "TEMBURONG", kampong = "KENUA" }
-    else if (hasWord(upperAddress, "LABU ESTATE") == true) { area = "TEMBURONG", kampong = "LABU" }
-    else if (hasWord(upperAddress, "LABU") == true) { area = "TEMBURONG", kampong = "LABU" }
-    else if (hasWord(upperAddress, "LAGAU") == true) { area = "TEMBURONG", kampong = "LAGAU" }
-    else if (hasWord(upperAddress, "LAKIUN") == true) { area = "TEMBURONG", kampong = "LAKIUN" }
-    else if (hasWord(upperAddress, "LAMALING") == true) { area = "TEMBURONG", kampong = "LAMALING" }
-    else if (hasWord(upperAddress, "LEPONG") == true) { area = "TEMBURONG", kampong = "LEPONG" }
-    else if (hasWord(upperAddress, "LUAGAN") == true) { area = "TEMBURONG", kampong = "LUAGAN" }
-    else if (hasWord(upperAddress, "MANIUP") == true) { area = "TEMBURONG", kampong = "MANIUP" }
-    else if (hasWord(upperAddress, "MENENGAH") == true) { area = "TEMBURONG", kampong = "MENGENGAH" }
-    else if (hasWord(upperAddress, "NEGALANG") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
-    else if (hasWord(upperAddress, "NEGALANG ERING") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
-    else if (hasWord(upperAddress, "NEGALANG UNAT") == true) { area = "TEMBURONG", kampong = "NEGALANG" }
-    else if (hasWord(upperAddress, "PARIT") == true) { area = "TEMBURONG", kampong = "PARIT" }
-    else if (hasWord(upperAddress, "PARIT BELAYANG") == true) { area = "TEMBURONG", kampong = "PARIT BELAYANG" }
-    else if (hasWord(upperAddress, "PAYAU") == true) { area = "TEMBURONG", kampong = "PAYAU" }
-    else if (hasWord(upperAddress, "PELIUNAN") == true) { area = "TEMBURONG", kampong = "PELIUNAN" }
-    else if (hasWord(upperAddress, "PERDAYAN") == true) { area = "TEMBURONG", kampong = "PERDAYAN" }
-    else if (hasWord(upperAddress, "PIASAU-PIASAU") == true) { area = "TEMBURONG", kampong = "PIASAU-PIASAU" }
-    else if (hasWord(upperAddress, "PIASAU PIASAU") == true) { area = "TEMBURONG", kampong = "PIASAU-PIASAU" }
-    else if (hasWord(upperAddress, "PIUNGAN") == true) { area = "TEMBURONG", kampong = "PIUNGAN" }
-    else if (hasWord(upperAddress, "PUNI") == true) { area = "TEMBURONG", kampong = "PUNI" }
-    else if (hasWord(upperAddress, "RATAIE") == true) { area = "TEMBURONG", kampong = "RATAIE" }
-    else if (hasWord(upperAddress, "REBADA") == true) { area = "TEMBURONG", kampong = "REBADA" }
-    else if (hasWord(upperAddress, "SEKUROP") == true) { area = "TEMBURONG", kampong = "SEKUROP" }
-    else if (hasWord(upperAddress, "SELANGAN") == true) { area = "TEMBURONG", kampong = "SELANGAN" }
-    else if (hasWord(upperAddress, "SELAPON") == true) { area = "TEMBURONG", kampong = "SELAPON" }
-    else if (hasWord(upperAddress, "SEMABAT") == true) { area = "TEMBURONG", kampong = "SEMABAT" }
-    else if (hasWord(upperAddress, "SEMAMAMNG") == true) { area = "TEMBURONG", kampong = "SEMAMANG" }
-    else if (hasWord(upperAddress, "SENUKOH") == true) { area = "TEMBURONG", kampong = "SENUKOH" }
-    else if (hasWord(upperAddress, "SERI TANJONG BELAYANG") == true) { area = "TEMBURONG", kampong = "SERI TANJONG BELAYANG" }
-    else if (hasWord(upperAddress, "BELAYANG") == true) { area = "TEMBURONG", kampong = "SERI TANJONG BELAYANG" }
-    else if (hasWord(upperAddress, "SIBULU") == true) { area = "TEMBURONG", kampong = "SIBULU" }
-    else if (hasWord(upperAddress, "SIBUT") == true) { area = "TEMBURONG", kampong = "SIBUT" }
-    else if (hasWord(upperAddress, "SIMBATANG BATU APOI") == true) { area = "TEMBURONG", kampong = "BATU APOI" }
-    else if (hasWord(upperAddress, "SIMBATANG BOKOK") == true) { area = "TEMBURONG", kampong = "BOKOK" }
-    else if (hasWord(upperAddress, "SUBOK") == true) { area = "TEMBURONG", kampong = "SUBOK" }
-    else if (hasWord(upperAddress, "SUMBILING") == true) { area = "TEMBURONG", kampong = "SUMBILING" }
-    else if (hasWord(upperAddress, "SUMBILING BARU") == true) { area = "TEMBURONG", kampong = "SUMBILING" }
-    else if (hasWord(upperAddress, "SUMBILING LAMA") == true) { area = "TEMBURONG", kampong = "SUMBILING LAMA" }
-    else if (hasWord(upperAddress, "SUNGAI RADANG") == true) { area = "TEMBURONG", kampong = "SUNGAI RADANG" }
-    else if (hasWord(upperAddress, "SG RADANG") == true) { area = "TEMBURONG", kampong = "SUNGAI RADANG" }
-    else if (hasWord(upperAddress, "SUNGAI SULOK") == true) { area = "TEMBURONG", kampong = "SUNGAI SULOK" }
-    else if (hasWord(upperAddress, "SG SULOK ") == true) { area = "TEMBURONG", kampong = "SUNGAI SULOK" }
-    else if (hasWord(upperAddress, "SUNGAI TANAM") == true) { area = "TEMBURONG", kampong = "SUNGAI TANAM" }
-    else if (hasWord(upperAddress, "SG TANAM") == true) { area = "TEMBURONG", kampong = "SUNGAI TANAM" }
-    else if (hasWord(upperAddress, "SUNGAI TANIT") == true) { area = "TEMBURONG", kampong = "SUNGAI TANIT" }
-    else if (hasWord(upperAddress, "SG TANIT") == true) { area = "TEMBURONG", kampong = "SUNGAI TANIT" }
-    else if (hasWord(upperAddress, "TANJONG BUNGAR") == true) { area = "TEMBURONG", kampong = "TANJONG BUNGAR" }
-    else if (hasWord(upperAddress, "TEMADA") == true) { area = "TEMBURONG", kampong = "TEMADA" }
-    else if (hasWord(upperAddress, "UJONG JALAN") == true) { area = "TEMBURONG", kampong = "UJONG JALAN" }
-    else if (hasWord(upperAddress, "BANGAR") == true) { area = "TEMBURONG", kampong = "BANGAR" }
-    else if (hasWord(upperAddress, "TEMBURONG") == true) { area = "TEMBURONG" }
-    else { area = "N/A" }
+    // Find every known kampong/keyword that appears in the address, then
+    // take the one with the longest keyword as the winner - the most
+    // specific match wins instead of whichever happened to be listed first
+    // (found 2026-10-19/20: "BANG" used to beat "BATANG DURI" purely by
+    // list order, mistagging a Temburong address as KB/SERIA).
+    let best = null;
+    for (const rule of KAMPONG_AREA_RULES) {
+        if (hasWord(upperAddress, rule.keyword)) {
+            if (!best || rule.keyword.length > best.keyword.length) best = rule;
+        }
+    }
+    if (best) return best.area;
 
-    return area;
+    // "Tutong" the district vs "Jalan/Jln Tutong" the road through
+    // Berakas/Gadong (area JT) can't be resolved by length alone - a
+    // genuine standalone district mention must win even though it's
+    // shorter than the road phrase, so these two are hand-ordered here
+    // rather than folded into the generic length-ranked loop above.
+    if (hasWordAsDistrict(upperAddress, "TUTONG")) return "TUTONG";
+    if (/(JALAN|JLN)\s*TUTONG/.test(upperAddress)) return "JT";
+
+    // "Belait" is the whole district that Kuala Belait/Seria/Lumut sit in -
+    // it's excluded from the length-ranked loop above because being 6
+    // characters long let it beat the genuinely more specific "Lumut" (5),
+    // wrongly turning a Lumut address into the broader KB/SERIA catch-all.
+    // Only used when nothing more specific matched at all.
+    if (hasWord(upperAddress, "BELAIT")) return "KB / SERIA";
+
+    // "Muara" is the second half of "Brunei Muara" - the district name
+    // itself, used as boilerplate in almost every Brunei-Muara address
+    // regardless of actual sub-area. Excluded from the main loop because
+    // it was beating genuinely specific (but shorter) kampong names like
+    // "Lugu" (JT). Only used as a last resort for genuine Muara-town
+    // addresses with no more specific kampong mentioned.
+    if (hasWord(upperAddress, "MUARA")) return "B";
+
+    return 'N/A';
 }
 
 function levenshtein(a, b) {
@@ -2267,7 +1920,7 @@ const FUZZY_DENYLIST = new Set([
     "MENCEGAH", "KEWANGAN", "PENYERANG", "SUKAN", "CINA", "MARA", "TENGKU",
     "UNGKU", "ATOK", "KETUA", "PERDANA", "KENANGAN", "TUNGGU", "MAIN",
     "PART", "GATES", "RATA", "TAMAN", "PERUMAHAN", "KOMPLEKS", "TINGKAT",
-    "LORONG", "RUMAH", "BANGUNAN",
+    "LORONG", "RUMAH", "BANGUNAN", "TENGAH", "LONG",
 ]);
 
 // Does `haystack` contain a substring within `maxDist` edits of `needle`?
@@ -2299,14 +1952,15 @@ function fuzzyIncludes(haystack, needle, maxDist) {
 function fuzzyGetAreaFromAddress(address) {
     if (!address) return 'N/A';
     const upperAddress = address.toUpperCase();
-    for (const { keyword, area } of KAMPONG_AREA_RULES) {
-        const maxDist = maxDistanceFor(keyword.length);
+    let best = null;
+    for (const rule of KAMPONG_AREA_RULES) {
+        const maxDist = maxDistanceFor(rule.keyword.length);
         if (maxDist === 0) continue;
-        if (fuzzyIncludes(upperAddress, keyword, maxDist)) {
-            return area;
+        if (fuzzyIncludes(upperAddress, rule.keyword, maxDist)) {
+            if (!best || rule.keyword.length > best.keyword.length) best = rule;
         }
     }
-    return 'N/A';
+    return best ? best.area : 'N/A';
 }
 
 // Main entry point: postal code first, then exact address match, then
