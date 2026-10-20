@@ -1075,6 +1075,22 @@ const KAMPONG_AREA_RULES = [
         "area": "TUTONG"
     },
     {
+        "keyword": "BELAMBANG",
+        "area": "TUTONG"
+    },
+    {
+        "keyword": "LUBUK SIGURUN",
+        "area": "JT"
+    },
+    {
+        "keyword": "SUNGAI BESAR",
+        "area": "B"
+    },
+    {
+        "keyword": "SG BESAR",
+        "area": "B"
+    },
+    {
         "keyword": "BERUANG",
         "area": "TUTONG"
     },
