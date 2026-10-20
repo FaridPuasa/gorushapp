@@ -723,7 +723,15 @@ const KAMPONG_AREA_RULES = [
         "area": "JT"
     },
     {
-        "keyword": "TELANAI",
+        "keyword": "KAMPONG TELANAI",
+        "area": "JT"
+    },
+    {
+        "keyword": "KAMPUNG TELANAI",
+        "area": "JT"
+    },
+    {
+        "keyword": "KG TELANAI",
         "area": "JT"
     },
     {
