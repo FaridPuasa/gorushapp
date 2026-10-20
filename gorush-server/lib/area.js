@@ -119,7 +119,7 @@ const POSTCODE_AREA_MAP = {
     "BJ2124": "KB / SERIA",
     "BU1529": "B",
     "BU1929": "B",
-    "BU1729": "TUTONG",
+    "BU1729": "B",
     "BU2329": "B",
     "BU2529": "B",
     "BU1429": "B",
@@ -400,6 +400,10 @@ const KAMPONG_AREA_RULES = [
     },
     {
         "keyword": "ANGGREK",
+        "area": "B"
+    },
+    {
+        "keyword": "JAYA SETIA",
         "area": "B"
     },
     {
@@ -1836,6 +1840,17 @@ function hasWord(upperHaystack, keyword) {
     return new RegExp(`(?<![A-Z0-9])${escaped}(?![A-Z0-9])`).test(upperHaystack);
 }
 
+// "Jalan Tutong"/"Jln Tutong" (and "Jalan Seria/Tutong") is a road name that
+// runs through Brunei-Muara and Belait - it doesn't mean the address is
+// actually in Tutong district (found 2026-10-20: "Istana Nurul Iman Jalan
+// Tutong", the palace in Bandar, was resolving to TUTONG on this alone).
+// Strip those road-name mentions before checking for a genuine standalone
+// "Tutong" district reference.
+function hasWordAsDistrict(upperAddress, keyword) {
+    const stripped = upperAddress.replace(/(JALAN|JLN)\s*(SERIA\s*\/\s*)?TUTONG/g, ' ');
+    return hasWord(stripped, keyword);
+}
+
 function getAreaFromAddress(address) {
     if (!address) return 'N/A';
 
@@ -2012,7 +2027,8 @@ function getAreaFromAddress(address) {
     else if (hasWord(upperAddress, "DANAU") == true) { area = "TUTONG", kampong = "DANAU" }
     else if (hasWord(upperAddress, "BUKIT BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
     else if (hasWord(upperAddress, "BERUANG") == true) { area = "TUTONG", kampong = "BUKIT BERUANG" }
-    else if (hasWord(upperAddress, "TUTONG") == true) { area = "TUTONG", kampong = "TUTONG" }
+    else if (hasWordAsDistrict(upperAddress, "TUTONG") == true) { area = "TUTONG", kampong = "TUTONG" }
+    else if (/(JALAN|JLN)\s*TUTONG/.test(upperAddress)) { area = "JT", kampong = "JALAN TUTONG" }
     //KB
     else if (hasWord(upperAddress, "AGIS") == true) { area = "LUMUT", kampong = "AGIS" }
     else if (hasWord(upperAddress, "ANDALAU") == true) { area = "LUMUT", kampong = "ANDALAU" }
@@ -2245,8 +2261,8 @@ function isWordChar(ch) {
 // the country was landing in KB/SERIA). A full standalone word here is
 // never treated as a fuzzy match candidate, no matter the edit distance.
 const FUZZY_DENYLIST = new Set([
-    "SIMPANG", "SIMPANG TIGA", "SERI", "BANDAR", "SELATAN", "SETIA",
-    "MENTERI", "MENTERI BESAR", "PUSAT", "PASAR", "ABANG", "BATANG",
+    "SIMPANG", "SERI", "BANDAR", "SELATAN", "SETIA",
+    "MENTERI", "PUSAT", "PASAR", "ABANG", "BATANG",
     "SALAM", "PETANI", "BELAKANG", "HADAPAN", "ATAS", "KEDUA", "DUDUK",
     "MENCEGAH", "KEWANGAN", "PENYERANG", "SUKAN", "CINA", "MARA", "TENGKU",
     "UNGKU", "ATOK", "KETUA", "PERDANA", "KENANGAN", "TUNGGU", "MAIN",
