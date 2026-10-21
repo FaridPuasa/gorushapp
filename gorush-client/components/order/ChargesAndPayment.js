@@ -46,6 +46,18 @@ export default function ChargesAndPayment({
         </Field>
       )}
 
+      {(productCode === 'pharmacymoh' || productCode === 'pharmacyjpmc') && chargeCode === 'Standard' && (
+        <InfoNotice icon="🕒" title={t('order.standardTimelineNoteTitle')}>
+          {t('order.standardTimelineNote')}
+        </InfoNotice>
+      )}
+
+      {(productCode === 'pharmacymoh' || productCode === 'pharmacyjpmc') && chargeCode === 'Express' && (
+        <InfoNotice icon="🕒" title={t('order.expressTimelineNoteTitle')}>
+          {t('order.expressTimelineNote')}
+        </InfoNotice>
+      )}
+
       <Field label={t('order.paymentMethod')} required error={errors.paymentMethod} fieldKey="paymentMethod" registerRef={registerFieldRef}>
         <View style={formStyles.pickerContainer}>
           <Picker style={formStyles.pickerControl} selectedValue={paymentMethod} onValueChange={onPaymentMethodChange}>

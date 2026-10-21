@@ -24,8 +24,8 @@ function isExpressOrSelfCollectAvailable(d) {
   const minutes = d.getUTCHours() * 60 + d.getUTCMinutes();
   const allowedDays = [0, 1, 2, 3, 4]; // Sun-Thu
   if (!allowedDays.includes(day)) return false;
-  if (day === 0) return true; // Sunday: available all day
-  return minutes >= 8 * 60 && minutes < 10 * 60 + 30; // Mon-Thu: 8:00am-10:30am
+  if (day === 4) return minutes < 10 * 60 + 30; // Thursday cutoff 10:30am
+  return true;
 }
 
 function isLocalDeliveryExpressAvailable(d) {
@@ -103,13 +103,13 @@ export function useHolidayDates() {
 const AVAILABILITY_NOTES = {
   pharmacymoh: {
     Immediate: 'Mon, Tue, Wed, Thu & Sat, 8:00am–2:00pm',
-    Express: 'Sun (all day), Mon–Thu 8:00am–10:30am',
-    'Self Collect': 'Sun (all day), Mon–Thu 8:00am–10:30am',
+    Express: 'Sun–Thu (Thu until 10:30am)',
+    'Self Collect': 'Sun–Thu (Thu until 10:30am)',
   },
   pharmacyjpmc: {
     Immediate: 'Mon–Sat, 8:00am–11:00am',
-    Express: 'Sun (all day), Mon–Thu 8:00am–10:30am',
-    'Self Collect': 'Sun (all day), Mon–Thu 8:00am–10:30am',
+    Express: 'Sun–Thu (Thu until 10:30am)',
+    'Self Collect': 'Sun–Thu (Thu until 10:30am)',
   },
   localdelivery: {
     Express: 'Mon–Sat (Sat until 11:00am)',
