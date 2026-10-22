@@ -11,7 +11,7 @@ const { getOrderCreatedAt, getOrderUpdatedAt, getOrderDeliveryDate } = require('
 const { formatBruneiISO, formatBruneiDisplay } = require('../lib/bruneiTime');
 const postgresOrders = require('../lib/postgresOrders');
 const { generateTrackingNumber } = require('../lib/trackingNumber');
-const { createDetrackJob, getDetrackJobByTrackingNumber } = require('../lib/detrack');
+const { createDetrackJob, getDetrackJobByTrackingNumber, DETRACK_RETIRED } = require('../lib/detrack');
 const { validateJpmcPatientNumber, JPMC_APPOINTMENT_PLACES } = require('../lib/jpmcValidation');
 const { parseGorushDateOnly } = require('../lib/dateHelpers');
 const { sendOrderAlert } = require('../lib/mailer');
@@ -405,13 +405,17 @@ router.post('/', optionalAuth, async (req, res) => {
 
         // Synchronous Detrack job creation replaces the old async change-
         // stream-watcher trigger - reuses lib/detrack.js completely unchanged.
-        const detrackResult = await createDetrackJob(legacyShaped);
-        if (detrackResult.ok) {
-            await postgresOrders.recordDetrackJobId(pgOrder.id, detrackResult.id);
-        } else {
-            console.error(`[detrack] failed to create job for ${trackingNumber}: ${detrackResult.error}`);
-            // Do not fail the order-creation request over a Detrack failure -
-            // same fire-and-forget tolerance the old watcher had.
+        // Skipped entirely once DETRACK_RETIRED (2026-10-21) - the Postgres
+        // order above is already the complete, authoritative record.
+        if (!DETRACK_RETIRED) {
+            const detrackResult = await createDetrackJob(legacyShaped);
+            if (detrackResult.ok) {
+                await postgresOrders.recordDetrackJobId(pgOrder.id, detrackResult.id);
+            } else {
+                console.error(`[detrack] failed to create job for ${trackingNumber}: ${detrackResult.error}`);
+                // Do not fail the order-creation request over a Detrack failure -
+                // same fire-and-forget tolerance the old watcher had.
+            }
         }
 
         // Notification side effects (email/WhatsApp/Excel) run AFTER the
@@ -607,7 +611,7 @@ router.get('/track/:trackingNumber', async (req, res) => {
             // warehouse - our own Order isn't created until warehouse scan-in.
             // So a tracking number that's on Detrack as "info_recv" but not yet
             // in our own records just means it's still in transit to us.
-            const detrackJob = await getDetrackJobByTrackingNumber(req.params.trackingNumber);
+            const detrackJob = DETRACK_RETIRED ? null : await getDetrackJobByTrackingNumber(req.params.trackingNumber);
             if (detrackJob && detrackJob.status === 'info_recv') {
                 return res.status(404).json({ error: "This parcel hasn't arrived at Go Rush yet. Please check back later." });
             }

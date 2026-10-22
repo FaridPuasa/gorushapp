@@ -4,6 +4,14 @@ const DETRACK_JOBS_URL = 'https://app.detrack.com/api/v2/dn/jobs';
 const DETRACK_UPDATE_URL = 'https://app.detrack.com/api/v2/dn/jobs/update';
 const DETRACK_SHOW_URL = 'https://app.detrack.com/api/v2/dn/jobs/show/';
 
+// Detrack cutover kill switch (2026-10-21, mirrors grfmxstatusupdate's own
+// DETRACK_RETIRED): Detrack is retired 2026-10-23. Flip to true at/after the
+// EOD 2026-10-22 switchover, in step with grfmxstatusupdate's own flag. The
+// single shared home for this flag in gorushapp - every caller (order
+// creation, tracking lookup, JPMC cancel) imports it from here rather than
+// keeping its own copy, so there's only one place to flip.
+const DETRACK_RETIRED = true;
+
 const GROUP_NAME_MAP = {
     localdelivery: 'LD',
     cbsl: 'CBSL',
@@ -188,4 +196,4 @@ async function getDetrackJobByTrackingNumber(doNumber) {
     }
 }
 
-module.exports = { createDetrackJob, cancelDetrackJob, buildJobPayload, toNumber, getDetrackJobByTrackingNumber };
+module.exports = { createDetrackJob, cancelDetrackJob, buildJobPayload, toNumber, getDetrackJobByTrackingNumber, DETRACK_RETIRED };

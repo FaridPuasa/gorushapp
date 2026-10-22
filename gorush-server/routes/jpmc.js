@@ -8,7 +8,7 @@ const express = require('express');
 const XLSX = require('xlsx');
 const prisma = require('../lib/prismaClient');
 const { findAllHolidays } = require('../lib/postgresPricingHoliday');
-const { cancelDetrackJob } = require('../lib/detrack');
+const { cancelDetrackJob, DETRACK_RETIRED } = require('../lib/detrack');
 const { requireRole } = require('../middleware/auth');
 const { currentWindow, windowForDate } = require('../lib/jpmcWindow');
 const { getPaymentProofSignedUrl } = require('../lib/jpmcPaymentStorage');
@@ -408,8 +408,11 @@ router.patch('/orders/:id', requireRole('jpmc', 'admin'), async (req, res) => {
         // Best-effort - a Detrack outage must not stop the order from being
         // saved as Duplicate/Cancelled on GO RUSH's own side; surface it to
         // the caller instead so staff know Detrack still needs a manual fix.
+        // Skipped entirely once DETRACK_RETIRED (2026-10-21) - otherwise this
+        // would keep firing a doomed API call and showing staff a confusing
+        // "manual fix" warning for a system that's intentionally retired.
         let detrackCancelWarning;
-        if (triggersCancel) {
+        if (triggersCancel && !DETRACK_RETIRED) {
             const detrackResult = await cancelDetrackJob(order.doTrackingNumber);
             if (!detrackResult.ok) {
                 console.error(`[jpmc] Failed to cancel Detrack job for ${order.doTrackingNumber}: ${detrackResult.error}`);
