@@ -120,13 +120,15 @@ export function getAvailabilityNote(product, code) {
   return AVAILABILITY_NOTES[product]?.[code] || null;
 }
 
-// The Standard/Express processing & delivery notice: shown on Sunday regardless of time
-// (pharmacies are closed, so "placed today" always slips to the next working day), and on
-// every other day only once the 10:30am cutoff has passed.
-export function getTimelineNoteVariant() {
+// The Standard/Express processing & delivery notice: shown regardless of time on Sunday
+// (pharmacies are closed, so "placed today" always slips to the next working day), on every
+// other day only once the 10:30am cutoff has passed, and additionally on Friday for pharmacymoh
+// only — that pharmacy is closed Fridays, unlike pharmacyjpmc (see isJpmcImmediateAvailable
+// above, which allows Friday).
+export function getTimelineNoteVariant(product) {
   const now = getBruneiNow();
-  const day = now.getUTCDay(); // 0 = Sunday
-  if (day === 0) return 'sunday';
+  const day = now.getUTCDay(); // 0 = Sunday, 5 = Friday
+  if (day === 0 || (day === 5 && product === 'pharmacymoh')) return 'sunday';
   const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
   return minutes >= 10 * 60 + 30 ? 'weekday' : null;
 }

@@ -27,7 +27,7 @@ export default function ChargesAndPayment({
   const total = selected ? computeTotalPrice(product, selected.price, weightKg) : null;
   const holidayDates = useHolidayDates();
   const productCode = PRODUCT_CODES[product];
-  const timelineNoteVariant = getTimelineNoteVariant();
+  const timelineNoteVariant = getTimelineNoteVariant(productCode);
   const isPharmacyProduct = productCode === 'pharmacymoh' || productCode === 'pharmacyjpmc';
 
   return (

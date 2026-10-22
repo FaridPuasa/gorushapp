@@ -635,7 +635,7 @@ export default function Order() {
           {(() => {
             const productCode = PRODUCT_CODES[product];
             const isPharmacyProduct = productCode === 'pharmacymoh' || productCode === 'pharmacyjpmc';
-            const timelineNoteVariant = getTimelineNoteVariant();
+            const timelineNoteVariant = getTimelineNoteVariant(productCode);
             if (!isPharmacyProduct || !timelineNoteVariant) return null;
             if (details.chargeCode === 'Standard') {
               return (
