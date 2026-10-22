@@ -420,7 +420,7 @@ const POSTCODE_AREA_MAP = {
     "KB1633": "SERIA",
     "BG3522": "JT",
     "BS8670": "B",
-    "BF1220": "KB",
+    "BF1220": "JT",
     "BE2118": "G",
     "KA2031": "KB",
     "BG1312": "JT",
@@ -446,7 +446,7 @@ const POSTCODE_AREA_MAP = {
     "KA1133": "SERIA",
     "PE2751": "TEMBURONG",
     "KC3035": "LUMUT",
-    "BE4115": "KB",
+    "BE4115": "G",
     "BE1719": "B",
     "BU2719": "B",
     "BE1516": "G",
@@ -454,7 +454,7 @@ const POSTCODE_AREA_MAP = {
     "BH1023": "JT",
     "BU2729": "B",
     "PE2151": "TEMBURONG",
-    "PE3351": "TUTONG",
+    "PE3351": "TEMBURONG",
     "BG1525": "JT",
     "BG2123": "JT",
     "BB4715": "B",
@@ -472,7 +472,7 @@ const POSTCODE_AREA_MAP = {
     "BS8674": "G",
     "PE1951": "TEMBURONG",
     "KC5735": "LUMUT",
-    "PE3151": "JT",
+    "PE3151": "TEMBURONG",
     "BE1319": "G",
     "BU1728": "B",
     "BU1719": "B",
@@ -493,7 +493,7 @@ const POSTCODE_AREA_MAP = {
     "BB3319": "B",
     "BJ4124": "JT",
     "BA2717": "B",
-    "TD3341": "JT",
+    "TD3341": "TUTONG",
     "BG2520": "JT",
     "KA1311": "KB / SERIA",
     "BD1317": "B",
@@ -523,7 +523,7 @@ const POSTCODE_AREA_MAP = {
     "BA1411": "G",
     "BT1187": "B",
     "PD2151": "TEMBURONG",
-    "BB3577": "TEMBURONG",
+    "BB3577": "B",
     "BA1211": "B",
     "BG2129": "JT",
     "BE3819": "G",
@@ -2543,7 +2543,7 @@ const KAMPONG_AREA_RULES = [
 
 function normalizePostalCode(postalCode) {
     if (!postalCode) return '';
-    return String(postalCode).toUpperCase().replace(/s+/g, '').trim();
+    return String(postalCode).toUpperCase().replace(/\s+/g, '').trim();
 }
 
 // Direct postcode -> area lookup. Returns null (not 'N/A') when the postcode
