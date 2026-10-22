@@ -9,6 +9,7 @@ import { useFontScale } from '../context/FontScaleContext';
 import { useTheme } from '../context/ThemeContext';
 import { isValidEmail, isValidPostalCode, splitPhoneNumber, isPrefixOnly, isValidJpmcPatientNumber } from '../lib/validators';
 import { PRODUCT_CODES } from '../lib/pricing';
+import { getTimelineNoteVariant } from '../lib/availability';
 
 import WargaEmasBanner from '../components/order/WargaEmasBanner';
 import ProductPicker from '../components/order/ProductPicker';
@@ -630,6 +631,28 @@ export default function Order() {
             focusedField={focusedField}
             setFocusedField={setFocusedField}
           />
+
+          {(() => {
+            const productCode = PRODUCT_CODES[product];
+            const isPharmacyProduct = productCode === 'pharmacymoh' || productCode === 'pharmacyjpmc';
+            const timelineNoteVariant = getTimelineNoteVariant();
+            if (!isPharmacyProduct || !timelineNoteVariant) return null;
+            if (details.chargeCode === 'Standard') {
+              return (
+                <InfoNotice icon="🕒" title={t('order.standardTimelineNoteTitle')}>
+                  {t(timelineNoteVariant === 'sunday' ? 'order.standardTimelineNoteSunday' : 'order.standardTimelineNote')}
+                </InfoNotice>
+              );
+            }
+            if (details.chargeCode === 'Express') {
+              return (
+                <InfoNotice icon="🕒" title={t('order.expressTimelineNoteTitle')}>
+                  {t(timelineNoteVariant === 'sunday' ? 'order.expressTimelineNoteSunday' : 'order.expressTimelineNote')}
+                </InfoNotice>
+              );
+            }
+            return null;
+          })()}
 
           <AnimatedPressable
             scaleTo={1.03}

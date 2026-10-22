@@ -119,3 +119,14 @@ const AVAILABILITY_NOTES = {
 export function getAvailabilityNote(product, code) {
   return AVAILABILITY_NOTES[product]?.[code] || null;
 }
+
+// The Standard/Express processing & delivery notice: shown on Sunday regardless of time
+// (pharmacies are closed, so "placed today" always slips to the next working day), and on
+// every other day only once the 10:30am cutoff has passed.
+export function getTimelineNoteVariant() {
+  const now = getBruneiNow();
+  const day = now.getUTCDay(); // 0 = Sunday
+  if (day === 0) return 'sunday';
+  const minutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  return minutes >= 10 * 60 + 30 ? 'weekday' : null;
+}

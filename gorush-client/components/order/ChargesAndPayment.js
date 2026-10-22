@@ -5,7 +5,7 @@ import { useFormStyles, Card, Field, InfoNotice, makeInputStyle, makeFocusHandle
 import { useLanguage } from '../../context/LanguageContext';
 import { useFontScale } from '../../context/FontScaleContext';
 import { getChargeOptions, formatChargeLabel, computeTotalPrice, formatPrice, usePricingRules, PRODUCT_CODES, PAYMENT_METHODS } from '../../lib/pricing';
-import { isChargeCurrentlyAvailable, getAvailabilityNote, useHolidayDates } from '../../lib/availability';
+import { isChargeCurrentlyAvailable, getAvailabilityNote, useHolidayDates, getTimelineNoteVariant } from '../../lib/availability';
 
 export default function ChargesAndPayment({
   product, district, weightKg,
@@ -27,6 +27,8 @@ export default function ChargesAndPayment({
   const total = selected ? computeTotalPrice(product, selected.price, weightKg) : null;
   const holidayDates = useHolidayDates();
   const productCode = PRODUCT_CODES[product];
+  const timelineNoteVariant = getTimelineNoteVariant();
+  const isPharmacyProduct = productCode === 'pharmacymoh' || productCode === 'pharmacyjpmc';
 
   return (
     <Card icon="💰" title={t('order.chargesAndPayment')}>
@@ -46,15 +48,15 @@ export default function ChargesAndPayment({
         </Field>
       )}
 
-      {(productCode === 'pharmacymoh' || productCode === 'pharmacyjpmc') && chargeCode === 'Standard' && (
+      {isPharmacyProduct && chargeCode === 'Standard' && timelineNoteVariant && (
         <InfoNotice icon="🕒" title={t('order.standardTimelineNoteTitle')}>
-          {t('order.standardTimelineNote')}
+          {t(timelineNoteVariant === 'sunday' ? 'order.standardTimelineNoteSunday' : 'order.standardTimelineNote')}
         </InfoNotice>
       )}
 
-      {(productCode === 'pharmacymoh' || productCode === 'pharmacyjpmc') && chargeCode === 'Express' && (
+      {isPharmacyProduct && chargeCode === 'Express' && timelineNoteVariant && (
         <InfoNotice icon="🕒" title={t('order.expressTimelineNoteTitle')}>
-          {t('order.expressTimelineNote')}
+          {t(timelineNoteVariant === 'sunday' ? 'order.expressTimelineNoteSunday' : 'order.expressTimelineNote')}
         </InfoNotice>
       )}
 

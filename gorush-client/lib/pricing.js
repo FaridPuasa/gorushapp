@@ -47,9 +47,9 @@ export function getChargeOptions(rules, product, district) {
     .map((r) => ({ code: r.chargeCode, price: r.price, note: r.note }));
 }
 
-export function formatChargeLabel(charge) {
+export function formatChargeLabel(charge, { includeNote = true } = {}) {
   const price = `$${charge.price.toFixed(2).replace(/\.00$/, '')}`;
-  return charge.note ? `${charge.code} — ${price} — ${charge.note}` : `${charge.code} — ${price}`;
+  return includeNote && charge.note ? `${charge.code} — ${price} — ${charge.note}` : `${charge.code} — ${price}`;
 }
 
 export function computeWeightSurcharge(weightKg) {

@@ -117,7 +117,7 @@ export default function OrderSummary({ form }) {
       )}
 
       <Card icon="💰" title={t('order.chargesAndPayment')}>
-        <Row label={t('order.summary.charges')} value={selected ? formatChargeLabel(selected) : ''} />
+        <Row label={t('order.summary.charges')} value={selected ? formatChargeLabel(selected, { includeNote: false }) : ''} />
         <Row label={t('order.summary.paymentMethod')} value={form.paymentMethod} />
         <Row label={t('order.summary.remarks')} value={form.remarks} />
         <View style={{ marginTop: 8 }}>
