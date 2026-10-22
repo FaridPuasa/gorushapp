@@ -36,6 +36,12 @@ function normalizePhoneNumber(phoneNumber) {
     if (cleanNumber.length === 11 && cleanNumber.startsWith('673')) return "+" + cleanNumber;
     if (cleanNumber.length === 8 && cleanNumber.startsWith('0')) return "+673" + cleanNumber.substring(1);
 
+    // Malaysia (60) / Singapore (65) country code typed without a "+" -
+    // the picker only prepends the code for display, so a value read back
+    // from a saved profile or sent by a non-picker caller can arrive bare.
+    if (cleanNumber.length >= 10 && cleanNumber.length <= 12 && cleanNumber.startsWith('60')) return "+" + cleanNumber;
+    if (cleanNumber.length === 10 && cleanNumber.startsWith('65')) return "+" + cleanNumber;
+
     // Anything else (a non-Brunei number, or a shape we don't recognize) is
     // stored unchanged rather than guessed at.
     return phoneStr;

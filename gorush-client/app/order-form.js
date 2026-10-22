@@ -282,7 +282,7 @@ export default function Order() {
     if (party.postalcode && !isValidPostalCode(party.postalcode)) e.party.postalcode = t('order.validation.postalCodeInvalid');
     if (!isGuest && !party.email.trim()) e.party.email = t('order.validation.emailRequired');
     else if (party.email.trim() && !isValidEmail(party.email)) e.party.email = t('order.validation.emailInvalid');
-    if (!splitPhoneNumber(party.phone).localNumber) e.party.phone = t('order.validation.phoneRequired');
+    if (!splitPhoneNumber(party.phone).localNumber.trim()) e.party.phone = t('order.validation.phoneRequired');
 
     if (['MOH', 'JPMC', 'PHC'].includes(product)) {
       if (!identity.dateOfBirth) e.dateOfBirth = t('order.validation.dobRequired');
@@ -310,7 +310,7 @@ export default function Order() {
       // Receiver's email is the delivery recipient's own, not necessarily the
       // logged-in account owner's - never required, regardless of login status.
       if (receiver.email.trim() && !isValidEmail(receiver.email)) e.receiver.email = t('order.validation.emailInvalid');
-      if (!splitPhoneNumber(receiver.phone).localNumber) e.receiver.phone = t('order.validation.phoneRequired');
+      if (!splitPhoneNumber(receiver.phone).localNumber.trim()) e.receiver.phone = t('order.validation.phoneRequired');
       if (!details.ldPickupOrDelivery) e.ldPickupOrDelivery = t('order.validation.required');
       if (details.ldPickupOrDelivery === 'Pickup and Delivery') {
         if (!details.pickupDate) e.pickupDate = t('order.validation.required');
