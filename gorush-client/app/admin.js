@@ -863,7 +863,7 @@ function SlidesTab({ formStyles, colors, authHeader }) {
 const APPLICATION_TYPE_OPTIONS = ['General', 'Freelancer', 'Dispatcher', 'Helper', 'OperationSupport'];
 const VACANCY_TITLE_OPTIONS = ['Human Resource', 'Forwarding Support', 'Operation Support', 'Dispatcher', 'Driver', 'Customer Service', 'Account Clerk', 'Information Technology Technical Support'];
 const VACANCY_DEPARTMENT_OPTIONS = ['Human Resource', 'Logistics', 'Customer Relations', 'Accounting', 'IT'];
-const VACANCY_EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time'];
+const VACANCY_EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Open'];
 
 // Human-readable label for each conditional extra question/upload an
 // applicationType can turn on - mirrors the boolean flags in

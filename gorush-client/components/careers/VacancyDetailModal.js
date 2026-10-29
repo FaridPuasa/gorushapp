@@ -33,7 +33,7 @@ export default function VacancyDetailModal({ vacancy, onClose, onApply }) {
                     <Text style={{ color: colors.primaryDark, fontWeight: '700', fontSize: scaleFont(12) }}>{vacancy.department}</Text>
                   </View>
                 ) : null}
-                {vacancy.employmentType ? (
+                {vacancy.employmentType && vacancy.employmentType !== 'Open' ? (
                   <View style={{ backgroundColor: colors.subtleBackground, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 6 }}>
                     <Text style={{ color: colors.textSecondary, fontWeight: '600', fontSize: scaleFont(12) }}>🕐 {vacancy.employmentType}</Text>
                   </View>
