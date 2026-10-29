@@ -145,9 +145,9 @@ router.delete('/slides/:id', async (req, res) => {
 // VACANCY_EMPLOYMENT_TYPE_OPTIONS exactly - the client only offers these via a
 // Picker, but nothing stopped a direct API call from setting anything else
 // until now.
-const VACANCY_TITLE_OPTIONS = ['Human Resource', 'Forwarding Support', 'Operation Support', 'Dispatcher', 'Customer Service', 'Account Clerk', 'Information Technology Technical Support'];
+const VACANCY_TITLE_OPTIONS = ['Human Resource', 'Forwarding Support', 'Operation Support', 'Dispatcher', 'Driver', 'Customer Service', 'Account Clerk', 'Information Technology Technical Support'];
 const VACANCY_DEPARTMENT_OPTIONS = ['Human Resource', 'Logistics', 'Customer Relations', 'Accounting', 'IT'];
-const VACANCY_EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time'];
+const VACANCY_EMPLOYMENT_TYPE_OPTIONS = ['Full-time', 'Part-time', 'Open'];
 
 function validateVacancyEnums({ title, department, employmentType }) {
     if (title && !VACANCY_TITLE_OPTIONS.includes(title)) {
