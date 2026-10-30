@@ -26,6 +26,8 @@ if (!process.env.DATABASE_URL || !process.env.DIRECT_URL) {
 //   (lib/imageCompress.js stores those directly in Postgres), plus Supabase Storage, where
 //   POD photos/JPMC payment proofs/job application docs actually live (lib/podImageStorage.js
 //   and friends) - a wildcard since the exact project subdomain lives in an env var, not here.
+//   Also api.qrserver.com, which renders the QR code on the Get the App page
+//   (app/get-the-app.js's desktop view).
 // - connect-src: 'self' (default, same-origin API calls) plus GA's own ping/collect domains.
 // - frame-src: the Google Maps embed on the Contact Us page (contactInfo.js's
 //   GOOGLE_MAPS_EMBED_URL).
@@ -37,7 +39,7 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       scriptSrc: ["'self'", "'unsafe-inline'", 'https://www.googletagmanager.com'],
-      imgSrc: ["'self'", 'data:', 'https://*.supabase.co'],
+      imgSrc: ["'self'", 'data:', 'https://*.supabase.co', 'https://api.qrserver.com'],
       connectSrc: ["'self'", 'https://www.google-analytics.com', 'https://analytics.google.com', 'https://www.googletagmanager.com'],
       frameSrc: ["'self'", 'https://www.google.com'],
     },
