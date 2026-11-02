@@ -13,7 +13,7 @@ const MAKE_WEBHOOK_API_KEY = process.env.MAKE_WEBHOOK_API_KEY || '2969421:27114c
 
 const SKIP_WHATSAPP_PRODUCTS = [
     'fmx', 'bb', 'fcas', 'icarus', 'ewe', 'ewens',
-    'kptdf', 'pdu', 'pure51', 'sklabo', 'mglobal', 'kptdp', 'gdext',
+    'kptdf', 'pdu', 'pure51', 'sklabo', 'mglobal', 'kptdp',
 ];
 
 function cleanPhoneNumber(rawPhoneNumber) {
