@@ -12,6 +12,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Text, View, Modal, Pressable, ScrollView, ActivityIndicator, Image, Linking } from 'react-native';
 import { api } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useLanguage } from '../context/LanguageContext';
 import { AnimatedPressable } from '../lib/animations';
@@ -223,6 +224,7 @@ function RelatedOrdersGroup({ title, orders, onOpenTracking, colors, scaleFont }
 }
 
 export default function TrackingDetailModal({ trackingNumber, token, onClose, onOpenTracking }) {
+  const { isMoh } = useAuth();
   const { colors } = useTheme();
   const { scaleFont } = useDenseFontScale();
   const { t } = useLanguage();
@@ -290,7 +292,8 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
                 <DetailField label="Attempt" value={result.attempt ?? 0} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Job Date" value={formatDMY(result.jobDate)} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Job Created Date" value={formatDMY(result.creationDate)} colors={colors} scaleFont={scaleFont} />
-                <DetailField label="MAWB No." value={result.mawbNo} colors={colors} scaleFont={scaleFont} />
+                {/* Not relevant to moh's home-delivery jobs - still shown for pdu/mglobal/ewe. */}
+                {!isMoh && <DetailField label="MAWB No." value={result.mawbNo} colors={colors} scaleFont={scaleFont} />}
                 <DetailField label="Latest Reason" value={result.latestReason} colors={colors} scaleFont={scaleFont} />
               </Section>
 
