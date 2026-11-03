@@ -176,7 +176,12 @@ export default function PartnerSearchJobs() {
   const { scaleFont } = useDenseFontScale();
   const formStyles = useFormStyles();
 
-  const columns = useMemo(() => (isMoh ? [...COLUMNS, ...MOH_COLUMNS] : COLUMNS), [isMoh]);
+  // mawbNo/parcelWeight aren't relevant to moh's home-delivery jobs - dropped
+  // for this role only, pdu/mglobal/ewe keep the full shared column set.
+  const columns = useMemo(
+    () => (isMoh ? [...COLUMNS.filter((c) => c.key !== 'mawbNo' && c.key !== 'parcelWeight'), ...MOH_COLUMNS] : COLUMNS),
+    [isMoh],
+  );
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [orders, setOrders] = useState([]);
