@@ -1,4 +1,5 @@
-// One-off creation of the 3 external-partner portal accounts (pdu/mglobal/ewe).
+// One-off creation of the external-partner portal accounts
+// (pdu/mglobal/ewe/moh).
 // Unlike jpmc's accounts, these were never self-registered through
 // POST /api/auth/register first (that flow requires full address/personal-
 // detail fields these partners have no use for), so this inserts the
@@ -17,6 +18,8 @@ const ACCOUNTS = [
     { email: 'huangyanchao@sypost.com', password: 'pdu1234!', role: 'pdu' },
     { email: 'kelvin.corpuz@morninglobal.com', password: 'mglobal1234!', role: 'mglobal' },
     { email: 'tech@baaship.com', password: 'ewe1234!', role: 'ewe' },
+    { email: 'lahkheng.chua@moh.gov.bn', password: 'moh1234!', role: 'moh' },
+    { email: 'huiling.ong@moh.gov.bn', password: 'moh1234!', role: 'moh' },
 ];
 
 async function run() {

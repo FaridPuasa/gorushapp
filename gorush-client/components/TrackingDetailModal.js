@@ -300,6 +300,10 @@ export default function TrackingDetailModal({ trackingNumber, token, onClose, on
                 <DetailField label="Address" value={result.receiverAddress} minWidth={260} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Postal Code" value={result.receiverPostalCode} colors={colors} scaleFont={scaleFont} />
                 <DetailField label="Area" value={result.area} colors={colors} scaleFont={scaleFont} />
+                {/* Only ever populated for moh orders - never shown for pdu/mglobal/ewe. */}
+                {result.bruhimsnum ? <DetailField label="BruHIMS No." value={result.bruhimsnum} colors={colors} scaleFont={scaleFont} /> : null}
+                {result.icNum ? <DetailField label="IC Number" value={result.icNum} colors={colors} scaleFont={scaleFont} /> : null}
+                {result.passport ? <DetailField label="Passport No." value={result.passport} colors={colors} scaleFont={scaleFont} /> : null}
               </Section>
 
               <Section icon="💬" title="Remarks" colors={colors} scaleFont={scaleFont}>

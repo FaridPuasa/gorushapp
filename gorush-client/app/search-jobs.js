@@ -1,8 +1,11 @@
-// Partner Search Jobs (pdu/mglobal/ewe) - trimmed filter panel + trimmed
+// Partner Search Jobs (pdu/mglobal/ewe/moh) - trimmed filter panel + trimmed
 // column table over the partner's own product, backed by
 // GET /api/partner/search-jobs (server-side product scoping + filtering,
 // client-side sort/paginate - see gorush-server/routes/partnerPortal.js and
-// the project plan's field keep/exclude lists).
+// the project plan's field keep/exclude lists). moh gets its own, further-
+// trimmed filter panel (just tracking no./name/phone/BruHIMS/IC/Passport)
+// and the shared column set plus BruHIMS No./IC Number/Passport No. - see
+// isMoh branches below.
 import React, { useState, useMemo, useCallback } from 'react';
 import { Text, TextInput, View, ActivityIndicator, ScrollView } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
@@ -59,10 +62,19 @@ const COLUMNS = [
   { key: 'jobDateCompletedDisplay', label: 'Job Date Completed', width: 140, format: (v, row) => (row.currentStatus === 'Completed' ? formatDMY(row.jobDate) : '—') },
 ];
 
+// moh-only columns, appended after the shared set above - BruHIMS/IC/Passport
+// are never populated for pdu/mglobal/ewe orders, so these only ever apply here.
+const MOH_COLUMNS = [
+  { key: 'bruhimsnum', label: 'BruHIMS No.', width: 110 },
+  { key: 'icNum', label: 'IC Number', width: 110 },
+  { key: 'passport', label: 'Passport No.', width: 110 },
+];
+
 const EMPTY_FILTERS = {
   doTrackingNumber: '', receiverName: '', receiverAddress: '',
   jobDateFrom: '', jobDateTo: '', creationDateFrom: '', creationDateTo: '',
   area: '', currentStatus: '', mawbNo: '', receiverPostalCode: '', receiverPhoneNumber: '',
+  bruhimsnum: '', icNum: '', passport: '',
 };
 
 function FilterField({ label, children, colors, scaleFont }) {
@@ -142,11 +154,11 @@ function ToolbarButton({ label, onPress, colors, scaleFont, variant = 'default' 
 // matching the original's colvis button. Click-away isn't wired (no outside-
 // click listener in this codebase's convention) - a second click on the
 // Columns button itself closes it.
-function ColumnsPanel({ open, hidden, onToggleColumn, colors, scaleFont }) {
+function ColumnsPanel({ open, columns, hidden, onToggleColumn, colors, scaleFont }) {
   if (!open) return null;
   return (
     <View style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10, zIndex: 20, width: 240, maxHeight: 320 }}>
-      {COLUMNS.map((c) => (
+      {columns.map((c) => (
         <AnimatedPressable key={c.key} scaleTo={1.0} onPress={() => onToggleColumn(c.key)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8 }}>
           <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: colors.border, backgroundColor: hidden.has(c.key) ? 'transparent' : colors.primary, alignItems: 'center', justifyContent: 'center' }}>
             {!hidden.has(c.key) && <Text style={{ color: '#fff', fontSize: scaleFont(11), fontWeight: '700' }}>✓</Text>}
@@ -159,10 +171,12 @@ function ColumnsPanel({ open, hidden, onToggleColumn, colors, scaleFont }) {
 }
 
 export default function PartnerSearchJobs() {
-  const { token } = useAuth();
+  const { token, isMoh } = useAuth();
   const { colors } = useTheme();
   const { scaleFont } = useDenseFontScale();
   const formStyles = useFormStyles();
+
+  const columns = useMemo(() => (isMoh ? [...COLUMNS, ...MOH_COLUMNS] : COLUMNS), [isMoh]);
 
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [orders, setOrders] = useState([]);
@@ -178,7 +192,7 @@ export default function PartnerSearchJobs() {
   const [exported, setExported] = useState(false);
 
   const setField = (key, value) => setFilters((f) => ({ ...f, [key]: value }));
-  const visibleColumns = COLUMNS.filter((c) => !hiddenColumns.has(c.key));
+  const visibleColumns = columns.filter((c) => !hiddenColumns.has(c.key));
   const toggleColumn = (key) => setHiddenColumns((prev) => {
     const next = new Set(prev);
     if (next.has(key)) next.delete(key); else next.add(key);
@@ -249,36 +263,52 @@ export default function PartnerSearchJobs() {
           <FilterField label="Customer Name" colors={colors} scaleFont={scaleFont}>
             <TextInput style={formStyles.input} value={filters.receiverName} onChangeText={(v) => setField('receiverName', v)} onSubmitEditing={runSearch} />
           </FilterField>
-          <FilterField label="Customer Address" colors={colors} scaleFont={scaleFont}>
-            <TextInput style={formStyles.input} value={filters.receiverAddress} onChangeText={(v) => setField('receiverAddress', v)} onSubmitEditing={runSearch} />
-          </FilterField>
           <FilterField label="Main Phone No." colors={colors} scaleFont={scaleFont}>
             <TextInput style={formStyles.input} value={filters.receiverPhoneNumber} onChangeText={(v) => setField('receiverPhoneNumber', v)} onSubmitEditing={runSearch} />
           </FilterField>
-          <FilterField label="Postal Code" colors={colors} scaleFont={scaleFont}>
-            <TextInput style={formStyles.input} value={filters.receiverPostalCode} onChangeText={(v) => setField('receiverPostalCode', v)} onSubmitEditing={runSearch} />
-          </FilterField>
-          <FilterField label="Area" colors={colors} scaleFont={scaleFont}>
-            <SelectField value={filters.area} onChange={(v) => setField('area', v)} options={AREA_OPTIONS} formStyles={formStyles} />
-          </FilterField>
-          <FilterField label="Job Status" colors={colors} scaleFont={scaleFont}>
-            <SelectField value={filters.currentStatus} onChange={(v) => setField('currentStatus', v)} options={JOB_STATUS_OPTIONS} formStyles={formStyles} />
-          </FilterField>
-          <FilterField label="MAWB No." colors={colors} scaleFont={scaleFont}>
-            <TextInput style={formStyles.input} value={filters.mawbNo} onChangeText={(v) => setField('mawbNo', v)} onSubmitEditing={runSearch} />
-          </FilterField>
-          <FilterField label="Job Date From" colors={colors} scaleFont={scaleFont}>
-            <DateField value={filters.jobDateFrom} onChange={(v) => setField('jobDateFrom', v)} formStyles={formStyles} />
-          </FilterField>
-          <FilterField label="Job Date To" colors={colors} scaleFont={scaleFont}>
-            <DateField value={filters.jobDateTo} onChange={(v) => setField('jobDateTo', v)} formStyles={formStyles} />
-          </FilterField>
-          <FilterField label="Job Created Date From" colors={colors} scaleFont={scaleFont}>
-            <DateField value={filters.creationDateFrom} onChange={(v) => setField('creationDateFrom', v)} formStyles={formStyles} />
-          </FilterField>
-          <FilterField label="Job Created Date To" colors={colors} scaleFont={scaleFont}>
-            <DateField value={filters.creationDateTo} onChange={(v) => setField('creationDateTo', v)} formStyles={formStyles} />
-          </FilterField>
+          {isMoh ? (
+            <>
+              <FilterField label="BruHIMS No." colors={colors} scaleFont={scaleFont}>
+                <TextInput style={formStyles.input} value={filters.bruhimsnum} onChangeText={(v) => setField('bruhimsnum', v)} onSubmitEditing={runSearch} />
+              </FilterField>
+              <FilterField label="IC Number" colors={colors} scaleFont={scaleFont}>
+                <TextInput style={formStyles.input} value={filters.icNum} onChangeText={(v) => setField('icNum', v)} onSubmitEditing={runSearch} />
+              </FilterField>
+              <FilterField label="Passport Number" colors={colors} scaleFont={scaleFont}>
+                <TextInput style={formStyles.input} value={filters.passport} onChangeText={(v) => setField('passport', v)} onSubmitEditing={runSearch} />
+              </FilterField>
+            </>
+          ) : (
+            <>
+              <FilterField label="Customer Address" colors={colors} scaleFont={scaleFont}>
+                <TextInput style={formStyles.input} value={filters.receiverAddress} onChangeText={(v) => setField('receiverAddress', v)} onSubmitEditing={runSearch} />
+              </FilterField>
+              <FilterField label="Postal Code" colors={colors} scaleFont={scaleFont}>
+                <TextInput style={formStyles.input} value={filters.receiverPostalCode} onChangeText={(v) => setField('receiverPostalCode', v)} onSubmitEditing={runSearch} />
+              </FilterField>
+              <FilterField label="Area" colors={colors} scaleFont={scaleFont}>
+                <SelectField value={filters.area} onChange={(v) => setField('area', v)} options={AREA_OPTIONS} formStyles={formStyles} />
+              </FilterField>
+              <FilterField label="Job Status" colors={colors} scaleFont={scaleFont}>
+                <SelectField value={filters.currentStatus} onChange={(v) => setField('currentStatus', v)} options={JOB_STATUS_OPTIONS} formStyles={formStyles} />
+              </FilterField>
+              <FilterField label="MAWB No." colors={colors} scaleFont={scaleFont}>
+                <TextInput style={formStyles.input} value={filters.mawbNo} onChangeText={(v) => setField('mawbNo', v)} onSubmitEditing={runSearch} />
+              </FilterField>
+              <FilterField label="Job Date From" colors={colors} scaleFont={scaleFont}>
+                <DateField value={filters.jobDateFrom} onChange={(v) => setField('jobDateFrom', v)} formStyles={formStyles} />
+              </FilterField>
+              <FilterField label="Job Date To" colors={colors} scaleFont={scaleFont}>
+                <DateField value={filters.jobDateTo} onChange={(v) => setField('jobDateTo', v)} formStyles={formStyles} />
+              </FilterField>
+              <FilterField label="Job Created Date From" colors={colors} scaleFont={scaleFont}>
+                <DateField value={filters.creationDateFrom} onChange={(v) => setField('creationDateFrom', v)} formStyles={formStyles} />
+              </FilterField>
+              <FilterField label="Job Created Date To" colors={colors} scaleFont={scaleFont}>
+                <DateField value={filters.creationDateTo} onChange={(v) => setField('creationDateTo', v)} formStyles={formStyles} />
+              </FilterField>
+            </>
+          )}
         </View>
 
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: 10, marginTop: 20 }}>
@@ -292,7 +322,7 @@ export default function PartnerSearchJobs() {
               <ToolbarButton label={exported ? 'Done' : '📊 Download Excel'} variant="success" colors={colors} scaleFont={scaleFont} onPress={handleExport} />
               <View>
                 <ToolbarButton label="☰ Columns" colors={colors} scaleFont={scaleFont} onPress={() => setColumnsOpen((v) => !v)} />
-                <ColumnsPanel open={columnsOpen} hidden={hiddenColumns} onToggleColumn={toggleColumn} colors={colors} scaleFont={scaleFont} />
+                <ColumnsPanel open={columnsOpen} columns={columns} hidden={hiddenColumns} onToggleColumn={toggleColumn} colors={colors} scaleFont={scaleFont} />
               </View>
             </View>
           )}

@@ -69,11 +69,17 @@ export function AuthProvider({ children }) {
     // External partners (pdu/mglobal/ewe) - each role name is also its `product`
     // value on the shared orders table, so a single boolean + the role string
     // itself is all the dashboard/search-jobs pages need to scope their own
-    // queries (see app/dashboard.js, app/search-jobs.js).
+    // queries (see app/dashboard.js, app/search-jobs.js). moh is the one
+    // exception - its product value is 'pharmacymoh', not 'moh' (mapped
+    // server-side in routes/partnerPortal.js's productForRole) - but it's
+    // otherwise the same partner-portal pattern, just with its own trimmed
+    // filter/column set in app/search-jobs.js (isMoh) for its BruHIMS/IC/
+    // Passport fields.
     isPdu: user?.role === 'pdu',
     isMglobal: user?.role === 'mglobal',
     isEwe: user?.role === 'ewe',
-    isPartnerRole: ['pdu', 'mglobal', 'ewe'].includes(user?.role),
+    isMoh: user?.role === 'moh',
+    isPartnerRole: ['pdu', 'mglobal', 'ewe', 'moh'].includes(user?.role),
     loading,
     login,
     logout,

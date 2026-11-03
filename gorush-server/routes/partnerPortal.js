@@ -1,6 +1,8 @@
-// External-partner portal (pdu/mglobal/ewe) - each role name IS the `product`
-// value on the shared orders table, so every query here scopes to
-// `product: req.userRole` and nothing else needs to carry a product param.
+// External-partner portal (pdu/mglobal/ewe/moh) - for pdu/mglobal/ewe the
+// role name IS the `product` value on the shared orders table; moh is the
+// one exception (its orders carry product 'pharmacymoh', not 'moh' - see
+// ROLE_TO_PRODUCT/productForRole below), so every query here scopes to
+// `product: productForRole(req.userRole)` rather than the raw role string.
 // Modeled directly on routes/jpmc.js (requireRole/toApiShape pattern) and on
 // grfmxstatusupdate's dashboard.ejs/index.js (computeWarehouseDashboardData,
 // groupSimilarOrders) for the actual warehouse business rules, but view-only -
@@ -17,7 +19,17 @@ const { getBruneiNow, formatBruneiISO } = require('../lib/bruneiTime');
 const { getPodImageSignedUrl } = require('../lib/podImageStorage');
 
 const router = express.Router();
-router.use(requireRole('pdu', 'mglobal', 'ewe'));
+router.use(requireRole('pdu', 'mglobal', 'ewe', 'moh'));
+
+// moh is the only partner role whose name doesn't match its orders.product
+// value directly (MOH orders are written with product 'pharmacymoh', same
+// code gorush-client/lib/pricing.js's PRODUCTS map and gorush-server/routes/
+// orders.js's PRODUCT_CODES use) - every other partner role's name already
+// IS its product value, so this is a no-op for them.
+const ROLE_TO_PRODUCT = { moh: 'pharmacymoh' };
+function productForRole(role) {
+    return ROLE_TO_PRODUCT[role] || role;
+}
 
 const WAREHOUSE_STATUSES = ['At Warehouse', 'Return to Warehouse', 'In Sorting Area'];
 const WAREHOUSE_LOCATIONS = ['Warehouse K1', 'Warehouse K2'];
@@ -101,6 +113,13 @@ function toPartnerOrderShape(order, { includeHistory = false, ageDays = null } =
         items: order.items,
         detrackCompletedTime: formatBruneiISO(order.detrackCompletedTime),
         ageDays: ageDays != null ? ageDays : warehouseAgeDays(order),
+        // Only ever populated for moh orders (pdu/mglobal/ewe orders never
+        // carry these) - included unconditionally here since a null value is
+        // harmless, but the moh-only client column/filter sets are what
+        // actually surface them.
+        bruhimsnum: order.bruhimsnum,
+        icNum: order.icNum,
+        passport: order.passport,
     };
     if (includeHistory) {
         // Raw fields, unfiltered/unsorted - the client runs the exact same
@@ -268,7 +287,7 @@ async function findRelatedOrders(order) {
 router.get('/tracking/:trackingNumber', async (req, res) => {
     try {
         const order = await prisma.order.findFirst({
-            where: { product: req.userRole, doTrackingNumber: req.params.trackingNumber },
+            where: { product: productForRole(req.userRole), doTrackingNumber: req.params.trackingNumber },
             include: { history: true },
         });
         if (!order) return res.status(404).json({ error: 'Tracking number not found.' });
@@ -291,7 +310,7 @@ router.get('/history/:historyId/pod-photos', async (req, res) => {
             where: { id },
             select: { podImagePaths: true, order: { select: { product: true } } },
         });
-        if (!entry || entry.order.product !== req.userRole) return res.status(404).json({ error: 'Not found.' });
+        if (!entry || entry.order.product !== productForRole(req.userRole)) return res.status(404).json({ error: 'Not found.' });
 
         const paths = entry.podImagePaths || [];
         const urls = await Promise.all(paths.map((p) => getPodImageSignedUrl(p)));
@@ -311,7 +330,7 @@ router.get('/warehouse', async (req, res) => {
     try {
         const rawOrders = await prisma.order.findMany({
             where: {
-                product: req.userRole,
+                product: productForRole(req.userRole),
                 currentStatus: { in: WAREHOUSE_STATUSES },
                 latestLocation: { in: WAREHOUSE_LOCATIONS },
                 // Prisma's `{ not: 'Yes' }` on a nullable column excludes NULL
@@ -368,8 +387,9 @@ router.get('/warehouse', async (req, res) => {
 // a job due today that came back to the warehouse instead of completing).
 router.get('/active-jobs', async (req, res) => {
     try {
+        const product = productForRole(req.userRole);
         const activeOrdersRaw = await prisma.order.findMany({
-            where: { product: req.userRole, currentStatus: { in: ACTIVE_STATUSES } },
+            where: { product, currentStatus: { in: ACTIVE_STATUSES } },
             orderBy: { jobDate: 'asc' },
         });
         // Bucketed off `activeOrdersRaw`'s own raw (unshaped) jobDate, NOT the
@@ -395,9 +415,9 @@ router.get('/active-jobs', async (req, res) => {
         const todayStart = new Date(`${today}T00:00:00+08:00`);
         const todayEnd = new Date(`${today}T23:59:59.999+08:00`);
         const [todayTotal, todayCompleted, todayFailed] = await Promise.all([
-            prisma.order.count({ where: { product: req.userRole, jobDate: { gte: todayStart, lte: todayEnd } } }),
-            prisma.order.count({ where: { product: req.userRole, jobDate: { gte: todayStart, lte: todayEnd }, currentStatus: 'Completed' } }),
-            prisma.order.count({ where: { product: req.userRole, jobDate: { gte: todayStart, lte: todayEnd }, currentStatus: 'Return to Warehouse' } }),
+            prisma.order.count({ where: { product, jobDate: { gte: todayStart, lte: todayEnd } } }),
+            prisma.order.count({ where: { product, jobDate: { gte: todayStart, lte: todayEnd }, currentStatus: 'Completed' } }),
+            prisma.order.count({ where: { product, jobDate: { gte: todayStart, lte: todayEnd }, currentStatus: 'Return to Warehouse' } }),
         ]);
         const todayActive = activeOrdersRaw.filter((o) => toBruneiDateOnlyString(o.jobDate) === today).length;
 
@@ -427,7 +447,7 @@ router.get('/completed-jobs', async (req, res) => {
         const start = new Date(`${date}T00:00:00+08:00`);
         const end = new Date(`${date}T23:59:59.999+08:00`);
         const rawOrders = await prisma.order.findMany({
-            where: { product: req.userRole, jobDate: { gte: start, lte: end } },
+            where: { product: productForRole(req.userRole), jobDate: { gte: start, lte: end } },
             orderBy: { lastUpdateDateTime: 'desc' },
         });
         const orders = groupSimilarOrders(rawOrders.map((o) => toPartnerOrderShape(o)));
@@ -455,9 +475,10 @@ router.get('/completed-jobs', async (req, res) => {
 // nothing a partner can act on until one exists).
 router.get('/incomplete-scan', async (req, res) => {
     try {
-        const hidden = await getHiddenMawbSet(req.userRole);
+        const product = productForRole(req.userRole);
+        const hidden = await getHiddenMawbSet(product);
         const rawOrders = await prisma.order.findMany({
-            where: { product: req.userRole, currentStatus: 'Info Received' },
+            where: { product, currentStatus: 'Info Received' },
         });
         const visible = rawOrders
             .map((o) => toPartnerOrderShape(o, { ageDays: updateAgeDays(o) }))
@@ -481,7 +502,7 @@ router.get('/incomplete-scan', async (req, res) => {
 router.get('/search-jobs', async (req, res) => {
     try {
         const q = req.query;
-        const where = { product: req.userRole };
+        const where = { product: productForRole(req.userRole) };
         const and = [];
 
         if (q.doTrackingNumber) and.push({ doTrackingNumber: { contains: q.doTrackingNumber, mode: 'insensitive' } });
@@ -492,6 +513,11 @@ router.get('/search-jobs', async (req, res) => {
         if (q.mawbNo) and.push({ mawbNo: { contains: q.mawbNo, mode: 'insensitive' } });
         if (q.area) and.push({ area: { in: [].concat(q.area) } });
         if (q.currentStatus) and.push({ currentStatus: { in: [].concat(q.currentStatus) } });
+        // moh-only filters (bruhimsnum/icNum/passport are never populated for
+        // the other partner products, so these are no-ops for them).
+        if (q.bruhimsnum) and.push({ bruhimsnum: { contains: q.bruhimsnum, mode: 'insensitive' } });
+        if (q.icNum) and.push({ icNum: { contains: q.icNum, mode: 'insensitive' } });
+        if (q.passport) and.push({ passport: { contains: q.passport, mode: 'insensitive' } });
         if (q.jobDateFrom || q.jobDateTo) {
             const range = {};
             if (q.jobDateFrom) range.gte = new Date(`${q.jobDateFrom}T00:00:00+08:00`);
