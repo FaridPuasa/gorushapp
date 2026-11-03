@@ -261,6 +261,12 @@ export default function PartnerSearchJobs() {
     <View style={{ width: '100%', maxWidth: WIDE_MAX_WIDTH, alignSelf: 'center', paddingHorizontal: 24 }}>
       <PageHeading style={{ fontSize: scaleFont(26), marginBottom: 28 }}>Search Jobs</PageHeading>
 
+      {/* React Native Web gives every View an implicit zIndex:0, so the Columns
+          dropdown's own zIndex:20 (set deep inside this Card) can only win
+          against siblings WITHIN this Card - it can't outrank the Results
+          Card below, which is a later DOM sibling at that same zIndex:0.
+          Wrapping this whole Card at a higher zIndex fixes that. */}
+      <View style={{ zIndex: 1 }}>
       <Card icon="🔍" title="Filters">
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', columnGap: 16, rowGap: 16 }}>
           <FilterField label="Go Rush Tracking No." colors={colors} scaleFont={scaleFont}>
@@ -334,6 +340,7 @@ export default function PartnerSearchJobs() {
           )}
         </View>
       </Card>
+      </View>
 
       {loading && <ActivityIndicator color={colors.primary} />}
       {!loading && error && <Text style={{ color: colors.error }}>{error}</Text>}
