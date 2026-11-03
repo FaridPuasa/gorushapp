@@ -157,15 +157,20 @@ function ToolbarButton({ label, onPress, colors, scaleFont, variant = 'default' 
 function ColumnsPanel({ open, columns, hidden, onToggleColumn, colors, scaleFont }) {
   if (!open) return null;
   return (
-    <View style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 10, zIndex: 20, width: 240, maxHeight: 320 }}>
-      {columns.map((c) => (
-        <AnimatedPressable key={c.key} scaleTo={1.0} onPress={() => onToggleColumn(c.key)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8 }}>
-          <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: colors.border, backgroundColor: hidden.has(c.key) ? 'transparent' : colors.primary, alignItems: 'center', justifyContent: 'center' }}>
-            {!hidden.has(c.key) && <Text style={{ color: '#fff', fontSize: scaleFont(11), fontWeight: '700' }}>✓</Text>}
-          </View>
-          <Text style={{ fontSize: scaleFont(12), color: colors.textPrimary, flex: 1 }} numberOfLines={1}>{c.label}</Text>
-        </AnimatedPressable>
-      ))}
+    // maxHeight on the outer box alone just let content overflow past its
+    // (non-scrolling) background rather than clipping/scrolling it - the
+    // scroll container has to be the thing with the height cap.
+    <View style={{ position: 'absolute', top: '100%', right: 0, marginTop: 6, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: 8, zIndex: 20, width: 240, maxHeight: 320, overflow: 'hidden' }}>
+      <ScrollView style={{ maxHeight: 320 }} contentContainerStyle={{ padding: 10 }}>
+        {columns.map((c) => (
+          <AnimatedPressable key={c.key} scaleTo={1.0} onPress={() => onToggleColumn(c.key)} style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 6, gap: 8 }}>
+            <View style={{ width: 16, height: 16, borderRadius: 4, borderWidth: 1, borderColor: colors.border, backgroundColor: hidden.has(c.key) ? 'transparent' : colors.primary, alignItems: 'center', justifyContent: 'center' }}>
+              {!hidden.has(c.key) && <Text style={{ color: '#fff', fontSize: scaleFont(11), fontWeight: '700' }}>✓</Text>}
+            </View>
+            <Text style={{ fontSize: scaleFont(12), color: colors.textPrimary, flex: 1 }} numberOfLines={1}>{c.label}</Text>
+          </AnimatedPressable>
+        ))}
+      </ScrollView>
     </View>
   );
 }
