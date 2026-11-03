@@ -22,12 +22,16 @@ import { AnimatedPressable } from '../lib/animations';
 const BAR_HEIGHT = NAVBAR_HEIGHT;
 
 export default function Navbar() {
-  const { user, isGuest, isAdmin, isJpmc, isPartnerRole, token, loading, logout } = useAuth();
+  const { user, isGuest, isAdmin, isJpmc, isPartnerRole, isMoh, token, loading, logout } = useAuth();
   const isJpmcPortalRole = isJpmc;
   // Partners (pdu/mglobal/ewe) get the same "staff-like, no marketing/customer
   // chrome" treatment as jpmc (hidden bottom nav, hidden language picker) but
-  // their own two links (Dashboard/Search Jobs) instead of JPMC's one.
+  // their own two links (Dashboard/Search Jobs) instead of JPMC's one. moh
+  // has no dashboard, so it only ever gets the Search Jobs link, and its
+  // "home" route (logo click, default redirect) is Search Jobs instead of
+  // Dashboard.
   const isStaffPortalRole = isJpmcPortalRole || isPartnerRole;
+  const partnerHomeRoute = isMoh ? '/search-jobs' : '/dashboard';
   const { colors } = useTheme();
   const { t } = useLanguage();
   const { scaleFont } = useFontScale();
@@ -123,7 +127,7 @@ export default function Navbar() {
           {isMobile ? (
             <>
               <View style={styles.mobileLogoCenter} pointerEvents="box-none">
-                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={(e) => goTo(e, isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
+                <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? partnerHomeRoute : '/'} onPress={(e) => goTo(e, isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? partnerHomeRoute : '/')}>
                   <Image source={require('../assets/logo.png')} accessibilityLabel="Go Rush" style={styles.brandImage} resizeMode="contain" />
                 </AnimatedPressable>
               </View>
@@ -132,7 +136,7 @@ export default function Navbar() {
               </AnimatedPressable>
             </>
           ) : (
-          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/'} onPress={(e) => goTo(e, isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? '/dashboard' : '/')}>
+          <AnimatedPressable scaleTo={1.08} href={isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? partnerHomeRoute : '/'} onPress={(e) => goTo(e, isAdmin ? '/admin' : isJpmcPortalRole ? '/jpmc-portal' : isPartnerRole ? partnerHomeRoute : '/')}>
             <Image source={require('../assets/logo.png')} accessibilityLabel="Go Rush" style={styles.brandImage} resizeMode="contain" />
           </AnimatedPressable>
           )}
@@ -163,9 +167,11 @@ export default function Navbar() {
             ) : isPartnerRole ? (
               !loading && (
                 <>
-                  <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/dashboard" onPress={(e) => goTo(e, '/dashboard')}>
-                    <Text style={styles.navText}>{t('nav.dashboard')}</Text>
-                  </AnimatedPressable>
+                  {!isMoh && (
+                    <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/dashboard" onPress={(e) => goTo(e, '/dashboard')}>
+                      <Text style={styles.navText}>{t('nav.dashboard')}</Text>
+                    </AnimatedPressable>
+                  )}
                   <AnimatedPressable scaleTo={1.04} style={styles.navItem} href="/search-jobs" onPress={(e) => goTo(e, '/search-jobs')}>
                     <Text style={styles.navText}>{t('nav.searchJobs')}</Text>
                   </AnimatedPressable>
@@ -391,14 +397,16 @@ export default function Navbar() {
               )}
               {isPartnerRole && (
                 <>
-                  <AnimatedPressable
-                    scaleTo={1.02}
-                    style={styles.mobileItem}
-                    href="/dashboard"
-                    onPress={(e) => { goTo(e, '/dashboard'); closeAccountMenu(); }}
-                  >
-                    <Text style={styles.mobileItemText}>{t('nav.dashboard')}</Text>
-                  </AnimatedPressable>
+                  {!isMoh && (
+                    <AnimatedPressable
+                      scaleTo={1.02}
+                      style={styles.mobileItem}
+                      href="/dashboard"
+                      onPress={(e) => { goTo(e, '/dashboard'); closeAccountMenu(); }}
+                    >
+                      <Text style={styles.mobileItemText}>{t('nav.dashboard')}</Text>
+                    </AnimatedPressable>
+                  )}
                   <AnimatedPressable
                     scaleTo={1.02}
                     style={styles.mobileItem}

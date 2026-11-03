@@ -47,9 +47,12 @@ export default function RootLayout() {
 // itself). A single check here instead of guarding every page individually. Login/register stay
 // reachable so logging out and back in as a different account still works.
 const PARTNER_ROUTES = ['/dashboard', '/search-jobs'];
+// moh has no dashboard access - Search Jobs only (see Navbar.js, which also
+// drops the Dashboard link for this role).
+const MOH_ROUTES = ['/search-jobs'];
 
 function AdminGuard() {
-  const { isAdmin, isJpmc, isPartnerRole, loading } = useAuth();
+  const { isAdmin, isJpmc, isPartnerRole, isMoh, loading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
 
@@ -61,6 +64,11 @@ function AdminGuard() {
     } else if (isJpmc) {
       const allowed = pathname === '/jpmc-portal' || pathname === '/login';
       if (!allowed) router.replace('/jpmc-portal');
+    } else if (isMoh) {
+      // No '/edit-profile' here - Change Password is a navbar modal for this
+      // role (see Navbar.js's ChangePasswordModal), not a page navigation.
+      const allowed = MOH_ROUTES.includes(pathname) || pathname === '/login';
+      if (!allowed) router.replace('/search-jobs');
     } else if (isPartnerRole) {
       // No '/edit-profile' here - Change Password is a navbar modal for this
       // role (see Navbar.js's ChangePasswordModal), not a page navigation.
@@ -69,7 +77,7 @@ function AdminGuard() {
     } else if (pathname === '/admin' || pathname === '/jpmc-portal' || PARTNER_ROUTES.includes(pathname)) {
       router.replace('/');
     }
-  }, [loading, isAdmin, isJpmc, isPartnerRole, pathname]);
+  }, [loading, isAdmin, isJpmc, isPartnerRole, isMoh, pathname]);
 
   return null;
 }
