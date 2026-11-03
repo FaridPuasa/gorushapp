@@ -24,6 +24,9 @@ const { normalizePhoneNumber } = require('../lib/phoneNumber');
 
 const PRODUCT_CODES = ['pharmacymoh', 'pharmacyjpmc', 'pharmacyphc', 'localdelivery', 'cbsl'];
 
+// Bru-HIMs numbers blocked from placing MOH orders, guest or member alike.
+const BLOCKED_BRUHIMS_NUMBERS = ['BN40073797', 'BN40096542'];
+
 // Allow-list for the /mine status filter — the 6 values in the Order schema's own enum,
 // plus 3 more that real shared-collection orders can carry even though they're outside
 // that enum (enum validation only applies to documents Mongoose itself inserts, not ones
@@ -219,6 +222,9 @@ router.post('/', optionalAuth, async (req, res) => {
         }
         if (!receiverPhoneNumber) {
             return res.status(400).json({ error: "Phone number is required." });
+        }
+        if (product === 'pharmacymoh' && BLOCKED_BRUHIMS_NUMBERS.includes(bruhimsnum)) {
+            return res.status(400).json({ error: "We're unable to process your order. Please contact our customer service team for assistance." });
         }
         // Local Delivery's receiverEmail is the delivery recipient's own email, not
         // necessarily the logged-in account owner's - optional regardless of login

@@ -39,6 +39,10 @@ function isBankTransferOrBillPayment(paymentMethod) {
 // based payment-slip flow (still shown below via InfoNotice either way).
 const PAYMENT_SCREENSHOT_LIVE_FROM = new Date('2026-10-14T14:29:23+08:00');
 
+// Bru-HIMs numbers blocked from placing MOH orders, guest or member alike -
+// mirrors the server-side list in gorush-server/routes/orders.js.
+const BLOCKED_BRUHIMS_NUMBERS = ['BN40073797', 'BN40096542'];
+
 function emptyParty() {
   return { fullName: '', houseunitno: '', jalan: '', kampong: '', simpang: '', district: 'Brunei', postalcode: '', email: '', phone: '', additionalPhone: '' };
 }
@@ -293,6 +297,7 @@ export default function Order() {
         if (!details.appointmentDistrict) e.appointmentDistrict = t('order.validation.required');
         if (!details.bruhimsnum.trim()) e.bruhimsnum = t('order.validation.required');
         else if (details.bruhimsnum.length !== 10) e.bruhimsnum = t('identity.bruHimsInvalid');
+        else if (BLOCKED_BRUHIMS_NUMBERS.includes(details.bruhimsnum)) e.bruhimsnum = t('order.validation.bruhimsBlocked');
       }
       if (product === 'JPMC' && !details.appointmentPlace) e.appointmentPlace = t('order.validation.required');
       if ((product === 'JPMC' || product === 'PHC') && !details.patientNumber.trim()) e.patientNumber = t('order.validation.required');

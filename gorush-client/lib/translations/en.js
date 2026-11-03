@@ -526,6 +526,7 @@ export default {
       gjpmcInvalid: 'GJPMC Patient No. must be "G-" followed by exactly 6 digits.',
       jpmcDigitsFormatHint: '8 digits, e.g. 12312312',
       gjpmcFormatHint: '"G-" followed by 6 digits, e.g. G-123456',
+      bruhimsBlocked: "We're unable to process your order. Please contact our customer service team for assistance.",
     },
     summary: {
       product: 'Product',

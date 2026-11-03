@@ -521,6 +521,7 @@ export default {
       pickupDateNoSunday: 'Pengambilan tidak tersedia pada hari Ahad - sila pilih hari lain.',
       jpmcDigitsInvalid: 'No. Pesakit JPMC/PJSC mestilah tepat 8 digit.',
       gjpmcInvalid: 'No. Pesakit GJPMC mestilah "G-" diikuti tepat 6 digit.',
+      bruhimsBlocked: 'Kami tidak dapat memproses tempahan anda. Sila hubungi pasukan khidmat pelanggan kami untuk bantuan.',
     },
     summary: {
       product: 'Produk',
