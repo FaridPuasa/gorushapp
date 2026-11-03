@@ -176,10 +176,11 @@ export default function PartnerSearchJobs() {
   const { scaleFont } = useDenseFontScale();
   const formStyles = useFormStyles();
 
-  // mawbNo/parcelWeight aren't relevant to moh's home-delivery jobs - dropped
-  // for this role only, pdu/mglobal/ewe keep the full shared column set.
+  // mawbNo/parcelWeight/ageDays aren't relevant to moh's home-delivery jobs -
+  // dropped for this role only, pdu/mglobal/ewe keep the full shared column set.
+  const MOH_HIDDEN_KEYS = new Set(['mawbNo', 'parcelWeight', 'ageDays']);
   const columns = useMemo(
-    () => (isMoh ? [...COLUMNS.filter((c) => c.key !== 'mawbNo' && c.key !== 'parcelWeight'), ...MOH_COLUMNS] : COLUMNS),
+    () => (isMoh ? [...COLUMNS.filter((c) => !MOH_HIDDEN_KEYS.has(c.key)), ...MOH_COLUMNS] : COLUMNS),
     [isMoh],
   );
 
