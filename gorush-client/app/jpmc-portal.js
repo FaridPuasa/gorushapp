@@ -545,6 +545,9 @@ function GoRushDetailCard({ order, onClose, colors, scaleFont }) {
         <Section icon="👤" title="Customer Info" colors={colors} scaleFont={scaleFont}>
           <DetailField label="Patient's Name" value={order.receiverName} minWidth={180} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Patient's PRN" value={order.patientNumber} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Date of Birth" value={formatDMY(order.dateOfBirth)} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="IC No." value={order.icNum} colors={colors} scaleFont={scaleFont} />
+          <DetailField label="Passport No." value={order.passport} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Location" value={order.appointmentPlace} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Main Phone No." value={order.receiverPhoneNumber} colors={colors} scaleFont={scaleFont} />
           <DetailField label="Additional Phone No." value={order.additionalPhoneNumber} colors={colors} scaleFont={scaleFont} />
