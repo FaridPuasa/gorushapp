@@ -435,6 +435,8 @@ export default {
     deliveryOrSelfCollect: 'Delivery or Self Collect?',
     delivery: 'Delivery',
     selfCollect: 'Self Collect',
+    cbslExtraChargesNoticeTitle: 'Additional charges may apply',
+    cbslExtraChargesNotice: 'The charge selected below is for delivery only. A handling charge will also apply, and a duty charge will apply if any item is subject to customs duty. These will be confirmed separately and are not included in the total shown.',
     originalTrackingNo: 'Original Tracking No.',
     originalTrackingNoHint: 'Tracking number provided by the courier',
     courier: 'Courier',

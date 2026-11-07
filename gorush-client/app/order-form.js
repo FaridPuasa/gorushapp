@@ -255,6 +255,16 @@ export default function Order() {
   // logged-in users get their real saved default restored instead (see the effect below).
   const preSelfCollectAddressRef = useRef(null);
 
+  // CBSL's charge dropdown (e.g. "Drop off") only applies to Delivery - switching to Self
+  // Collect must clear whatever was picked, otherwise that stale charge/price keeps showing
+  // on the summary and gets submitted even though the charges field is hidden again.
+  useEffect(() => {
+    if (cbslSelfCollect) {
+      setDetails((prev) => (prev.chargeCode ? { ...prev, chargeCode: '' } : prev));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cbslSelfCollect]);
+
   useEffect(() => {
     if (isSelfCollectSelected) {
       preSelfCollectAddressRef.current = {
@@ -658,6 +668,12 @@ export default function Order() {
             }
             return null;
           })()}
+
+          {product === 'Cross Border Service Limbang' && details.shipmentMethod === 'Delivery' && (
+            <InfoNotice icon="⚠️" title={t('order.cbslExtraChargesNoticeTitle')}>
+              {t('order.cbslExtraChargesNotice')}
+            </InfoNotice>
+          )}
 
           <AnimatedPressable
             scaleTo={1.03}

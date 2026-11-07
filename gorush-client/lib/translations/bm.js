@@ -432,6 +432,8 @@ export default {
     deliveryOrSelfCollect: 'Penghantaran atau Ambil Sendiri?',
     delivery: 'Penghantaran',
     selfCollect: 'Ambil Sendiri',
+    cbslExtraChargesNoticeTitle: 'Caj tambahan mungkin dikenakan',
+    cbslExtraChargesNotice: 'Caj yang dipilih di bawah adalah untuk penghantaran sahaja. Caj pengendalian juga akan dikenakan, dan caj duti akan dikenakan sekiranya mana-mana barang tertakluk kepada duti kastam. Caj ini akan disahkan secara berasingan dan tidak termasuk dalam jumlah yang ditunjukkan.',
     originalTrackingNo: 'No. Penjejakan Asal',
     originalTrackingNoHint: 'Nombor penjejakan yang diberikan oleh kurier',
     courier: 'Kurier',

@@ -51,6 +51,12 @@ export default function CrossBorderFields({
         </AnimatedPressable>
       </View>
 
+      {values.shipmentMethod === 'Delivery' && (
+        <InfoNotice icon="⚠️" title={t('order.cbslExtraChargesNoticeTitle')}>
+          {t('order.cbslExtraChargesNotice')}
+        </InfoNotice>
+      )}
+
       <Field label={t('order.originalTrackingNo')} required error={errors.parcelTrackingNum} hint={t('order.originalTrackingNoHint')} fieldKey="parcelTrackingNum" registerRef={registerFieldRef}>
         <TextInput style={inputStyle('parcelTrackingNum')} value={values.parcelTrackingNum} onChangeText={(v) => onChange('parcelTrackingNum', v)} {...focusHandlers('parcelTrackingNum')} />
       </Field>
